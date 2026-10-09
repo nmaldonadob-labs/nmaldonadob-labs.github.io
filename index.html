@@ -1,0 +1,693 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nicolas Maldonado Bustamante · Redes y Ciberseguridad</title>
+<meta name="description" content="Portafolio de Nicolas Maldonado Bustamante, estudiante de Ingeniería en Conectividad y Redes en Duoc UC: juegos y herramientas web para aprender redes y ciberseguridad.">
+<style>
+:root{
+  --bg:#f4f6fb; --panel:#ffffff; --panel2:#eef1f8; --text:#141a2a; --muted:#5b6478;
+  --line:#d7dce8; --accent:#0a7cff; --accent-ink:#ffffff; --ok:#11885a; --ok-bg:#e3f6ed;
+  --bad:#c8323c; --bad-bg:#fbe6e7; --warn:#b26a00; --warn-bg:#fff3dc; --net:#0a7cff; --host:#d9480f;
+  --l7:#7c3aed; --l6:#c026d3; --l5:#db2777; --l4:#ea580c; --l3:#0a6fe0; --l2:#0d9488; --l1:#64748b;
+  --s0:#c8323c; --s2:#b26a00; --s4:#11885a;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --shadow:0 1px 2px rgba(20,26,42,.06),0 6px 20px rgba(20,26,42,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0b0f17; --panel:#131a26; --panel2:#1a2333; --text:#e6ebf5; --muted:#93a0b8;
+    --line:#26324a; --accent:#3ddc97; --accent-ink:#06120c; --ok:#3ddc97; --ok-bg:#0f2a20;
+    --bad:#ff6b74; --bad-bg:#2c1418; --warn:#ffb547; --warn-bg:#2b2010; --net:#5fb0ff; --host:#ff8a5c;
+    --l7:#a78bfa; --l6:#e879f9; --l5:#f472b6; --l4:#fb923c; --l3:#5fb0ff; --l2:#2dd4bf; --l1:#94a3b8;
+    --s0:#ff6b74; --s2:#ffb547; --s4:#3ddc97;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0b0f17; --panel:#131a26; --panel2:#1a2333; --text:#e6ebf5; --muted:#93a0b8;
+  --line:#26324a; --accent:#3ddc97; --accent-ink:#06120c; --ok:#3ddc97; --ok-bg:#0f2a20;
+  --bad:#ff6b74; --bad-bg:#2c1418; --warn:#ffb547; --warn-bg:#2b2010; --net:#5fb0ff; --host:#ff8a5c;
+  --l7:#a78bfa; --l6:#e879f9; --l5:#f472b6; --l4:#fb923c; --l3:#5fb0ff; --l2:#2dd4bf; --l1:#94a3b8;
+  --s0:#ff6b74; --s2:#ffb547; --s4:#3ddc97;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:72px}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+a{color:var(--accent)}
+.wrap{max-width:1040px;margin:0 auto;padding:0 16px}
+h1,h2,h3{letter-spacing:-.02em}
+h2{font-size:24px;margin:0 0 4px}
+h3{font-size:18px;margin:0 0 6px}
+p{margin:0 0 10px}
+.muted{color:var(--muted)}
+.mono{font-family:var(--mono)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:var(--shadow)}
+.iconbtn{background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:6px 10px;cursor:pointer;font:inherit;font-size:14px}
+.btn{display:inline-flex;align-items:center;gap:8px;border-radius:10px;padding:10px 16px;font:inherit;font-weight:600;text-decoration:none;border:1px solid var(--line);background:var(--panel);color:var(--text);cursor:pointer}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn:hover{transform:translateY(-1px)}
+
+/* ----- datos por completar ----- */
+.todo{outline:2px dashed var(--warn);outline-offset:2px;border-radius:4px;background:var(--warn-bg)}
+.draft{display:none;background:var(--warn-bg);color:var(--text);border-bottom:1px solid var(--line);font-size:14px}
+.draft.on{display:block}
+.draft .wrap{padding:8px 16px;display:flex;gap:10px;align-items:center;justify-content:space-between}
+.draft b{color:var(--warn)}
+
+/* ----- barra superior ----- */
+.top{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 85%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;align-items:center;justify-content:space-between;gap:12px;height:60px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px;text-decoration:none;color:var(--text)}
+.brand .logo{font-family:var(--mono);background:var(--accent);color:var(--accent-ink);border-radius:8px;padding:2px 8px;font-size:14px}
+nav{display:flex;align-items:center;gap:4px}
+nav a{color:var(--muted);text-decoration:none;font-size:15px;padding:6px 10px;border-radius:8px}
+nav a:hover{color:var(--text);background:var(--panel2)}
+@media (max-width:640px){ nav a.opt{display:none} nav{gap:0} nav a{padding:6px 8px} }
+
+/* ----- portada ----- */
+.hero{display:grid;grid-template-columns:1.25fr 1fr;gap:28px;align-items:center;padding:56px 0 40px}
+@media (max-width:780px){ .hero{grid-template-columns:1fr;padding-top:32px} }
+.hello{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+.avatar{width:64px;height:64px;border-radius:50%;flex:none;display:grid;place-items:center;background:var(--accent);color:var(--accent-ink);font:700 26px/1 var(--mono);overflow:hidden}
+.avatar img{width:100%;height:100%;object-fit:cover}
+.kicker{font-family:var(--mono);font-size:13px;color:var(--muted)}
+.hero h1{font-size:clamp(30px,5.4vw,44px);line-height:1.1;margin:0 0 14px}
+.hero h1 em{font-style:normal;color:var(--accent)}
+.hero .lead{font-size:18px;color:var(--muted);max-width:56ch}
+.cta{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
+.term{background:#0b0f17;color:#e6ebf5;border:1px solid #26324a;border-radius:14px;box-shadow:var(--shadow);font:14px/1.7 var(--mono);overflow:hidden}
+.term .bar{display:flex;gap:6px;padding:10px 12px;border-bottom:1px solid #26324a;background:#131a26}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#26324a}
+.term .bar i:nth-child(1){background:#ff6b74}.term .bar i:nth-child(2){background:#ffb547}.term .bar i:nth-child(3){background:#3ddc97}
+.term pre{margin:0;padding:14px 16px;white-space:pre-wrap;word-break:break-word;font:inherit}
+.term .p{color:#3ddc97}.term .c{color:#93a0b8}.term .k{color:#5fb0ff}
+.cursor{display:inline-block;width:8px;height:1.1em;background:#3ddc97;vertical-align:text-bottom;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+@media (prefers-reduced-motion:reduce){ .cursor{animation:none} html{scroll-behavior:auto} }
+
+/* ----- secciones ----- */
+section{padding:36px 0}
+.sec-head{display:flex;align-items:end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+
+/* ----- proyectos ----- */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr));gap:16px}
+.proj{display:flex;flex-direction:column;padding:0;overflow:hidden;transition:transform .12s,border-color .12s}
+.proj:hover{transform:translateY(-2px);border-color:var(--accent)}
+.prev{height:150px;background:var(--panel2);border-bottom:1px solid var(--line);display:grid;place-items:center;padding:14px;overflow:hidden}
+.proj .body{padding:18px 20px 20px;display:flex;flex-direction:column;flex:1}
+.proj .tag{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.proj .tag .logo{font-family:var(--mono);background:var(--accent);color:var(--accent-ink);border-radius:7px;padding:1px 7px;font-size:13px;font-weight:700}
+.proj .tag span:last-child{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.proj ul{margin:4px 0 14px;padding-left:18px;color:var(--muted);font-size:15px}
+.proj ul li{margin:2px 0}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 16px}
+.chip{font-family:var(--mono);font-size:12px;background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:2px 9px;color:var(--muted)}
+.proj .actions{margin-top:auto}
+
+/* mini vistas previas (decorativas) */
+.pv-subnet{font:14px/1.7 var(--mono);text-align:left}
+.pv-subnet .n{color:var(--net);font-weight:700}.pv-subnet .h{color:var(--host);font-weight:700}
+.pv-subnet .r{display:flex;gap:10px}.pv-subnet .r b{color:var(--muted);font-weight:400;min-width:76px}
+.pv-mail{width:100%;max-width:330px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13px}
+.pv-mail .from{font-family:var(--mono);font-size:12px}
+.pv-mail .from s{text-decoration:none;background:var(--bad-bg);color:var(--bad);border-radius:4px;padding:0 3px}
+.pv-mail .subj{font-weight:700;margin:4px 0}
+.pv-mail .btns{display:flex;gap:6px;margin-top:8px}
+.pv-mail .btns span{flex:1;text-align:center;border-radius:6px;padding:3px;font-weight:700;font-size:12px}
+.pv-mail .btns .y{background:var(--bad-bg);color:var(--bad)}.pv-mail .btns .o{background:var(--ok-bg);color:var(--ok)}
+.pv-osi{display:flex;flex-direction:column;gap:3px;width:100%;max-width:300px}
+.pv-osi div{height:13px;border-radius:4px;color:#fff;font:700 10px/13px var(--mono);padding-left:6px}
+.pv-pw{width:100%;max-width:320px}
+.pv-pw .field{font-family:var(--mono);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:14px;letter-spacing:.08em}
+.pv-pw .meter{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin:10px 0 6px}
+.pv-pw .meter i{height:7px;border-radius:9px;background:var(--line)}
+.pv-pw .meter i.on{background:var(--s4)}
+.pv-exp{width:100%;max-width:320px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13px;position:relative}
+.pv-exp .f{font:11px var(--mono);color:var(--muted)}
+.pv-exp .ti{font-weight:700;margin:2px 0 8px}
+.pv-exp .st{position:absolute;top:8px;right:8px;border:2px solid var(--bad);color:var(--bad);font:700 10px var(--mono);padding:1px 6px;border-radius:5px;transform:rotate(4deg)}
+.pv-exp .cl{display:flex;gap:5px}.pv-exp .cl span{flex:1;text-align:center;border-radius:6px;padding:2px;font:700 11px var(--mono);background:var(--panel2);color:var(--muted)}
+.pv-exp .cl .on{background:var(--bad-bg);color:var(--bad)}
+.pv-pw .t{font-size:13px;color:var(--muted)}.pv-pw .t b{color:var(--s4)}
+
+.proj .v{font:700 12px/1 var(--mono);background:var(--accent);color:var(--accent-ink);border-radius:6px;padding:2px 6px;vertical-align:3px;margin-left:4px}
+.proj .actions{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.proj .actions .old{font-size:14px;color:var(--muted)}
+.proj .actions .old:hover{color:var(--accent)}
+.filters a{white-space:nowrap;font-size:14px;color:var(--muted);padding:5px 12px;border-radius:7px;text-decoration:none}
+.filters a:hover{background:var(--panel);color:var(--text);box-shadow:var(--shadow)}
+.topic{margin-top:28px;scroll-margin-top:80px}
+.topic:first-of-type{margin-top:0}
+.topic-h{display:flex;align-items:baseline;gap:10px;border-bottom:2px solid var(--line);padding-bottom:6px}
+.topic-h h3{margin:0;font-size:22px}
+.topic-h .count{font:600 12px/1 var(--mono);color:var(--muted)}
+.topic-d{margin:8px 0 14px}
+.proj .v.v1{background:var(--muted)}
+.proj .old-prev{filter:grayscale(.6);opacity:.85}
+.filters{display:flex;gap:4px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:3px}
+.filters button{font:inherit;font-size:14px;border:0;background:none;color:var(--muted);padding:5px 12px;border-radius:7px;cursor:pointer}
+.filters button.on{background:var(--panel);color:var(--text);box-shadow:var(--shadow)}
+.proj.off{display:none}
+.pv-mail .hdr{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.pv-mail .hdr .bad{font:11px var(--mono);background:var(--bad-bg);color:var(--bad);border-radius:4px;padding:0 4px}
+.pv-route,.pv-fw,.pv-pcap,.pv-log,.pv-crypto{width:100%;max-width:320px;font:12.5px/1.5 var(--mono)}
+.pv-route .pkt{margin-bottom:6px;color:var(--muted)}.pv-route .pkt b{color:var(--host)}
+.pv-route .row,.pv-fw .row,.pv-pcap .row{display:flex;justify-content:space-between;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:2px 8px;margin-top:3px}
+.pv-route .row.win{border-color:var(--ok);background:var(--ok-bg);color:var(--ok);font-weight:700}
+.pv-fw .row{justify-content:flex-start}
+.pv-fw .act{font-weight:700;min-width:46px}.pv-fw .act.ok{color:var(--ok)}.pv-fw .act.no{color:var(--bad)}
+.pv-fw .row.dim{opacity:.6;border-style:dashed}
+.pv-pcap .row span:first-child{color:var(--muted);min-width:14px}.pv-pcap .row span:nth-child(2){flex:1}
+.pv-pcap .pr{font-weight:700}
+.pv-pcap .row.sel{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent)}
+.pv-log{background:#0b0f17;color:#93a0b8;border:1px solid #26324a;border-radius:8px;padding:8px 10px;font-size:11.5px}
+.pv-log div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pv-log .hit{color:#ff6b74;background:rgba(255,107,116,.12);border-radius:3px}
+.pv-crypto div{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:3px 8px;margin-top:4px;white-space:nowrap;overflow:hidden}
+.pv-crypto b{color:var(--l7);margin-right:6px}.pv-crypto span{color:var(--ok);font-weight:700}
+.pv-ctf{text-align:center;font-family:var(--mono)}
+.pv-ctf .doors{display:flex;gap:5px;justify-content:center;margin-bottom:12px}
+.pv-ctf .doors i{width:18px;height:28px;border-radius:4px 4px 0 0;border:2px solid var(--line);background:var(--panel)}
+.pv-ctf .doors i.ok{border-color:var(--ok);background:var(--ok-bg)}
+.pv-ctf .flag{font-size:16px;font-weight:700}.pv-ctf .flag span{color:var(--warn)}
+
+/* ----- sobre mí / habilidades ----- */
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:780px){ .two{grid-template-columns:1fr} }
+.skills{display:grid;gap:14px}
+.skill h3{font-size:15px;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.skill h3 i{width:10px;height:10px;border-radius:3px;background:var(--accent);display:inline-block}
+.facts{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:14px 0 0;font-size:15px}
+.facts dt{color:var(--muted);font-family:var(--mono);font-size:13px;padding-top:2px}
+.facts dd{margin:0}
+.timeline{list-style:none;margin:0;padding:0}
+.timeline li{position:relative;padding:0 0 14px 22px;border-left:2px solid var(--line);margin-left:6px}
+.timeline li:last-child{padding-bottom:0}
+.timeline li::before{content:"";position:absolute;left:-7px;top:4px;width:12px;height:12px;border-radius:50%;background:var(--panel);border:2px solid var(--accent)}
+.timeline .when{font-family:var(--mono);font-size:12px;color:var(--muted)}
+
+/* ----- contacto ----- */
+.contact{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:16px}
+.contact a{display:block;text-decoration:none;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px}
+.contact a:hover{border-color:var(--accent)}
+.contact .lbl{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.contact .val{font-weight:600;word-break:break-word}
+footer{text-align:center;font-size:13px;color:var(--muted);padding:28px 16px 40px}
+</style>
+</head>
+<body>
+
+<!-- Aviso de borrador: desaparece solo cuando ya no quede ningún elemento con class="todo" -->
+<div class="draft" id="draft">
+  <div class="wrap">
+    <span><b>Borrador:</b> lo marcado en amarillo son datos de ejemplo. Complétalos y quita la clase <code class="mono">todo</code>.</span>
+    <button class="iconbtn" id="btnDraft" type="button">Ocultar</button>
+  </div>
+</div>
+
+<div class="top">
+  <div class="wrap">
+    <a class="brand" href="#inicio"><span class="logo">~/</span> Nicolas</a>
+    <nav aria-label="Secciones">
+      <a href="#proyectos">Proyectos</a>
+      <a class="opt" href="#sobre-mi">Sobre mí</a>
+      <a href="#contacto">Contacto</a>
+      <button class="iconbtn" id="btnTheme" type="button" aria-label="Cambiar tema">Tema</button>
+    </nav>
+  </div>
+</div>
+
+<main class="wrap" id="inicio">
+
+  <div class="hero">
+    <div>
+      <div class="hello">
+        <div class="avatar">N</div>
+        <div>
+          <div style="font-weight:700">Nicolas Maldonado Bustamante</div>
+          <div class="kicker">Conectividad y Redes · Duoc UC</div>
+        </div>
+      </div>
+      <h1>Aprendo redes construyendo <em>herramientas</em> para entenderlas.</h1>
+      <p class="lead">Estudio Ingeniería en Conectividad y Redes y me apasiona la ciberseguridad. Aquí reúno los juegos, simuladores y laboratorios que hice para estudiar: subnetting, enrutamiento, firewalls, análisis de tráfico, phishing, cifrado, respuesta a incidentes y más. Todos corren en el navegador, sin instalar nada.</p>
+      <div class="cta">
+        <a class="btn primary" href="#proyectos">Ver proyectos</a>
+        <a class="btn" href="#contacto">Contáctame</a>
+      </div>
+    </div>
+    <div class="term" aria-hidden="true">
+      <div class="bar"><i></i><i></i><i></i></div>
+<pre><span class="p">nicolas@lab:~$</span> whoami
+estudiante de conectividad y redes
+<span class="p">nicolas@lab:~$</span> cat intereses.txt
+<span class="k">redes</span>      subnetting · routing · OSI
+<span class="k">seguridad</span>  firewall · SOC · cifrado · CTF
+<span class="k">web</span>        HTML · CSS · JavaScript
+<span class="p">nicolas@lab:~$</span> ls proyectos/
+subnet-quest    next-hop
+capa-a-capa     paquete-a-paquete
+phishing-o-no   arma-tu-firewall
+turno-soc       laboratorio-cifrado
+escape-room-ctf cuanto-aguanta
+fiscalizador-21719
+<span class="p">nicolas@lab:~$</span> <span class="cursor"></span></pre>
+    </div>
+  </div>
+
+  <section id="proyectos">
+    <div class="sec-head">
+      <div>
+        <h2>Proyectos</h2>
+        <p class="muted" style="margin:0">Once proyectos ordenados por tema. Los que tienen dos versiones muestran ambas, una al lado de la otra.</p>
+      </div>
+      <nav class="filters" style="flex-wrap:wrap" aria-label="Ir a un tema">
+        <a href="#redes">Redes</a>
+        <a href="#ciberseguridad">Ciberseguridad</a>
+        <a href="#criptografia">Criptografía y CTF</a>
+        <a href="#normativa">Normativa</a>
+      </nav>
+    </div>
+
+        <div class="topic" id="redes">
+      <div class="topic-h"><h3>Redes</h3><span class="count">6 proyectos</span></div>
+      <p class="muted topic-d">Subnetting, modelo OSI, enrutamiento y análisis de tráfico.</p>
+      <div class="grid">
+      <article class="card proj" data-cat="redes">
+        <div class="prev" aria-hidden="true">
+          <div class="pv-subnet">
+            <div class="r"><b>IPv4</b><span><span class="n">192.168.10.</span><span class="h">77</span>/26</span></div>
+            <div class="r"><b>VLSM</b><span>/25 · /26 · /27 · /30</span></div>
+            <div class="r"><b>IPv6</b><span><span class="n">2001:db8:acad:</span><span class="h">10</span>::/64</span></div>
+          </div>
+        </div>
+        <div class="body">
+          <div class="tag"><span class="logo">/64</span><span>Juego · Redes</span></div>
+          <h3>Subnet Quest <span class="v">v2</span></h3>
+          <p class="muted">Te da una red y tú calculas red, broadcast y hosts. Ahora con tres rutas: IPv4 clásico, VLSM e IPv6.</p>
+          <ul>
+            <li>VLSM para repartir una red entre departamentos</li>
+            <li>IPv6 desde la notación hasta las subredes /64</li>
+            <li>Puntaje, vidas y niveles que se desbloquean</li>
+          </ul>
+          <div class="chips"><span class="chip">IPv4</span><span class="chip">VLSM</span><span class="chip">IPv6</span></div>
+          <div class="actions"><a class="btn primary" href="proyectos/subnet-quest-v2/index.html">Jugar</a></div>
+        </div>
+      </article>
+      <article class="card proj" data-cat="redes">
+        <div class="prev old-prev" aria-hidden="true">
+          <div class="pv-subnet">
+            <div class="r"><b>IP</b><span><span class="n">192.168.10.</span><span class="h">77</span>/26</span></div>
+            <div class="r"><b>Red</b><span>192.168.10.64</span></div>
+            <div class="r"><b>Broad</b><span>192.168.10.127</span></div>
+          </div>
+        </div>
+        <div class="body">
+          <div class="tag"><span class="logo">/64</span><span>Juego · Redes</span></div>
+          <h3>Subnet Quest <span class="v v1">v1</span></h3>
+          <p class="muted">La primera versión del juego: te da una dirección IPv4 y calculas la red, el broadcast y los hosts.</p>
+          <ul>
+            <li>Subnetting IPv4 clásico</li>
+            <li>Niveles y puntaje</li>
+          </ul>
+          <div class="chips"><span class="chip">IPv4</span><span class="chip">máscaras</span></div>
+          <div class="actions"><a class="btn" href="proyectos/subnet-quest/index.html">Abrir versión 1</a><a class="old" href="proyectos/subnet-quest-v2/index.html">Ver la versión 2</a></div>
+        </div>
+      </article>
+      <article class="card proj" data-cat="redes">
+        <div class="prev" aria-hidden="true">
+          <div class="pv-osi">
+            <div style="background:var(--l7);width:100%">7 Aplicación</div>
+            <div style="background:var(--l6);width:94%">6 Presentación</div>
+            <div style="background:var(--l5);width:88%">5 Sesión</div>
+            <div style="background:var(--l4);width:82%">4 Transporte</div>
+            <div style="background:var(--l3);width:76%">3 Red</div>
+            <div style="background:var(--l2);width:70%">2 Enlace</div>
+            <div style="background:var(--l1);width:64%">1 Física</div>
+          </div>
+        </div>
+        <div class="body">
+          <div class="tag"><span class="logo">L1-7</span><span>Simulador · Redes</span></div>
+          <h3>Capa a Capa <span class="v">v2</span></h3>
+          <p class="muted">Sigue un mensaje por la red: cómo cada capa agrega su encabezado, qué lee el switch, qué lee el router y cómo se desarma al llegar.</p>
+          <ul>
+            <li>Simulador paso a paso de encapsulación</li>
+            <li>Handshake TCP, ARP y NAT animados</li>
+            <li>Guía de las 7 capas y un desafío final</li>
+          </ul>
+          <div class="chips"><span class="chip">OSI</span><span class="chip">TCP/IP</span><span class="chip">ARP</span><span class="chip">NAT</span></div>
+          <div class="actions"><a class="btn primary" href="proyectos/capa-a-capa-v2/index.html">Abrir simulador</a></div>
+        </div>
+      </article>
+      <article class="card proj" data-cat="redes">
+        <div class="prev old-prev" aria-hidden="true">
+          <div class="pv-osi">
+            <div style="background:var(--l7);width:100%">7 Aplicación</div>
+            <div style="background:var(--l6);width:94%">6 Presentación</div>
+            <div style="background:var(--l5);width:88%">5 Sesión</div>
+            <div style="background:var(--l4);width:82%">4 Transporte</div>
+            <div style="background:var(--l3);width:76%">3 Red</div>
+            <div style="background:var(--l2);width:70%">2 Enlace</div>
+            <div style="background:var(--l1);width:64%">1 Física</div>
+          </div>
+        </div>
+        <div class="body">
+          <div class="tag"><span class="logo">L1-7</span><span>Simulador · Redes</span></div>
+          <h3>Capa a Capa <span class="v v1">v1</span></h3>
+          <p class="muted">La primera versión del simulador: cómo se encapsula un mensaje capa por capa y cómo cruza un switch y un router.</p>
+          <ul>
+            <li>Encapsulación paso a paso del modelo OSI y TCP/IP</li>
+            <li>Desafío final para ponerte a prueba</li>
+          </ul>
+          <div class="chips"><span class="chip">OSI</span><span class="chip">TCP/IP</span></div>
+          <div class="actions"><a class="btn" href="proyectos/capa-a-capa/index.html">Abrir versión 1</a><a class="old" href="proyectos/capa-a-capa-v2/index.html">Ver la versión 2</a></div>
+        </div>
+      </article>
+      <article class="card proj" data-cat="redes">
+        <div class="prev" aria-hidden="true">
+          <div class="pv-route">
+            <div class="pkt">Destino <b>10.20.5.9</b></div>
+            <div class="row"><span>0.0.0.0/0</span><span>S 1/0</span></div>
+            <div class="row"><span>10.20.0.0/16</span><span>OSPF 110</span></div>
+            <div class="row win"><span>10.20.5.0/24</span><span>EIGRP 90</span></div>
+          </div>
+        </div>
+        <div class="body">
+          <div class="tag"><span class="logo">0/0</span><span>Simulador · Redes</span></div>
+          <h3>Next Hop</h3>
+          <p class="muted">Eres el router R1. Llega un paquete, miras tu tabla de enrutamiento y eliges por dónde sale, o lo descartas si no hay ruta.</p>
+          <ul>
+            <li>Prefijo más largo, distancia administrativa y métrica</li>
+            <li>Rutas conectadas, estáticas, RIP, OSPF y EIGRP</li>
+            <li>Niveles con puntaje y ruta por defecto</li>
+          </ul>
+          <div class="chips"><span class="chip">enrutamiento</span><span class="chip">AD</span><span class="chip">métrica</span></div>
+          <div class="actions"><a class="btn primary" href="proyectos/next-hop/index.html">Jugar</a></div>
+        </div>
+      </article>
+      <article class="card proj" data-cat="redes">
+        <div class="prev" aria-hidden="true">
+          <div class="pv-pcap">
+            <div class="row"><span>1</span><span>192.168.1.20</span><span class="pr" style="color:var(--l2)">ARP</span></div>
+            <div class="row"><span>2</span><span>192.168.1.20</span><span class="pr" style="color:var(--l5)">DNS</span></div>
+            <div class="row sel"><span>3</span><span>93.184.215.14</span><span class="pr" style="color:var(--l4)">TCP</span></div>
+            <div class="row"><span>4</span><span>93.184.215.14</span><span class="pr" style="color:var(--l7)">HTTP</span></div>
+          </div>
+        </div>
+        <div class="body">
+          <div class="tag"><span class="logo">.pcap</span><span>Herramienta · Redes</span></div>
+          <h3>Paquete a Paquete</h3>
+          <p class="muted">Abre una captura de Wireshark o tcpdump y te explico cada paquete en palabras simples, como un mini Wireshark comentado.</p>
+          <ul>
+            <li>Lee archivos .pcap y .pcapng en el navegador</li>
+            <li>Ethernet, VLAN, ARP, IPv4, TCP, UDP y más</li>
+            <li>Resumen de la captura y misiones para practicar</li>
+          </ul>
+          <div class="chips"><span class="chip">Wireshark</span><span class="chip">análisis de tráfico</span></div>
+          <div class="actions"><a class="btn primary" href="proyectos/paquete-a-paquete/index.html">Abrir visor</a></div>
+        </div>
+      </article>
+      </div>
+    </div>
+
+    <div class="topic" id="ciberseguridad">
+      <div class="topic-h"><h3>Ciberseguridad</h3><span class="count">5 proyectos</span></div>
+      <p class="muted topic-d">Phishing, firewalls, respuesta a incidentes y contraseñas.</p>
+      <div class="grid">
+      <article class="card proj" data-cat="seg">
+        <div class="prev" aria-hidden="true">
+          <div class="pv-mail">
+            <div class="from">seguridad@<s>bancocordilera-alertas.com</s></div>
+            <div class="subj">URGENTE: tu cuenta será bloqueada</div>
+            <div class="hdr"><span class="bad">SPF fail</span><span class="bad">DKIM none</span><span class="bad">DMARC fail</span></div>
+            <div class="btns"><span class="y">Phishing</span><span class="o">Legítimo</span></div>
+          </div>
+        </div>
+        <div class="body">
+          <div class="tag"><span class="logo">@?</span><span>Juego · Ciberseguridad</span></div>
+          <h3>Phishing o No <span class="v">v2</span></h3>
+          <p class="muted">Correos, SMS y páginas de login de marcas inventadas. Decides si son phishing o legítimos, y ahora también analizas encabezados como en un caso forense.</p>
+          <ul>
+            <li>Remitentes falsos, homógrafos, subdominios y QR</li>
+            <li>Modo forense: SPF, DKIM, DMARC, Received y Return-Path</li>
+            <li>Analizador de encabezados de tus propios correos</li>
+          </ul>
+          <div class="chips"><span class="chip">ingeniería social</span><span class="chip">SPF/DKIM/DMARC</span></div>
+          <div class="actions"><a class="btn primary" href="proyectos/phishing-o-no-v2/index.html">Jugar</a></div>
+        </div>
+      </article>
+      <article class="card proj" data-cat="seg">
+        <div class="prev old-prev" aria-hidden="true">
+          <div class="pv-mail">
+            <div class="from">seguridad@<s>bancocordilera-alertas.com</s></div>
+            <div class="subj">URGENTE: tu cuenta será bloqueada</div>
+            <div class="hdr"><span class="bad">SPF fail</span><span class="bad">DKIM none</span><span class="bad">DMARC fail</span></div>
+            <div class="btns"><span class="y">Phishing</span><span class="o">Legítimo</span></div>
+          </div>
+        </div>
+        <div class="body">
+          <div class="tag"><span class="logo">@?</span><span>Juego · Ciberseguridad</span></div>
+          <h3>Phishing o No <span class="v v1">v1</span></h3>
+          <p class="muted">La primera versión del juego: correos, SMS y páginas de login de marcas inventadas para decidir si son phishing o legítimos.</p>
+          <ul>
+            <li>Correos, SMS y logins para clasificar</li>
+            <li>Marcas inventadas, sin datos reales</li>
+          </ul>
+          <div class="chips"><span class="chip">ingeniería social</span><span class="chip">phishing</span></div>
+          <div class="actions"><a class="btn" href="proyectos/phishing-o-no/index.html">Abrir versión 1</a><a class="old" href="proyectos/phishing-o-no-v2/index.html">Ver la versión 2</a></div>
+        </div>
+      </article>
+      <article class="card proj" data-cat="seg">
+        <div class="prev" aria-hidden="true">
+          <div class="pv-fw">
+            <div class="row"><span class="act ok">ALLOW</span><span>tcp any → web:443</span></div>
+            <div class="row"><span class="act ok">ALLOW</span><span>tcp admin → srv:22</span></div>
+            <div class="row"><span class="act no">DENY</span><span>ip 203.0.113.66 → any</span></div>
+            <div class="row dim"><span class="act no">DENY</span><span>política por defecto</span></div>
+          </div>
+        </div>
+        <div class="body">
+          <div class="tag"><span class="logo">ACL</span><span>Juego · Ciberseguridad</span></div>
+          <h3>Arma tu Firewall</h3>
+          <p class="muted">Escribes las reglas del firewall de Café Andino, una cadena inventada. Cada misión tiene pruebas visibles y otras ocultas que corren cuando despliegas.</p>
+          <ul>
+            <li>8 misiones, del orden de reglas a una auditoría final</li>
+            <li>Puertos, IP de origen y destino, política por defecto</li>
+            <li>Laboratorio libre para experimentar</li>
+          </ul>
+          <div class="chips"><span class="chip">firewall</span><span class="chip">ACL</span><span class="chip">mínimo privilegio</span></div>
+          <div class="actions"><a class="btn primary" href="proyectos/arma-tu-firewall/index.html">Jugar</a></div>
+        </div>
+      </article>
+      <article class="card proj" data-cat="seg">
+        <div class="prev" aria-hidden="true">
+          <div class="pv-log">
+            <div>03:12:44 sshd: Failed password for root</div>
+            <div>03:12:45 sshd: Failed password for root</div>
+            <div class="hit">03:12:51 sshd: Accepted password for root</div>
+            <div>03:13:02 sudo: wget http://203.0.113.9/x.sh</div>
+          </div>
+        </div>
+        <div class="body">
+          <div class="tag"><span class="logo">SOC</span><span>Juego · Ciberseguridad</span></div>
+          <h3>Turno SOC</h3>
+          <p class="muted">Te toca el turno en el SOC: lees logs ficticios, marcas lo sospechoso y decides cómo contener, erradicar y recuperar.</p>
+          <ul>
+            <li>5 incidentes, de ransomware a exfiltración por DNS</li>
+            <li>Análisis de logs y respuesta paso a paso</li>
+            <li>Ciclo de respuesta a incidentes en práctica</li>
+          </ul>
+          <div class="chips"><span class="chip">logs</span><span class="chip">respuesta a incidentes</span></div>
+          <div class="actions"><a class="btn primary" href="proyectos/turno-soc/index.html">Empezar turno</a></div>
+        </div>
+      </article>
+      <article class="card proj" data-cat="seg">
+        <div class="prev" aria-hidden="true">
+          <div class="pv-pw">
+            <div class="field">••••••••••••••••</div>
+            <div class="meter"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></div>
+            <div class="t">Tiempo estimado para adivinarla: <b>siglos</b></div>
+          </div>
+        </div>
+        <div class="body">
+          <div class="tag"><span class="logo">***</span><span>Herramienta · Ciberseguridad</span></div>
+          <h3>Cuánto Aguanta</h3>
+          <p class="muted">Revisa una contraseña y estima cuántos intentos necesitaría un atacante. Funciona 100% en el navegador: la clave nunca sale de tu equipo.</p>
+          <ul>
+            <li>Detecta palabras comunes, secuencias, fechas y patrones de teclado</li>
+            <li>Generador de claves y frases seguras</li>
+            <li>Reto y sección para aprender cómo atacan</li>
+          </ul>
+          <div class="chips"><span class="chip">entropía</span><span class="chip">fuerza bruta</span><span class="chip">CSP</span></div>
+          <div class="actions"><a class="btn primary" href="proyectos/cuanto-aguanta/index.html">Probar</a></div>
+        </div>
+      </article>
+      </div>
+    </div>
+
+    <div class="topic" id="criptografia">
+      <div class="topic-h"><h3>Criptografía y CTF</h3><span class="count">2 proyectos</span></div>
+      <p class="muted topic-d">Cifrado clásico y moderno, y retos tipo Capture The Flag.</p>
+      <div class="grid">
+      <article class="card proj" data-cat="seg">
+        <div class="prev" aria-hidden="true">
+          <div class="pv-crypto">
+            <div><b>César +3</b> HOLA → <span>KROD</span></div>
+            <div><b>AES</b> 4f 9a 1c e2 7b 03 d8 …</div>
+            <div><b>RSA</b> c = m<sup>e</sup> mod n</div>
+          </div>
+        </div>
+        <div class="body">
+          <div class="tag"><span class="logo">E(k)</span><span>Laboratorio · Ciberseguridad</span></div>
+          <h3>Laboratorio de Cifrado</h3>
+          <p class="muted">Entiende el cifrado César, AES y RSA paso a paso, con todo corriendo en tu navegador.</p>
+          <ul>
+            <li>César para ver la idea básica</li>
+            <li>AES por dentro y RSA con números pequeños</li>
+            <li>Retos para poner a prueba lo aprendido</li>
+          </ul>
+          <div class="chips"><span class="chip">criptografía</span><span class="chip">AES</span><span class="chip">RSA</span></div>
+          <div class="actions"><a class="btn primary" href="proyectos/laboratorio-cifrado/index.html">Abrir laboratorio</a></div>
+        </div>
+      </article>
+      <article class="card proj" data-cat="seg">
+        <div class="prev" aria-hidden="true">
+          <div class="pv-ctf">
+            <div class="doors"><i class="ok"></i><i class="ok"></i><i class="ok"></i><i class="ok"></i><i></i><i></i><i></i><i></i><i></i></div>
+            <div class="flag">flag{<span>????????</span>}</div>
+          </div>
+        </div>
+        <div class="body">
+          <div class="tag"><span class="logo">CTF</span><span>Escape room · Ciberseguridad</span></div>
+          <h3>Escape Room CTF</h3>
+          <p class="muted">Te quedaste encerrado en el laboratorio del Instituto Cóndor (inventado) y tienes que abrir 9 puertas resolviendo retos tipo CTF.</p>
+          <ul>
+            <li>Código fuente, Base64, César, hex y binario</li>
+            <li>Esteganografía y Vigenère</li>
+            <li>Pistas para cuando te quedas pegado</li>
+          </ul>
+          <div class="chips"><span class="chip">CTF</span><span class="chip">codificación</span><span class="chip">estego</span></div>
+          <div class="actions"><a class="btn primary" href="proyectos/escape-room-ctf/index.html">Entrar</a></div>
+        </div>
+      </article>
+      </div>
+    </div>
+
+    <div class="topic" id="normativa">
+      <div class="topic-h"><h3>Normativa y datos personales</h3><span class="count">1 proyecto</span></div>
+      <p class="muted topic-d">La ley chilena de protección de datos aplicada a casos.</p>
+      <div class="grid">
+      <article class="card proj" data-cat="seg">
+        <div class="prev" aria-hidden="true">
+          <div class="pv-exp">
+            <span class="st">BRECHA</span>
+            <div class="f">EXP-2026-0006 · Art. 14 sexies</div>
+            <div class="ti">Ransomware en el colegio</div>
+            <div class="cl"><span>Leve</span><span>Grave</span><span class="on">Gravísima</span></div>
+          </div>
+        </div>
+        <div class="body">
+          <div class="tag"><span class="logo">§</span><span>Juego · Ciberseguridad</span></div>
+          <h3>Fiscalizador 21.719</h3>
+          <p class="muted">Eres fiscalizador de la Agencia de Protección de Datos Personales y resuelves casos con la nueva ley chilena de datos, la Ley N° 21.719.</p>
+          <ul>
+            <li>10 expedientes que recorren la ley completa</li>
+            <li>Derechos, licitud, brechas, datos sensibles y sanciones</li>
+            <li>Ley de bolsillo con los artículos clave</li>
+          </ul>
+          <div class="chips"><span class="chip">datos personales</span><span class="chip">cumplimiento</span><span class="chip">Ley 21.719</span></div>
+          <div class="actions"><a class="btn primary" href="proyectos/fiscalizador-21719/index.html">Jugar</a></div>
+        </div>
+      </article>
+      </div>
+    </div>
+
+  </section>
+
+  <section id="sobre-mi">
+    <div class="sec-head"><div><h2>Sobre mí</h2></div></div>
+    <div class="two">
+      <div class="card">
+        <p>Soy Nicolas, estudiante de Ingeniería en Conectividad y Redes. Lo que más me engancha es la ciberseguridad: entender cómo funciona una red por dentro para saber cómo protegerla.</p>
+        <p>Cuando algo me cuesta, lo convierto en un juego o en un simulador. Así nacieron estos proyectos: primero para estudiar yo, y después para que cualquiera pueda practicar.</p>
+        <p>Estoy cursando mi último semestre y busco mi práctica profesional o primer trabajo en redes, conectividad y ciberseguridad. Me motiva diseñar y mantener redes que funcionen bien y, sobre todo, que sean seguras.</p>
+        <dl class="facts">
+          <dt>Estudio</dt><dd>Ing. en Conectividad y Redes · Duoc UC, sede San Joaquín · 8.º semestre (egreso 2026)</dd>
+          <dt>Ubicación</dt><dd>Santiago, Chile</dd>
+          <dt>Busco</dt><dd>Práctica profesional / primer trabajo</dd>
+        </dl>
+      </div>
+      <div class="card skills">
+        <div class="skill">
+          <h3><i></i>Redes</h3>
+          <div class="chips" style="margin:0"><span class="chip">Subnetting IPv4</span><span class="chip">Modelo OSI</span><span class="chip">TCP/IP</span><span class="chip">VLSM e IPv6</span><span class="chip">Enrutamiento (OSPF, EIGRP, RIP)</span><span class="chip">Análisis de tráfico</span></div>
+        </div>
+        <div class="skill">
+          <h3><i style="background:var(--bad)"></i>Ciberseguridad</h3>
+          <div class="chips" style="margin:0"><span class="chip">Detección de phishing</span><span class="chip">Seguridad de contraseñas</span><span class="chip">Ingeniería social</span><span class="chip">Reglas de firewall</span><span class="chip">Respuesta a incidentes</span><span class="chip">Criptografía</span><span class="chip">CTF</span></div>
+        </div>
+        <div class="skill">
+          <h3><i style="background:var(--warn)"></i>Desarrollo web</h3>
+          <div class="chips" style="margin:0"><span class="chip">HTML</span><span class="chip">CSS</span><span class="chip">JavaScript</span><span class="chip">Accesibilidad</span></div>
+        </div>
+        <div class="skill">
+          <h3><i style="background:var(--l7)"></i>Herramientas y certificaciones</h3>
+          <div class="chips" style="margin:0"><span class="chip">Cisco Packet Tracer</span><span class="chip">Wireshark</span><span class="chip">Linux</span><span class="chip">CCNA (en curso)</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <h3>Camino</h3>
+      <ul class="timeline" style="margin-top:10px">
+        <li><div class="when">2026</div><b>Segunda tanda: redes y seguridad más a fondo</b><div class="muted">Next Hop, Arma tu Firewall, Paquete a Paquete, Turno SOC, Laboratorio de Cifrado, Escape Room CTF y las v2 de Subnet Quest, Phishing o No y Capa a Capa.</div></li>
+        <li><div class="when">2026</div><b>Este portafolio</b><div class="muted">Todos mis proyectos en un solo sitio, listo para GitHub Pages.</div></li>
+        <li><div class="when">2026</div><b>Capa a Capa y Cuánto Aguanta</b><div class="muted">Un simulador OSI y un revisor de contraseñas que corre sin servidor.</div></li>
+        <li><div class="when">2026</div><b>Subnet Quest y Phishing o No</b><div class="muted">Los primeros juegos, para practicar subnetting y entrenar el ojo contra fraudes.</div></li>
+        <li><div class="when">2023</div><b>Ingreso a Ingeniería en Conectividad y Redes</b><div class="muted">Duoc UC, sede San Joaquín.</div></li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="contacto">
+    <div class="card">
+      <h2>Hablemos</h2>
+      <p class="muted">¿Tienes una práctica, un proyecto o simplemente quieres comentar algo de redes? Escríbeme.</p>
+      <div class="contact">
+        <a href="mailto:ni.maldonadob@gmail.com"><div class="lbl">Correo</div><div class="val">ni.maldonadob@gmail.com</div></a>
+        <a href="https://www.linkedin.com/in/nicolas-maldonado-network-enginieer" target="_blank" rel="noopener"><div class="lbl">LinkedIn</div><div class="val">linkedin.com/in/nicolas-maldonado-network-enginieer</div></a>
+        <a href="https://github.com/nmaldonadob-labs" target="_blank" rel="noopener"><div class="lbl">GitHub</div><div class="val">github.com/nmaldonadob-labs</div></a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>Hecho por Nicolas Maldonado Bustamante con HTML, CSS y JS, sin dependencias. Las marcas del juego de phishing son inventadas.</footer>
+
+<script>
+const KEY = 'portafolio-v1';
+const root = document.documentElement;
+try { const t = localStorage.getItem(KEY + '-theme'); if (t) root.dataset.theme = t; } catch (e) {}
+document.getElementById('btnTheme').onclick = () => {
+  const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  root.dataset.theme = dark ? 'light' : 'dark';
+  try { localStorage.setItem(KEY + '-theme', root.dataset.theme); } catch (e) {}
+};
+
+/* aviso de borrador: solo aparece si quedan datos de ejemplo */
+const draft = document.getElementById('draft');
+let hidden = false;
+try { hidden = sessionStorage.getItem(KEY + '-draft') === 'off'; } catch (e) {}
+if (document.querySelector('.todo') && !hidden) draft.classList.add('on');
+document.getElementById('btnDraft').onclick = () => {
+  draft.classList.remove('on');
+  try { sessionStorage.setItem(KEY + '-draft', 'off'); } catch (e) {}
+};
+
+</script>
+</body>
+</html>
