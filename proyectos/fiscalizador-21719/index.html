@@ -1,0 +1,926 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fiscalizador 21.719</title>
+<meta name="description" content="Juego de fiscalización sobre la Ley N° 21.719 de protección de datos personales de Chile: 10 expedientes que recorren toda la ley, de los principios a las sanciones.">
+<style>
+:root{
+  --bg:#f4f6fb; --panel:#ffffff; --panel2:#eef1f8; --text:#141a2a; --muted:#5b6478;
+  --line:#d7dce8; --accent:#0a7cff; --accent-ink:#ffffff; --ok:#11885a; --ok-bg:#e3f6ed;
+  --bad:#c8323c; --bad-bg:#fbe6e7; --warn:#b26a00; --warn-bg:#fff3dc;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --shadow:0 1px 2px rgba(20,26,42,.06),0 6px 20px rgba(20,26,42,.06);
+  --doc:#fbfaf5; --stamp:#c8323c;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0b0f17; --panel:#131a26; --panel2:#1a2333; --text:#e6ebf5; --muted:#93a0b8;
+    --line:#26324a; --accent:#3ddc97; --accent-ink:#06120c; --ok:#3ddc97; --ok-bg:#0f2a20;
+    --bad:#ff6b74; --bad-bg:#2c1418; --warn:#ffb547; --warn-bg:#2b2010;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+    --doc:#161d2a; --stamp:#ff6b74;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0b0f17; --panel:#131a26; --panel2:#1a2333; --text:#e6ebf5; --muted:#93a0b8;
+  --line:#26324a; --accent:#3ddc97; --accent-ink:#06120c; --ok:#3ddc97; --ok-bg:#0f2a20;
+  --bad:#ff6b74; --bad-bg:#2c1418; --warn:#ffb547; --warn-bg:#2b2010;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+  --doc:#161d2a; --stamp:#ff6b74;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+.wrap{max-width:820px;margin:0 auto;padding:20px 16px 48px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:20px;letter-spacing:-.01em}
+.brand .logo{font-family:var(--mono);background:var(--accent);color:var(--accent-ink);border-radius:8px;padding:2px 8px;font-size:15px}
+.iconbtn{background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:6px 10px;cursor:pointer;font:inherit;font-size:14px}
+.iconbtn:hover{border-color:var(--accent)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:var(--shadow);margin-bottom:16px}
+h1{font-size:26px;margin:0 0 6px;letter-spacing:-.02em}
+h2{font-size:18px;margin:0 0 12px}
+h3{font-size:15px;margin:0 0 8px}
+p{margin:0 0 10px}
+.muted{color:var(--muted)}
+.mono{font-family:var(--mono)}
+.hidden{display:none!important}
+.btn{display:inline-block;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:9px 16px;cursor:pointer;font:inherit;font-weight:600;text-decoration:none}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.levels{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:16px}
+.level{text-align:left;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px;cursor:pointer;color:var(--text);font:inherit;transition:transform .1s,border-color .1s;position:relative}
+.level:hover{border-color:var(--accent);transform:translateY(-1px)}
+.level .num{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.level .name{font-weight:700;margin:2px 0 4px}
+.level .desc{font-size:14px;color:var(--muted)}
+.level .best{font-size:13px;margin-top:8px;font-family:var(--mono)}
+.level .best.done{color:var(--ok)}
+.hud{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.pill{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:14px;font-family:var(--mono)}
+.prog{height:6px;background:var(--panel2);border-radius:99px;overflow:hidden;margin:-4px 0 14px}
+.prog div{height:100%;background:var(--accent);transition:width .3s}
+
+/* expediente */
+.exp{background:var(--doc);border:1px solid var(--line);border-radius:12px;padding:16px 18px;position:relative}
+.exp .folio{font-family:var(--mono);font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.exp h2{margin:4px 0 2px;font-size:20px}
+.exp .who{font-size:14px;color:var(--muted);margin-bottom:10px}
+.exp .stamp{position:absolute;top:14px;right:14px;border:2px solid var(--stamp);color:var(--stamp);font-family:var(--mono);font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;transform:rotate(4deg);letter-spacing:.08em;opacity:.85}
+.facts{margin:0 0 6px;padding-left:20px}
+.facts li{margin-bottom:4px}
+.evid{margin-top:12px;display:grid;gap:8px}
+.ev{border:1px dashed var(--line);border-radius:8px;padding:10px 12px;background:var(--panel)}
+.ev .lbl{font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+.ev pre{margin:0;font:13px/1.5 var(--mono);white-space:pre-wrap;word-break:break-word}
+.toggle-exp{background:none;border:0;color:var(--accent);font:inherit;font-size:14px;cursor:pointer;padding:0;margin-top:8px}
+
+/* pregunta */
+.qhead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.qtag{font-family:var(--mono);font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.q{font-weight:600;font-size:17px;margin:6px 0 14px}
+.opts{display:grid;gap:8px}
+.opt{text-align:left;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:11px 14px;cursor:pointer;color:var(--text);font:inherit;font-size:15px;transition:border-color .1s}
+.opt:hover:not(:disabled){border-color:var(--accent)}
+.opt:disabled{cursor:default}
+.opt.sel{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.opt.right{background:var(--ok-bg);border-color:var(--ok)}
+.opt.wrong{background:var(--bad-bg);border-color:var(--bad)}
+.opt.missed{border-color:var(--ok);border-style:dashed}
+.opt .art{display:block;font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:2px}
+.cls{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.cls .opt{text-align:center;font-weight:700}
+.cls .opt small{display:block;font-weight:400;font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:2px}
+.match{display:grid;gap:10px}
+.mrow{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.mrow.right{background:var(--ok-bg);border-color:var(--ok)}
+.mrow.wrong{background:var(--bad-bg);border-color:var(--bad)}
+.mrow .t{font-size:15px;margin-bottom:8px}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{font:inherit;font-size:13px;border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:8px;padding:5px 10px;cursor:pointer}
+.seg button.on{border-color:var(--accent);background:var(--accent);color:var(--accent-ink)}
+.seg button:disabled{cursor:default}
+.mrow .fix{font-size:13px;margin-top:6px;font-family:var(--mono)}
+.fb{margin-top:14px;border-radius:10px;padding:12px 14px;font-size:15px}
+.fb.ok{background:var(--ok-bg);border:1px solid var(--ok)}
+.fb.bad{background:var(--bad-bg);border:1px solid var(--bad)}
+.fb b.h{display:block;margin-bottom:4px}
+.fb .cite{display:inline-block;font-family:var(--mono);font-size:12px;border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:1px 7px;margin-top:6px}
+.next-row{margin-top:14px;display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+
+/* resultados */
+.big{font-size:42px;font-weight:800;font-family:var(--mono);letter-spacing:-.03em}
+.rank{display:inline-block;background:var(--accent);color:var(--accent-ink);border-radius:999px;padding:3px 12px;font-weight:700;font-size:14px}
+.rtab{width:100%;border-collapse:collapse;font-size:14px;margin-top:10px}
+.rtab td,.rtab th{border-bottom:1px solid var(--line);padding:7px 6px;text-align:left}
+.rtab th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+.bar{height:8px;background:var(--panel2);border-radius:99px;overflow:hidden;min-width:60px}
+.bar div{height:100%;background:var(--ok)}
+
+/* ley de bolsillo */
+.overlay{position:fixed;inset:0;background:rgba(5,8,14,.55);display:flex;justify-content:flex-end;z-index:50}
+.drawer{background:var(--panel);width:min(520px,100%);height:100%;overflow:auto;padding:20px 18px 40px;border-left:1px solid var(--line)}
+.drawer h2{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.drawer details{border:1px solid var(--line);border-radius:10px;margin-bottom:8px;background:var(--panel2)}
+.drawer summary{cursor:pointer;padding:10px 12px;font-weight:600;font-size:15px}
+.drawer .dc{padding:0 12px 12px;font-size:14px}
+.drawer .dc p{margin:0 0 6px}
+.drawer .dc b{font-family:var(--mono);font-size:12.5px}
+.note{font-size:13px;color:var(--muted);border-left:3px solid var(--warn);background:var(--warn-bg);padding:8px 10px;border-radius:6px}
+.tbl{width:100%;border-collapse:collapse;font-size:14px;margin:10px 0}
+.tbl td,.tbl th{border:1px solid var(--line);padding:6px 8px;text-align:left}
+.tbl th{background:var(--panel2)}
+footer{font-size:13px;color:var(--muted);margin-top:24px}
+footer a{color:var(--accent)}
+@media (max-width:520px){
+  h1{font-size:22px}
+  header{flex-wrap:wrap}
+  header>div:last-child{justify-content:flex-start!important}
+  .exp .stamp{position:static;display:inline-block;margin-bottom:6px}
+  .big{font-size:34px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a href="../../index.html" style="display:inline-block;margin:0 0 10px;font-size:14px;color:var(--muted);text-decoration:none">&larr; Volver al portafolio</a>
+  <header>
+    <div class="brand"><span class="logo">§</span> Fiscalizador 21.719</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+      <button class="iconbtn hidden" id="btnMenu" type="button">Expedientes</button>
+      <button class="iconbtn" id="btnLey" type="button">Ley de bolsillo</button>
+      <button class="iconbtn" id="btnTheme" type="button" aria-label="Cambiar tema">Tema</button>
+    </div>
+  </header>
+
+  <!-- MENÚ -->
+  <section id="scrMenu">
+    <div class="card">
+      <h1>Agencia de Datos: el Fiscalizador</h1>
+      <p class="muted">Es tu primer día como fiscalizador de la <b>Agencia de Protección de Datos Personales</b>. Sobre tu escritorio hay 10 expedientes: reclamos de personas, denuncias y casos de oficio. Cada uno corresponde a una parte distinta de la <b>Ley N° 21.719</b>, así que al cerrarlos todos habrás recorrido la ley completa, desde los principios hasta las sanciones.</p>
+      <p class="muted">Lee los hechos y la evidencia, y responde: qué artículo aplica, qué derecho tiene la persona, si hay infracción y qué tan grave es. Cada acierto suma 100 puntos. Si dudas, abre la <b>Ley de bolsillo</b> arriba a la derecha.</p>
+      <div class="actions" style="margin-top:6px">
+        <button class="btn primary" type="button" id="btnStart">Empezar por el expediente 1</button>
+        <button class="btn" type="button" id="btnReport">Ver informe</button>
+        <button class="btn" type="button" id="btnReset">Borrar progreso</button>
+      </div>
+      <p class="muted hidden" id="resetAsk" style="margin-top:10px;font-size:14px">¿Seguro? Se borran tus resultados. <button class="btn" type="button" id="resetYes" style="padding:4px 10px">Sí, borrar</button> <button class="btn" type="button" id="resetNo" style="padding:4px 10px">No</button></p>
+      <div class="levels" id="levels"></div>
+    </div>
+    <div class="card">
+      <h2>¿Qué es la Ley 21.719?</h2>
+      <p class="muted">Publicada el 13 de diciembre de 2024, reescribe la antigua Ley 19.628 sobre protección de la vida privada, que pasa a llamarse <b>Ley sobre Protección de los Datos Personales</b>. Crea la Agencia, amplía los derechos de las personas y fija multas de hasta 20.000 UTM. Los artículos que verás en el juego son los de la Ley 19.628 ya modificada.</p>
+      <p class="note">Entra en vigencia el <b>1 de diciembre de 2026</b>. En septiembre de 2026 el Gobierno presentó un proyecto (boletín 18.623-07) para postergarla un año; mientras no se publique, la fecha legal sigue siendo la misma.</p>
+    </div>
+  </section>
+
+  <!-- JUEGO -->
+  <section id="scrGame" class="hidden">
+    <div class="hud">
+      <span class="pill" id="hudCase">Expediente 1/10</span>
+      <span class="pill" id="hudQ">Pregunta 1/3</span>
+      <span class="pill">Puntaje <b id="hudScore">0</b></span>
+    </div>
+    <div class="prog"><div id="progBar" style="width:0"></div></div>
+    <div class="card" id="expCard"></div>
+    <div class="card" id="qCard"></div>
+  </section>
+
+  <!-- CIERRE DE EXPEDIENTE -->
+  <section id="scrDone" class="hidden">
+    <div class="card" id="doneCard"></div>
+  </section>
+
+  <!-- INFORME -->
+  <section id="scrReport" class="hidden">
+    <div class="card" id="reportCard"></div>
+  </section>
+
+  <footer>
+    Material educativo, no es asesoría legal. Basado en el texto oficial de la Ley N° 21.719 (<a href="https://www.bcn.cl/leychile/navegar?i=1209272" target="_blank" rel="noopener">BCN Ley Chile</a>, <a href="https://www.diariooficial.interior.gob.cl/publicaciones/2024/12/13/44023/01/2583630.pdf" target="_blank" rel="noopener">Diario Oficial</a>). Las empresas y personas de los casos son inventadas.
+  </footer>
+</div>
+
+<!-- LEY DE BOLSILLO -->
+<div class="overlay hidden" id="ley" role="dialog" aria-modal="true" aria-label="Ley de bolsillo">
+  <div class="drawer" id="leyBody"></div>
+</div>
+
+<script>
+'use strict';
+/* =====================  CONTENIDO  ===================== */
+// Tipos de pregunta: single (una correcta), multi (varias), match (asignar a cada fila), cls (clasificar gravedad)
+const CLS = [
+  {k:'none', t:'No hay infracción', s:'archivar'},
+  {k:'leve', t:'Leve', s:'amonestación o ≤ 5.000 UTM'},
+  {k:'grave', t:'Grave', s:'≤ 10.000 UTM'},
+  {k:'gravisima', t:'Gravísima', s:'≤ 20.000 UTM'}
+];
+
+const CASES = [
+{
+  id:'c1', block:'Principios y ámbito', arts:'Arts. 1, 1 bis, 2 y 3',
+  folio:'EXP-2026-0001', title:'La linterna que lo quería saber todo', who:'Denuncia de una usuaria contra LuzMax Apps Pte. Ltd.',
+  stamp:'DE OFICIO',
+  facts:[
+    'LuzMax es una app de linterna gratuita, con más de 300 mil descargas en Chile.',
+    'Al instalarla pide acceso a contactos, ubicación precisa, micrófono y fotos.',
+    'La empresa está en Singapur y no tiene oficinas en Chile, pero la app se ofrece en la tienda chilena, en español y con compras en pesos.',
+    'En su defensa, LuzMax dice que "los datos están seudonimizados con un ID interno, así que no son datos personales".'
+  ],
+  evid:[{l:'Permisos solicitados por la app', t:'android.permission.READ_CONTACTS\nandroid.permission.ACCESS_FINE_LOCATION\nandroid.permission.RECORD_AUDIO\nandroid.permission.READ_MEDIA_IMAGES\nandroid.permission.CAMERA   ← (para el flash)'}],
+  qs:[
+    {type:'single', q:'Pedir contactos, ubicación y micrófono para encender una linterna vulnera principalmente un principio. ¿Cuál?',
+     opts:[
+      {t:'Proporcionalidad', a:'Art. 3 letra c', ok:true},
+      {t:'Calidad', a:'Art. 3 letra d'},
+      {t:'Confidencialidad', a:'Art. 3 letra h'},
+      {t:'Licitud y lealtad', a:'Art. 3 letra a'}],
+     why:'Solo se pueden tratar los datos necesarios, adecuados y pertinentes para la finalidad. Una linterna necesita la cámara (para el flash), no tus contactos ni tu ubicación.', cite:'Art. 3 letra c'},
+    {type:'single', q:'LuzMax alega que, como está en Singapur, la ley chilena no le aplica. ¿Tiene razón?',
+     opts:[
+      {t:'Sí: la ley solo aplica a empresas con domicilio en Chile', a:''},
+      {t:'No: aplica a quien, desde el extranjero, ofrece bienes o servicios a personas en Chile', a:'Art. 1 bis', ok:true},
+      {t:'Solo si sus servidores están en Chile', a:''},
+      {t:'Solo si cobra por la app', a:''}],
+     why:'El artículo 1 bis amplía el alcance territorial: la ley alcanza a responsables fuera de Chile cuando ofrecen bienes o servicios a personas que están en Chile, o monitorean su comportamiento aquí. Además, un responsable sin domicilio en Chile debe designar un canal de contacto (art. 14).', cite:'Art. 1 bis'},
+    {type:'single', q:'¿Es cierto que los datos seudonimizados dejan de ser datos personales?',
+     opts:[
+      {t:'Sí, cualquier dato con un ID interno ya no es personal', a:''},
+      {t:'No: siguen siendo personales; solo la anonimización, que es irreversible, los saca de la ley', a:'Art. 2 letras k y l', ok:true},
+      {t:'Sí, siempre que el ID esté cifrado', a:''},
+      {t:'Depende de si la persona dio su consentimiento', a:''}],
+     why:'La seudonimización es una medida de seguridad, pero se puede revertir con información adicional, así que el dato sigue siendo personal. La anonimización, en cambio, es un procedimiento irreversible que impide identificar a la persona.', cite:'Art. 2 k) y l)'}
+  ]
+},
+{
+  id:'c2', block:'Derechos del titular', arts:'Arts. 4, 5, 9, 10 y 11',
+  folio:'EXP-2026-0002', title:'Camila quiere sus datos', who:'Reclamo de Camila R. contra Tienda Sur S.A.',
+  stamp:'RECLAMO',
+  facts:[
+    'El lunes 2 de marzo Camila pide a Tienda Sur, por correo, saber qué datos suyos tienen y una copia.',
+    'Tienda Sur responde que la copia cuesta $5.000 "por gastos administrativos". Es la primera vez que Camila pide algo este año.',
+    'Camila además quiere llevarse su historial de compras a otra tienda, en un archivo que esa otra empresa pueda leer.'
+  ],
+  evid:[{l:'Respuesta de Tienda Sur', t:'Estimada Camila: para emitir su informe de datos debe\ntransferir $5.000 a la cuenta... Plazo de entrega: 90 días.\nAtte., Servicio al Cliente'}],
+  qs:[
+    {type:'single', q:'¿Cuál es el plazo máximo que tiene Tienda Sur para responder la solicitud de acceso?',
+     opts:[
+      {t:'30 días corridos, prorrogables una vez por otros 30', a:'Art. 11', ok:true},
+      {t:'72 horas', a:''},
+      {t:'90 días hábiles', a:''},
+      {t:'No hay plazo; responde cuando pueda', a:''}],
+     why:'El responsable debe acusar recibo y responder dentro de 30 días corridos, prorrogables por una sola vez por igual período. Si rechaza la solicitud o no responde, el titular puede reclamar ante la Agencia dentro de 30 días hábiles.', cite:'Art. 11'},
+    {type:'single', q:'¿Puede Tienda Sur cobrarle $5.000 por la copia?',
+     opts:[
+      {t:'Sí, el acceso siempre tiene costo', a:''},
+      {t:'Sí, si el monto es razonable', a:''},
+      {t:'No: el acceso es gratuito al menos una vez por trimestre', a:'Art. 10', ok:true},
+      {t:'Solo si Camila no es clienta frecuente', a:''}],
+     why:'Rectificación, supresión y oposición son siempre gratuitas. El acceso también lo es, como mínimo una vez cada trimestre. Esta es la primera solicitud de Camila, así que no se le puede cobrar.', cite:'Art. 10'},
+    {type:'single', q:'Llevarse su historial a otra tienda en un formato legible por otra empresa es el derecho de…',
+     opts:[
+      {t:'Acceso', a:'Art. 5'},
+      {t:'Portabilidad', a:'Art. 9', ok:true},
+      {t:'Rectificación', a:'Art. 6'},
+      {t:'Bloqueo', a:'Art. 8 ter'}],
+     why:'La portabilidad permite recibir una copia en un formato electrónico estructurado, genérico y de uso común, y pedir que se transmita a otro responsable. Aplica a tratamientos automatizados basados en consentimiento o en un contrato.', cite:'Art. 9'},
+    {type:'multi', q:'Marca todos los derechos que la ley reconoce al titular (art. 4).',
+     opts:[
+      {t:'Acceso', ok:true},{t:'Rectificación', ok:true},{t:'Supresión', ok:true},{t:'Oposición', ok:true},
+      {t:'Portabilidad', ok:true},{t:'Bloqueo', ok:true},{t:'Venta de sus datos a terceros'},{t:'Indemnización automática por cada correo'}],
+     why:'La ley pasa de los clásicos ARCO a seis derechos: acceso, rectificación, supresión, oposición, portabilidad y bloqueo. Son personales, intransferibles e irrenunciables, y no se pueden limitar por contrato.', cite:'Art. 4'}
+  ]
+},
+{
+  id:'c3', block:'Decisiones automatizadas, oposición y supresión', arts:'Arts. 7, 8, 8 bis y 8 ter',
+  folio:'EXP-2026-0003', title:'Rechazado por un algoritmo', who:'Reclamo de Diego M. contra CrediYa SpA',
+  stamp:'RECLAMO',
+  facts:[
+    'Diego pidió un crédito en la app de CrediYa y fue rechazado en 4 segundos. Nadie revisó su caso: un modelo de puntaje decidió solo.',
+    'Desde entonces CrediYa le manda tres correos de publicidad a la semana.',
+    'Diego pide que borren todos sus datos, pero CrediYa debe guardar sus boletas y registros contables por obligación tributaria.'
+  ],
+  evid:[{l:'Registro interno de la decisión', t:'solicitud_id=88213  score=412  umbral=450\ndecision=RECHAZO  revision_humana=false  t=4.1s'}],
+  qs:[
+    {type:'single', q:'¿Qué derecho puede invocar Diego frente al rechazo automático?',
+     opts:[
+      {t:'A no ser objeto de decisiones basadas solo en tratamiento automatizado, y a pedir intervención humana', a:'Art. 8 bis', ok:true},
+      {t:'A que le aprueben el crédito', a:''},
+      {t:'Ninguno: los algoritmos no tratan datos personales', a:''},
+      {t:'Solo el de rectificación', a:'Art. 6'}],
+     why:'El titular puede oponerse a decisiones basadas únicamente en tratamiento automatizado, incluida la elaboración de perfiles, que le produzcan efectos jurídicos o lo afecten significativamente. Cuando se permiten, deben existir garantías: intervención humana, expresar su punto de vista e impugnar la decisión. Además, por el derecho de acceso puede conocer la lógica de la decisión.', cite:'Art. 8 bis'},
+    {type:'single', q:'Mientras CrediYa resuelve su reclamo, Diego pide que no sigan usando su perfil. ¿Qué derecho es?',
+     opts:[
+      {t:'Supresión', a:'Art. 7'},
+      {t:'Bloqueo', a:'Art. 8 ter', ok:true},
+      {t:'Portabilidad', a:'Art. 9'},
+      {t:'Acceso', a:'Art. 5'}],
+     why:'El bloqueo es la suspensión temporal del tratamiento mientras se resuelve una solicitud de rectificación, supresión u oposición. Los datos no se borran, pero se congela su uso.', cite:'Art. 8 ter'},
+    {type:'single', q:'Diego se opone a la publicidad. ¿Debe CrediYa dejar de enviarla?',
+     opts:[
+      {t:'Sí: frente al marketing directo la oposición procede', a:'Art. 8', ok:true},
+      {t:'No, porque Diego ya es cliente', a:''},
+      {t:'Solo si paga una tarifa', a:''},
+      {t:'Solo si la Agencia lo ordena', a:''}],
+     why:'El derecho de oposición procede, entre otros casos, cuando el tratamiento tiene fines de mercadotecnia o marketing directo. No hace falta justificarlo.', cite:'Art. 8'},
+    {type:'single', q:'¿Debe CrediYa borrar todos los datos de Diego, incluidas las boletas?',
+     opts:[
+      {t:'Sí, la supresión es absoluta', a:''},
+      {t:'No: puede conservar lo que la ley le obliga a guardar; el resto sí debe suprimirlo si procede', a:'Art. 7', ok:true},
+      {t:'No, nunca se puede pedir supresión a una empresa financiera', a:''},
+      {t:'Solo si Diego va a tribunales', a:''}],
+     why:'La supresión procede, por ejemplo, cuando los datos ya no son necesarios o se revocó el consentimiento, pero tiene excepciones: cumplir una obligación legal, razones de interés público, libertad de expresión o la defensa en juicio. Las boletas quedan; el perfil de marketing no.', cite:'Art. 7'}
+  ]
+},
+{
+  id:'c4', block:'Licitud y consentimiento', arts:'Arts. 12 y 13',
+  folio:'EXP-2026-0004', title:'Delivery con casilla escondida', who:'Fiscalización de oficio a Delivery Rápido Ltda.',
+  stamp:'DE OFICIO',
+  facts:[
+    'Delivery Rápido trata datos de sus clientes para varias cosas distintas.',
+    'Para vender los correos de sus clientes a una agencia de publicidad usa una casilla "Acepto compartir mis datos" que viene marcada por defecto, en la página 14 de los términos y condiciones.',
+    'Un cliente revocó su consentimiento y pregunta si la empresa debe "deshacer" lo que hizo antes con sus datos.'
+  ],
+  evid:[{l:'Formulario de registro', t:'[x] Acepto términos y condiciones (34 páginas)\n    ↳ incluye, pág. 14: "y compartir mis datos con socios"\n[ Registrarme ]'}],
+  qs:[
+    {type:'match', q:'Asigna a cada tratamiento la base de licitud que corresponde.',
+     cols:['Consentimiento','Contrato','Obligación legal','Interés legítimo'],
+     rows:[
+      {t:'Usar la dirección del cliente para entregarle su pedido', ok:1},
+      {t:'Emitir boletas electrónicas y enviarlas al SII', ok:2},
+      {t:'Cámaras en la bodega para prevenir robos', ok:3},
+      {t:'Vender los correos a una agencia de publicidad', ok:0}],
+     why:'El consentimiento es una base, pero no la única. El art. 13 permite tratar datos sin consentimiento para cumplir un contrato (c), una obligación legal (b) o un interés legítimo que no pase por encima de los derechos del titular (d). Ceder correos para publicidad no encaja en ninguna de esas: necesita consentimiento.', cite:'Arts. 12 y 13'},
+    {type:'single', q:'¿Es válido el consentimiento obtenido con la casilla pre-marcada y escondida?',
+     opts:[
+      {t:'Sí, el cliente aceptó los términos', a:''},
+      {t:'No: debe ser libre, informado, específico e inequívoco', a:'Arts. 2 p y 12', ok:true},
+      {t:'Sí, si el cliente no reclama en 30 días', a:''},
+      {t:'Solo si la empresa es chilena', a:''}],
+     why:'Una casilla marcada por defecto y escondida en las condiciones no es una manifestación inequívoca ni específica para esa finalidad. Además, el responsable es quien debe probar que obtuvo un consentimiento válido.', cite:'Art. 12'},
+    {type:'cls', q:'Ceder los correos sin una base de licitud válida, ¿qué tipo de infracción es?',
+     ok:'grave',
+     why:'Tratar datos sin consentimiento ni otra base legal, y comunicarlos o cederlos sin consentimiento cuando este es necesario, son infracciones graves. Multa de hasta 10.000 UTM.', cite:'Art. 34 ter letras a y b'},
+    {type:'single', q:'El cliente revocó su consentimiento. ¿Qué pasa con lo que ya se hizo?',
+     opts:[
+      {t:'La empresa debe deshacer todo y pagarle', a:''},
+      {t:'La revocación no tiene efecto retroactivo: la empresa deja de tratar sus datos para esa finalidad desde ahora', a:'Art. 12', ok:true},
+      {t:'La revocación solo vale después de un año', a:''},
+      {t:'No se puede revocar un consentimiento ya dado', a:''}],
+     why:'El consentimiento se puede revocar en cualquier momento, sin expresar causa y por un medio igual de sencillo que el usado para darlo. La revocación no afecta lo que se hizo antes de forma lícita.', cite:'Art. 12'}
+  ]
+},
+{
+  id:'c5', block:'Deberes del responsable', arts:'Arts. 14 a 14 septies, 15 bis y 15 ter',
+  folio:'EXP-2026-0005', title:'La corredora desordenada', who:'Fiscalización de oficio a AseguraYa Corredores S.A.',
+  stamp:'DE OFICIO',
+  facts:[
+    'AseguraYa no tiene publicada en su sitio web ninguna política de tratamiento de datos.',
+    'Guarda las contraseñas de los clientes en su portal en texto plano.',
+    'Contrató a un call center externo para llamar a sus clientes. El call center usó esa misma base para vender sus propios productos.',
+    'Ahora quiere lanzar un sistema que perfile a todos sus clientes para fijar primas de forma automática y masiva.'
+  ],
+  evid:[{l:'Tabla usuarios (extracto)', t:'rut         | email              | password\n12.345.678-9| p.rojas@correo.cl  | Rojas1985\n9.876.543-2 | mvaldes@correo.cl  | gatito123'}],
+  qs:[
+    {type:'cls', q:'No tener publicada la política de tratamiento de datos es una infracción…',
+     ok:'leve',
+     why:'Incumplir total o parcialmente el deber de información y transparencia del art. 14 ter es infracción leve: amonestación escrita o multa de hasta 5.000 UTM. La política debe estar disponible de forma permanente y decir finalidades, bases de licitud, plazos de conservación y cómo ejercer los derechos.', cite:'Arts. 14 ter y 34 bis'},
+    {type:'cls', q:'Guardar las contraseñas en texto plano, sin medidas de seguridad, es una infracción…',
+     ok:'grave',
+     why:'El responsable debe adoptar medidas técnicas y organizativas adecuadas al riesgo, como el cifrado o la seudonimización, y poder acreditarlas. Incumplir el deber de seguridad del art. 14 quinquies es infracción grave.', cite:'Arts. 14 quinquies y 34 ter'},
+    {type:'single', q:'El call center (encargado) usó la base para sus propios fines. ¿Qué dice la ley?',
+     opts:[
+      {t:'Nada, porque los datos se los entregó AseguraYa', a:''},
+      {t:'Pasa a ser considerado responsable de ese tratamiento y responde por él', a:'Art. 15 bis', ok:true},
+      {t:'Solo responde AseguraYa', a:''},
+      {t:'Es legal si lo informa después', a:''}],
+     why:'El encargado solo puede tratar los datos según las instrucciones del responsable. Si los usa para otra finalidad, se le considera responsable de ese tratamiento. Tampoco puede subcontratar sin autorización y, al terminar el servicio, debe devolver o suprimir los datos.', cite:'Art. 15 bis'},
+    {type:'single', q:'Antes de perfilar a todos sus clientes de forma masiva para fijar primas, AseguraYa debe…',
+     opts:[
+      {t:'Hacer una evaluación de impacto en protección de datos', a:'Art. 15 ter', ok:true},
+      {t:'Pedir permiso al Congreso', a:''},
+      {t:'Nada: la ley no regula los perfiles', a:''},
+      {t:'Publicar el código fuente', a:''}],
+     why:'Cuando un tratamiento puede producir un alto riesgo para los titulares, como el perfilamiento sistemático con efectos significativos o el tratamiento masivo, hay que hacer antes una evaluación de impacto. Y, por diseño y por defecto, solo tratar los datos necesarios (art. 14 quáter).', cite:'Arts. 14 quáter y 15 ter'}
+  ]
+},
+{
+  id:'c6', block:'Brechas y niños, niñas y adolescentes', arts:'Arts. 14 sexies y 16 quáter',
+  folio:'EXP-2026-0006', title:'Ransomware en el colegio', who:'Reporte de vulneración del Colegio Los Andes',
+  stamp:'BRECHA',
+  facts:[
+    'Un ransomware cifró y publicó las fichas de 1.200 estudiantes, incluidas notas, diagnósticos médicos y datos de contacto de los apoderados.',
+    'Muchos de los afectados tienen menos de 14 años.',
+    'Para usar una app de tareas, el colegio había pedido a los alumnos de 12 años que firmaran ellos mismos el consentimiento.',
+    'El director propone "no decir nada para no asustar a los apoderados".'
+  ],
+  evid:[{l:'Nota de los atacantes', t:'YOUR FILES ARE ENCRYPTED.\nFichas_alumnos_2026.xlsx  (1.2 MB)  -> publicado en leak-site\nPay 3 BTC within 72h.'}],
+  qs:[
+    {type:'single', q:'¿A quién debe comunicar el colegio esta vulneración?',
+     opts:[
+      {t:'Solo a la Agencia', a:''},
+      {t:'A la Agencia y también a los titulares, a través de sus padres o representantes', a:'Art. 14 sexies', ok:true},
+      {t:'Solo a los apoderados que pregunten', a:''},
+      {t:'A nadie, si paga el rescate', a:''}],
+     why:'Hay que reportar a la Agencia toda vulneración que genere un riesgo razonable. Cuando afecta datos sensibles (los diagnósticos médicos lo son), datos de niños menores de 14 años o datos financieros, además hay que comunicarla a los titulares, en lenguaje claro.', cite:'Art. 14 sexies'},
+    {type:'single', q:'¿En qué plazo debe reportarse a la Agencia?',
+     opts:[
+      {t:'Exactamente 72 horas, como en Europa', a:''},
+      {t:'Por los medios más expeditos posibles y sin dilaciones indebidas', a:'Art. 14 sexies', ok:true},
+      {t:'Dentro de 30 días hábiles', a:''},
+      {t:'Al final del año escolar', a:''}],
+     why:'La ley chilena no fija un número de horas como el RGPD europeo: exige reportar por los medios más expeditos y sin dilaciones indebidas. La Agencia puede precisar estándares por reglamento o instrucción.', cite:'Art. 14 sexies'},
+    {type:'cls', q:'Si el director decide ocultar la brecha de forma deliberada, ¿qué infracción comete el colegio?',
+     ok:'gravisima',
+     why:'No reportar una vulneración es infracción grave, pero omitir deliberadamente la comunicación sube a gravísima: multa de hasta 20.000 UTM. Además, con datos de salud de menores, el daño potencial es alto.', cite:'Arts. 14 sexies y 34 quáter'},
+    {type:'single', q:'¿Es válido el consentimiento que firmaron los propios alumnos de 12 años?',
+     opts:[
+      {t:'Sí, ya saben leer', a:''},
+      {t:'No: bajo 14 años consienten sus padres o representantes legales, atendiendo al interés superior del niño', a:'Art. 16 quáter', ok:true},
+      {t:'Sí, si el colegio es privado', a:''},
+      {t:'Solo necesitan la firma del profesor jefe', a:''}],
+     why:'El tratamiento de datos de niños, niñas y adolescentes debe atender a su interés superior. Para menores de 14 años consienten sus padres o representantes legales. Los adolescentes de 14 y 15 años pueden consentir salvo para datos sensibles, que también requieren autorización de los padres. Los colegios tienen además un deber especial de velar por el uso lícito de estos datos.', cite:'Art. 16 quáter'}
+  ]
+},
+{
+  id:'c7', block:'Datos sensibles', arts:'Arts. 2 g, 16, 16 bis y 16 ter',
+  folio:'EXP-2026-0007', title:'Postula y entréganos tu ADN', who:'Denuncia del sindicato contra LogiTrans S.A.',
+  stamp:'DENUNCIA',
+  facts:[
+    'LogiTrans pide a quienes postulan a un trabajo un examen genético y su historial médico completo.',
+    'Para marcar la asistencia instaló un lector de huella dactilar, sin explicar nada a los trabajadores.',
+    'La gerencia vendió la base de salud de los postulantes a una aseguradora.'
+  ],
+  evid:[{l:'Formulario de postulación', t:'Nombre / RUT / Teléfono\n¿Afiliado a algún sindicato?  [ ] Sí  [ ] No\nAdjuntar: examen genético + historial clínico (obligatorio)'}],
+  qs:[
+    {type:'multi', q:'¿Cuáles de estos son datos sensibles según la ley? Marca todos.',
+     opts:[
+      {t:'Afiliación sindical', ok:true},{t:'Huella dactilar (dato biométrico)', ok:true},{t:'Diagnósticos médicos', ok:true},
+      {t:'Orientación sexual', ok:true},{t:'Creencias religiosas', ok:true},{t:'Número de teléfono'},{t:'Cargo al que postula'}],
+     why:'Los datos sensibles son los que se refieren a características físicas o morales o a la vida íntima: origen étnico o racial, afiliación política o sindical, convicciones religiosas o filosóficas, salud, perfil biológico, datos biométricos, vida y orientación sexual, entre otros. Por regla general requieren consentimiento expreso.', cite:'Arts. 2 g y 16'},
+    {type:'single', q:'¿Puede LogiTrans exigir exámenes genéticos e historial médico para contratar?',
+     opts:[
+      {t:'Sí, con consentimiento del postulante', a:''},
+      {t:'No: la ley prohíbe tratar datos de salud y perfil biológico en el ámbito laboral, salvo excepciones legales', a:'Art. 16 bis', ok:true},
+      {t:'Sí, si la empresa es grande', a:''},
+      {t:'Sí, si los guarda cifrados', a:''}],
+     why:'Los datos de salud y del perfil biológico solo pueden tratarse para los fines previstos en las leyes sanitarias. La ley prohíbe exigirlos o usarlos en ámbitos como el laboral, educativo, de seguros o de seguridad, salvo las excepciones legales.', cite:'Art. 16 bis'},
+    {type:'single', q:'Para usar el lector de huella, ¿qué debió informar LogiTrans antes?',
+     opts:[
+      {t:'Nada, la huella no es un dato personal', a:''},
+      {t:'El sistema biométrico usado, la finalidad, el período de uso y cómo ejercer los derechos', a:'Art. 16 ter', ok:true},
+      {t:'Solo la marca del lector', a:''},
+      {t:'Solo el precio del equipo', a:''}],
+     why:'Los datos biométricos son sensibles. Antes de tratarlos, el responsable debe informar al titular el sistema que usa, la finalidad, el período durante el cual los tratará y la forma de ejercer sus derechos.', cite:'Art. 16 ter'},
+    {type:'cls', q:'Vender la base de salud de los postulantes a una aseguradora es una infracción…',
+     ok:'gravisima',
+     why:'Comunicar o ceder datos sensibles de forma ilícita, o usarlos maliciosamente para otra finalidad, está entre las infracciones gravísimas: multa de hasta 20.000 UTM, y en reincidencia la Agencia puede suspender las operaciones de tratamiento.', cite:'Art. 34 quáter'}
+  ]
+},
+{
+  id:'c8', block:'Datos financieros y comerciales', arts:'Título III, arts. 13 a, 17 a 19',
+  folio:'EXP-2026-0008', title:'La deuda que no se iba', who:'Reclamo de Rosa P. contra BoletínNet S.A.',
+  stamp:'RECLAMO',
+  facts:[
+    'BoletínNet es un registro de deudores morosos que consultan bancos y tiendas.',
+    'Rosa tiene una deuda de 2015 que ya prescribió, pero sigue apareciendo en el registro y le niegan créditos.',
+    'BoletínNet dice que la borrará "cuando Rosa traiga una orden judicial".',
+    'La semana pasada, un error de configuración dejó expuesto el registro completo en internet.'
+  ],
+  evid:[{l:'Consulta al registro', t:'RUT 11.222.333-4  ROSA P.\nDeuda: $412.000  Acreedor: Tienda X\nFecha vencimiento: 03/2015   Estado: MOROSO'}],
+  qs:[
+    {type:'single', q:'¿Qué base de licitud permite a BoletínNet tratar datos de morosidad sin el consentimiento de Rosa?',
+     opts:[
+      {t:'Interés legítimo', a:'Art. 13 d'},
+      {t:'Obligaciones económicas, financieras, bancarias o comerciales, según el Título III', a:'Art. 13 a', ok:true},
+      {t:'Ninguna: siempre requiere consentimiento', a:''},
+      {t:'Fines estadísticos', a:'Art. 16 quinquies'}],
+     why:'La ley trae una base específica para los datos de obligaciones económicas, financieras, bancarias o comerciales, que solo se pueden tratar en las condiciones del Título III.', cite:'Art. 13 letra a'},
+    {type:'single', q:'¿Tiene razón BoletínNet al exigir una orden judicial para borrar la deuda prescrita?',
+     opts:[
+      {t:'Sí, solo un juez puede ordenarlo', a:''},
+      {t:'No: debe suprimir de oficio la información de deudas prescritas, sin solicitud ni orden judicial', a:'Art. 17', ok:true},
+      {t:'Sí, las deudas nunca se borran', a:''},
+      {t:'Solo si Rosa paga la deuda', a:''}],
+     why:'La reforma agregó al art. 17 que los responsables deben suprimir de sus registros la información de deudas prescritas sin necesidad de solicitud del titular ni de orden judicial. Los arts. 18 y 19 limitan además el tiempo y los efectos de los datos de obligaciones extinguidas.', cite:'Art. 17'},
+    {type:'single', q:'Por la exposición del registro, además de reportar a la Agencia, BoletínNet debe…',
+     opts:[
+      {t:'Nada más', a:''},
+      {t:'Comunicar la vulneración a los titulares, porque afecta datos financieros y comerciales', a:'Art. 14 sexies', ok:true},
+      {t:'Cerrar la empresa', a:''},
+      {t:'Pedir disculpas en redes sociales', a:''}],
+     why:'Las vulneraciones que afectan datos relativos a obligaciones económicas, financieras, bancarias o comerciales, igual que las de datos sensibles o de menores de 14 años, también deben comunicarse a los titulares.', cite:'Art. 14 sexies'}
+  ]
+},
+{
+  id:'c9', block:'Órganos públicos', arts:'Título IV, arts. 20 a 26',
+  folio:'EXP-2026-0009', title:'La municipalidad y su lista', who:'Reclamo de vecinos contra la Municipalidad de Villa Austral',
+  stamp:'RECLAMO',
+  facts:[
+    'La municipalidad trata datos de vecinos para entregar un subsidio de calefacción que la ley le encarga administrar.',
+    'Un concejal propone publicar en la web una lista de vecinos con antecedentes penales "por seguridad".',
+    'Una vecina pidió acceso a sus datos y la municipalidad no le respondió.'
+  ],
+  evid:[{l:'Acta del concejo (extracto)', t:'Punto 4: Publicar "Registro comunal de vecinos con\nantecedentes" en www.villaaustral.cl. Votación: pendiente.'}],
+  qs:[
+    {type:'single', q:'¿Necesita la municipalidad el consentimiento de los vecinos para tratar sus datos al entregar el subsidio?',
+     opts:[
+      {t:'Sí, siempre', a:''},
+      {t:'No: es lícito cuando lo hace dentro de sus competencias legales', a:'Art. 20', ok:true},
+      {t:'Solo si el vecino es mayor de 65 años', a:''},
+      {t:'Solo si lo autoriza la Contraloría', a:''}],
+     why:'El tratamiento de datos que hacen los órganos públicos es lícito cuando se realiza para cumplir sus funciones legales y dentro de sus competencias. Igual deben respetar los principios del art. 3, más los de coordinación, eficiencia y probidad (art. 21).', cite:'Arts. 20 y 21'},
+    {type:'single', q:'¿Puede publicar la lista de vecinos con antecedentes penales?',
+     opts:[
+      {t:'Sí, porque es información de seguridad pública', a:''},
+      {t:'No: los datos sobre infracciones penales solo pueden tratarlos los órganos competentes, con reglas estrictas', a:'Art. 25', ok:true},
+      {t:'Sí, si borra los RUT', a:''},
+      {t:'Sí, si el concejo lo aprueba por mayoría', a:''}],
+     why:'Los datos sobre infracciones penales, civiles, administrativas y disciplinarias tienen un régimen especial y restringido. Comunicarlos o tratarlos masivamente fuera de lo permitido está considerado infracción gravísima.', cite:'Art. 25'},
+    {type:'single', q:'La municipalidad no respondió la solicitud de acceso. ¿Ante quién reclama la vecina?',
+     opts:[
+      {t:'Ante la Agencia de Protección de Datos Personales', a:'Art. 23', ok:true},
+      {t:'Ante el SERNAC', a:''},
+      {t:'Ante el alcalde, que tiene la última palabra', a:''},
+      {t:'No puede reclamar contra el Estado', a:''}],
+     why:'Los titulares ejercen sus derechos también ante los órganos públicos, y si no obtienen respuesta pueden reclamar ante la Agencia. Las infracciones de órganos públicos se sancionan con medidas que recaen en la jefatura del servicio.', cite:'Art. 23'}
+  ]
+},
+{
+  id:'c10', block:'Transferencias, la Agencia y las sanciones', arts:'Arts. 27 a 30 quáter, 34 bis a 39, 49 y transitorios',
+  folio:'EXP-2026-0010', title:'La nube al otro lado del mundo', who:'Caso final: NubeChile SpA',
+  stamp:'CASO FINAL',
+  facts:[
+    'NubeChile guarda los datos de sus clientes en servidores de un país que la Agencia no ha declarado con nivel adecuado de protección.',
+    'Es una empresa grande, no de menor tamaño, y ya fue sancionada antes por una infracción gravísima.',
+    'Vuelve a cometer una gravísima. Su abogada dice que van a reclamar contra la multa.',
+    'Otra empresa del mismo rubro tiene un modelo de prevención de infracciones certificado por la Agencia.'
+  ],
+  evid:[{l:'Contrato con el proveedor de nube', t:'Cláusula 9: Ubicación de datos: región ap-sur-2\nCláusula 12: Cláusulas tipo de protección de datos aprobadas\npor la Agencia  [ANEXO III]'}],
+  qs:[
+    {type:'single', q:'¿Puede NubeChile enviar datos a un país sin nivel adecuado de protección?',
+     opts:[
+      {t:'Nunca', a:''},
+      {t:'Sí, si ofrece garantías adecuadas, como cláusulas contractuales tipo aprobadas por la Agencia', a:'Arts. 27 y 28', ok:true},
+      {t:'Sí, sin ninguna condición', a:''},
+      {t:'Solo con permiso del Presidente', a:''}],
+     why:'La transferencia internacional se permite hacia países con nivel adecuado, o hacia otros si hay garantías adecuadas: cláusulas contractuales tipo, normas corporativas vinculantes en un grupo de empresas u otros instrumentos. También en casos específicos, como el consentimiento expreso. Quien transfiere debe poder acreditarlo ante la Agencia.', cite:'Arts. 27 y 28'},
+    {type:'single', q:'¿Cómo se dirige la Agencia de Protección de Datos Personales?',
+     opts:[
+      {t:'Un Consejo Directivo de 3 consejeros, nombrados por el Presidente con acuerdo de 2/3 del Senado, por 6 años', a:'Arts. 30 ter y 30 quáter', ok:true},
+      {t:'Un ministro de Estado', a:''},
+      {t:'Un director elegido por las empresas', a:''},
+      {t:'La Corte Suprema', a:''}],
+     why:'La Agencia es una corporación autónoma de derecho público, técnica y descentralizada, que se relaciona con el Presidente a través del Ministerio de Economía. La dirige un Consejo Directivo de tres consejeros con mandatos de seis años, sin reelección y con renovación parcial.', cite:'Arts. 30 a 30 quáter'},
+    {type:'single', q:'NubeChile es grande y reincide en una gravísima. ¿Cuál es el tope de la multa?',
+     opts:[
+      {t:'5.000 UTM', a:''},
+      {t:'10.000 UTM', a:''},
+      {t:'Hasta el triple (60.000 UTM) o hasta el 4 % de sus ingresos anuales', a:'Art. 35', ok:true},
+      {t:'No hay multa, solo amonestación', a:''}],
+     why:'Los topes base son 5.000 UTM (leve), 10.000 (grave) y 20.000 (gravísima). En reincidencia pueden triplicarse, y si la empresa no es de menor tamaño y reincide en grave o gravísima, la multa puede llegar al 2 % o 4 % de sus ingresos anuales. La Agencia puede además suspender sus operaciones de tratamiento hasta 30 días, y la sanción queda en el Registro Nacional de Sanciones y Cumplimiento.', cite:'Arts. 35, 38 y 39'},
+    {type:'single', q:'¿Ante qué tribunal puede NubeChile reclamar contra la multa de la Agencia?',
+     opts:[
+      {t:'Ante la Corte de Apelaciones', a:'', ok:true},
+      {t:'Ante el Tribunal Constitucional, directamente', a:''},
+      {t:'Ante el SII', a:''},
+      {t:'No puede reclamar', a:''}],
+     why:'Las resoluciones sancionatorias de la Agencia se pueden reclamar judicialmente ante la Corte de Apelaciones. Aparte, los afectados pueden demandar en sede civil la indemnización de los daños.', cite:'Título VII'},
+    {type:'single', q:'¿Qué ventaja tiene la otra empresa por contar con un modelo de prevención certificado?',
+     opts:[
+      {t:'Queda exenta de la ley', a:''},
+      {t:'Es una circunstancia atenuante si la sancionan, y queda inscrita en el registro público', a:'Arts. 35 y 49', ok:true},
+      {t:'Puede vender datos sensibles', a:''},
+      {t:'Ninguna', a:''}],
+     why:'El modelo de prevención de infracciones es voluntario. Incluye designar un delegado de protección de datos con autonomía, identificar los riesgos, protocolos y un sistema de reporte. Si la Agencia lo certifica (por 3 años), se anota en el Registro y atenúa las sanciones.', cite:'Art. 49 y ss.'},
+    {type:'single', q:'Última pregunta del caso: ¿desde cuándo rige la ley, según su texto vigente?',
+     opts:[
+      {t:'Desde el 13 de diciembre de 2024', a:''},
+      {t:'Desde el 1 de diciembre de 2026', a:'Disposiciones transitorias', ok:true},
+      {t:'Desde el 1 de enero de 2030', a:''},
+      {t:'Ya regía desde 1999', a:''}],
+     why:'Se publicó el 13 de diciembre de 2024 con 24 meses de preparación, así que entra en vigencia el 1 de diciembre de 2026. Hay un proyecto en el Senado para postergarla al 1 de diciembre de 2027, pero mientras no se apruebe y publique, la fecha legal sigue siendo 2026.', cite:'Disposiciones transitorias'}
+  ]
+}
+];
+
+const LEY = [
+ {h:'Título I · Principios y ámbito (arts. 1 a 3)', b:[
+  ['Art. 1','Protege los datos de personas naturales (art. 19 N° 4 de la Constitución). No se aplica a la libertad de opinión e información ni a actividades personales o domésticas.'],
+  ['Art. 1 bis','Aplica también a responsables en el extranjero que ofrecen bienes o servicios a personas en Chile o monitorean su comportamiento.'],
+  ['Art. 2','Definiciones: dato personal (f), datos sensibles (g), anonimización irreversible (k), seudonimización (l), responsable (n), titular (ñ), consentimiento libre, específico, inequívoco e informado (p), perfiles (w), encargado (x).'],
+  ['Art. 3','Principios: a) licitud y lealtad, b) finalidad, c) proporcionalidad, d) calidad, e) responsabilidad, f) seguridad, g) transparencia e información, h) confidencialidad.']]},
+ {h:'Derechos del titular (arts. 4 a 11)', b:[
+  ['Art. 4','Acceso, rectificación, supresión, oposición, portabilidad y bloqueo. Personales, intransferibles e irrenunciables.'],
+  ['Art. 5','Acceso: confirmar el tratamiento, copia, origen, finalidades, destinatarios, plazo y lógica de decisiones automatizadas.'],
+  ['Art. 6','Rectificación de datos inexactos, desactualizados o incompletos.'],
+  ['Art. 7','Supresión: procede si ya no son necesarios, se revocó el consentimiento, el tratamiento es ilícito, etc. Excepciones: obligación legal, interés público, defensa en juicio, libertad de expresión.'],
+  ['Art. 8','Oposición: frente al interés legítimo, al marketing directo y a datos de fuentes públicas.'],
+  ['Art. 8 bis','Derecho a no ser objeto de decisiones basadas solo en tratamiento automatizado con efectos significativos; garantías de intervención humana.'],
+  ['Art. 8 ter','Bloqueo: suspensión temporal mientras se resuelve una solicitud.'],
+  ['Art. 9','Portabilidad: copia en formato estructurado y de uso común, y transmisión a otro responsable.'],
+  ['Art. 10','Rectificación, supresión y oposición gratuitas; acceso gratuito al menos una vez por trimestre.'],
+  ['Art. 11','Respuesta en 30 días corridos, prorrogable una vez por 30. Reclamo ante la Agencia en 30 días hábiles.']]},
+ {h:'Licitud y deberes (arts. 12 a 15 ter)', b:[
+  ['Art. 12','Consentimiento libre, informado y específico; revocable sin efecto retroactivo; el responsable debe probarlo.'],
+  ['Art. 13','Otras bases: a) obligaciones económicas y comerciales (Título III), b) obligación legal, c) contrato, d) interés legítimo, e) ejercicio o defensa de derechos.'],
+  ['Art. 14','Acreditar la licitud, usar fuentes lícitas, mantener datos exactos. Sin domicilio en Chile: designar canal de contacto.'],
+  ['Art. 14 bis','Deber de secreto, que sigue después de terminada la relación.'],
+  ['Art. 14 ter','Publicar de forma permanente la política de tratamiento.'],
+  ['Art. 14 quáter','Protección de datos desde el diseño y por defecto.'],
+  ['Art. 14 quinquies','Medidas de seguridad adecuadas al riesgo (cifrado, seudonimización, pruebas periódicas).'],
+  ['Art. 14 sexies','Reportar vulneraciones a la Agencia por los medios más expeditos y sin dilaciones indebidas. Si afectan datos sensibles, de menores de 14 o financieros: avisar también a los titulares.'],
+  ['Art. 15 bis','El encargado actúa según instrucciones; si usa los datos para otro fin, pasa a ser responsable.'],
+  ['Art. 15 ter','Evaluación de impacto cuando hay alto riesgo: perfilamiento sistemático, tratamiento masivo, vigilancia de zonas públicas.']]},
+ {h:'Datos sensibles y categorías especiales (arts. 16 a 16 sexies)', b:[
+  ['Art. 16','Datos sensibles: requieren consentimiento expreso, salvo excepciones (hechos públicos por el titular, urgencia vital, mandato legal, defensa en juicio).'],
+  ['Art. 16 bis','Salud y perfil biológico: solo fines sanitarios; prohibidos en ámbitos laboral, educativo, de seguros y de seguridad.'],
+  ['Art. 16 ter','Biométricos: informar antes el sistema, la finalidad, el período y los derechos.'],
+  ['Art. 16 quáter','Niños, niñas y adolescentes: interés superior; bajo 14 años consienten padres o representantes; datos sensibles bajo 16 también.'],
+  ['Art. 16 quinquies','Fines históricos, estadísticos y científicos con resguardos.'],
+  ['Art. 16 sexies','Geolocalización: con base de los arts. 12 o 13 e información clara.']]},
+ {h:'Título III · Datos financieros (arts. 17 a 19)', b:[
+  ['Art. 17','Supresión de oficio de deudas prescritas, sin solicitud ni orden judicial.'],
+  ['Arts. 18 y 19','Límites al tratamiento y efectos de las obligaciones extinguidas.']]},
+ {h:'Título IV · Órganos públicos (arts. 20 a 26)', b:[
+  ['Art. 20','Tratamiento lícito dentro de sus competencias legales.'],
+  ['Art. 21','Principios del art. 3 más coordinación, eficiencia y probidad.'],
+  ['Arts. 22 y 23','Comunicación de datos entre órganos; ejercicio de derechos y reclamo ante la Agencia.'],
+  ['Arts. 24 y 25','Regímenes especiales; datos de infracciones penales, civiles, administrativas y disciplinarias.']]},
+ {h:'Título V · Transferencia internacional (arts. 27 a 29)', b:[
+  ['Art. 27','A países con nivel adecuado, con garantías adecuadas (cláusulas tipo, normas corporativas vinculantes) o en casos específicos.'],
+  ['Art. 28','La Agencia define países adecuados y aprueba cláusulas tipo.'],
+  ['Art. 29','La Agencia puede suspender temporalmente transferencias.']]},
+ {h:'Título VI · La Agencia (arts. 30 y ss.)', b:[
+  ['Art. 30','Corporación autónoma de derecho público, técnica y descentralizada; se relaciona con el Presidente vía Ministerio de Economía.'],
+  ['Art. 30 bis','Dicta normas, fiscaliza, sanciona, resuelve reclamos, certifica modelos de prevención y lleva el Registro Nacional de Sanciones y Cumplimiento.'],
+  ['Art. 30 quáter','Consejo Directivo de 3 consejeros, acuerdo de 2/3 del Senado, 6 años sin reelección.']]},
+ {h:'Títulos VII y VIII · Sanciones y prevención', b:[
+  ['Art. 34 bis','Leves: p. ej. no cumplir el deber de información del art. 14 ter. Amonestación o hasta 5.000 UTM.'],
+  ['Art. 34 ter','Graves: p. ej. tratar sin base de licitud, ceder sin consentimiento, no cumplir la seguridad o el secreto, no reportar brechas. Hasta 10.000 UTM.'],
+  ['Art. 34 quáter','Gravísimas: p. ej. tratamiento fraudulento, ceder ilícitamente datos sensibles o de NNA, omitir deliberadamente reportar brechas. Hasta 20.000 UTM.'],
+  ['Art. 35','Reincidencia: hasta el triple. Empresas no pequeñas que reinciden en grave o gravísima: hasta 2 % o 4 % de sus ingresos anuales.'],
+  ['Arts. 38 y 39','Suspensión de operaciones hasta 30 días. Registro Nacional de Sanciones y Cumplimiento, público.'],
+  ['Reclamo','Las multas se reclaman ante la Corte de Apelaciones. Los afectados pueden demandar indemnización.'],
+  ['Art. 49','Modelo de prevención voluntario con delegado de protección de datos; certificado por la Agencia, atenúa sanciones.'],
+  ['Vigencia','Publicada el 13-12-2024; rige desde el 1-12-2026 (proyecto de postergación a 2027 en trámite).']]}
+];
+
+/* =====================  ESTADO  ===================== */
+const KEY = 'fiscalizador-21719-v1';
+const $ = id => document.getElementById(id);
+let save = {res:{}};
+try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.res) save = s; } catch (e) {}
+const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) {} };
+
+const root = document.documentElement;
+try { const t = localStorage.getItem(KEY + '-theme'); if (t) root.dataset.theme = t; } catch (e) {}
+$('btnTheme').onclick = () => {
+  const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  root.dataset.theme = dark ? 'light' : 'dark';
+  try { localStorage.setItem(KEY + '-theme', root.dataset.theme); } catch (e) {}
+};
+
+let G = null; // {ci, qi, hits:[], answered}
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const shuffle = a => { const b = a.slice(); for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; };
+const totalQ = CASES.reduce((n, c) => n + c.qs.length, 0);
+const totalScore = () => Object.values(save.res).reduce((n, r) => n + r.hits * 100, 0);
+
+function show(id){
+  ['scrMenu','scrGame','scrDone','scrReport'].forEach(s => $(s).classList.toggle('hidden', s !== id));
+  $('btnMenu').classList.toggle('hidden', id === 'scrMenu');
+  window.scrollTo(0, 0);
+}
+
+/* =====================  MENÚ  ===================== */
+function renderMenu(){
+  $('levels').innerHTML = CASES.map((c, i) => {
+    const r = save.res[c.id];
+    const best = r ? `<div class="best ${r.hits === c.qs.length ? 'done' : ''}">${r.hits === c.qs.length ? '✓ ' : ''}${r.hits}/${c.qs.length} aciertos</div>` : `<div class="best muted">Sin abrir</div>`;
+    return `<button class="level" type="button" data-i="${i}">
+      <div class="num">${c.folio} · ${c.arts}</div>
+      <div class="name">${i + 1}. ${esc(c.title)}</div>
+      <div class="desc">${esc(c.block)}</div>${best}</button>`;
+  }).join('');
+  $('levels').querySelectorAll('.level').forEach(b => b.onclick = () => startCase(+b.dataset.i));
+  const firstOpen = CASES.findIndex(c => !save.res[c.id]);
+  $('btnStart').textContent = firstOpen === -1 ? 'Volver a jugar desde el expediente 1' : firstOpen === 0 ? 'Empezar por el expediente 1' : `Seguir con el expediente ${firstOpen + 1}`;
+  $('btnStart').onclick = () => startCase(firstOpen === -1 ? 0 : firstOpen);
+  show('scrMenu');
+}
+$('btnMenu').onclick = renderMenu;
+$('btnReport').onclick = renderReport;
+$('btnReset').onclick = () => $('resetAsk').classList.remove('hidden');
+$('resetNo').onclick = () => $('resetAsk').classList.add('hidden');
+$('resetYes').onclick = () => { save = {res:{}}; persist(); $('resetAsk').classList.add('hidden'); renderMenu(); };
+
+/* =====================  JUEGO  ===================== */
+function startCase(ci){
+  G = {ci, qi:0, hits:[], expOpen:true};
+  show('scrGame');
+  renderExp();
+  renderQ();
+}
+
+function renderExp(){
+  const c = CASES[G.ci];
+  $('expCard').innerHTML = `<div class="exp">
+    <span class="stamp">${c.stamp}</span>
+    <div class="folio">${c.folio} · ${esc(c.block)}</div>
+    <h2>${esc(c.title)}</h2>
+    <div class="who">${esc(c.who)}</div>
+    <div id="expBody" class="${G.expOpen ? '' : 'hidden'}">
+      <h3>Hechos</h3>
+      <ul class="facts">${c.facts.map(f => `<li>${esc(f)}</li>`).join('')}</ul>
+      <div class="evid">${c.evid.map(e => `<div class="ev"><div class="lbl">Evidencia · ${esc(e.l)}</div><pre>${esc(e.t)}</pre></div>`).join('')}</div>
+    </div>
+    <button class="toggle-exp" type="button" id="togExp">${G.expOpen ? 'Ocultar hechos' : 'Ver hechos y evidencia'}</button>
+  </div>`;
+  $('togExp').onclick = () => { G.expOpen = !G.expOpen; renderExp(); };
+}
+
+function hud(){
+  const c = CASES[G.ci];
+  $('hudCase').textContent = `Expediente ${G.ci + 1}/${CASES.length}`;
+  $('hudQ').textContent = `Pregunta ${Math.min(G.qi + 1, c.qs.length)}/${c.qs.length}`;
+  const prev = Object.entries(save.res).filter(([k]) => k !== c.id).reduce((n, [, r]) => n + r.hits * 100, 0);
+  $('hudScore').textContent = prev + G.hits.filter(Boolean).length * 100;
+  $('progBar').style.width = (G.qi / c.qs.length * 100) + '%';
+}
+
+function renderQ(){
+  hud();
+  const c = CASES[G.ci], q = c.qs[G.qi];
+  const tag = {single:'Elige una', multi:'Marca todas las correctas', match:'Asigna cada fila', cls:'Califica la infracción'}[q.type];
+  let body = '';
+  if (q.type === 'single' || q.type === 'multi'){
+    G.order = shuffle(q.opts.map((o, i) => i));
+    G.sel = new Set();
+    body = `<div class="opts">${G.order.map(i => `<button class="opt" type="button" data-i="${i}">${esc(q.opts[i].t)}</button>`).join('')}</div>`;
+    if (q.type === 'multi') body += `<div class="next-row"><button class="btn primary" type="button" id="btnConfirm" disabled>Confirmar</button></div>`;
+  } else if (q.type === 'cls'){
+    body = `<div class="opts cls">${CLS.map(k => `<button class="opt" type="button" data-k="${k.k}">${k.t}<small>${k.s}</small></button>`).join('')}</div>`;
+  } else if (q.type === 'match'){
+    G.pick = q.rows.map(() => null);
+    G.rowOrder = shuffle(q.rows.map((r, i) => i));
+    body = `<div class="match">${G.rowOrder.map(ri => `<div class="mrow" data-r="${ri}"><div class="t">${esc(q.rows[ri].t)}</div>
+      <div class="seg">${q.cols.map((col, ci) => `<button type="button" data-r="${ri}" data-c="${ci}">${esc(col)}</button>`).join('')}</div><div class="fix hidden"></div></div>`).join('')}</div>
+      <div class="next-row"><button class="btn primary" type="button" id="btnConfirm" disabled>Confirmar</button></div>`;
+  }
+  $('qCard').innerHTML = `<div class="qhead"><span class="qtag">${tag}</span><span class="qtag">${esc(c.arts)}</span></div>
+    <div class="q">${esc(q.q)}</div>${body}<div id="fbBox"></div>`;
+
+  if (q.type === 'single'){
+    $('qCard').querySelectorAll('.opt').forEach(b => b.onclick = () => answer(q.opts[+b.dataset.i].ok === true, b));
+  } else if (q.type === 'multi'){
+    $('qCard').querySelectorAll('.opt').forEach(b => b.onclick = () => {
+      const i = +b.dataset.i;
+      G.sel.has(i) ? G.sel.delete(i) : G.sel.add(i);
+      b.classList.toggle('sel', G.sel.has(i));
+      $('btnConfirm').disabled = G.sel.size === 0;
+    });
+    $('btnConfirm').onclick = () => {
+      const ok = q.opts.every((o, i) => !!o.ok === G.sel.has(i));
+      answer(ok, null);
+    };
+  } else if (q.type === 'cls'){
+    $('qCard').querySelectorAll('.opt').forEach(b => b.onclick = () => answer(b.dataset.k === q.ok, b));
+  } else if (q.type === 'match'){
+    $('qCard').querySelectorAll('.seg button').forEach(b => b.onclick = () => {
+      const r = +b.dataset.r, col = +b.dataset.c;
+      G.pick[r] = col;
+      b.parentElement.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+      $('btnConfirm').disabled = G.pick.some(p => p === null);
+    });
+    $('btnConfirm').onclick = () => answer(q.rows.every((row, i) => G.pick[i] === row.ok), null);
+  }
+}
+
+function answer(ok, btn){
+  const c = CASES[G.ci], q = c.qs[G.qi];
+  const card = $('qCard');
+  card.querySelectorAll('button.opt, .seg button').forEach(b => b.disabled = true);
+  const conf = $('btnConfirm'); if (conf) conf.remove();
+
+  if (q.type === 'single'){
+    card.querySelectorAll('.opt').forEach(b => {
+      const o = q.opts[+b.dataset.i];
+      if (o.ok) b.classList.add('right');
+      if (o.a) b.insertAdjacentHTML('beforeend', `<span class="art">${esc(o.a)}</span>`);
+    });
+    if (!ok && btn) btn.classList.add('wrong');
+  } else if (q.type === 'multi'){
+    card.querySelectorAll('.opt').forEach(b => {
+      const i = +b.dataset.i, o = q.opts[i], s = G.sel.has(i);
+      b.classList.remove('sel');
+      if (o.ok && s) b.classList.add('right');
+      else if (o.ok && !s) b.classList.add('missed');
+      else if (!o.ok && s) b.classList.add('wrong');
+    });
+  } else if (q.type === 'cls'){
+    card.querySelectorAll('.opt').forEach(b => { if (b.dataset.k === q.ok) b.classList.add('right'); });
+    if (!ok && btn) btn.classList.add('wrong');
+  } else if (q.type === 'match'){
+    card.querySelectorAll('.mrow').forEach(m => {
+      const r = +m.dataset.r, good = G.pick[r] === q.rows[r].ok;
+      m.classList.add(good ? 'right' : 'wrong');
+      if (!good){ const f = m.querySelector('.fix'); f.textContent = 'Correcta: ' + q.cols[q.rows[r].ok]; f.classList.remove('hidden'); }
+    });
+  }
+
+  G.hits[G.qi] = ok;
+  const last = G.qi === c.qs.length - 1;
+  $('fbBox').innerHTML = `<div class="fb ${ok ? 'ok' : 'bad'}"><b class="h">${ok ? 'Correcto, +100' : (q.type === 'multi' ? 'No del todo' : 'No es así')}</b>${esc(q.why)}<br><span class="cite">${esc(q.cite)}</span></div>
+    <div class="next-row"><button class="btn primary" type="button" id="btnNext">${last ? 'Cerrar expediente' : 'Siguiente pregunta'}</button></div>`;
+  hud();
+  $('btnNext').onclick = () => { if (last) finishCase(); else { G.qi++; renderQ(); $('qCard').scrollIntoView({block:'start', behavior:'smooth'}); } };
+  $('btnNext').focus({preventScroll:true});
+}
+
+function finishCase(){
+  const c = CASES[G.ci];
+  const hits = G.hits.filter(Boolean).length;
+  const prev = save.res[c.id];
+  if (!prev || hits >= prev.hits) save.res[c.id] = {hits};
+  persist();
+  const next = G.ci + 1 < CASES.length ? G.ci + 1 : -1;
+  const allDone = CASES.every(x => save.res[x.id]);
+  const verdict = hits === c.qs.length ? 'Expediente impecable. La resolución quedó firme.' : hits >= c.qs.length / 2 ? 'Resolución aprobada con observaciones. Revisa los artículos que fallaste en la Ley de bolsillo.' : 'El Consejo devolvió tu resolución. Vale la pena repasar este bloque y volver a intentarlo.';
+  $('doneCard').innerHTML = `<div class="qtag">${c.folio} · cerrado</div>
+    <h1 style="margin-top:6px">${esc(c.title)}</h1>
+    <p class="big">${hits}/${c.qs.length}</p>
+    <p>${verdict}</p>
+    <p class="muted">Bloque cubierto: <b>${esc(c.block)}</b> (${esc(c.arts)}).</p>
+    <div class="actions" style="margin-top:12px">
+      ${next >= 0 ? `<button class="btn primary" type="button" id="dNext">Siguiente expediente</button>` : ''}
+      ${allDone ? `<button class="btn ${next >= 0 ? '' : 'primary'}" type="button" id="dRep">Ver informe final</button>` : ''}
+      <button class="btn" type="button" id="dRetry">Repetir</button>
+      <button class="btn" type="button" id="dMenu">Expedientes</button>
+    </div>`;
+  if (next >= 0) $('dNext').onclick = () => startCase(next);
+  if (allDone) $('dRep').onclick = renderReport;
+  $('dRetry').onclick = () => startCase(G.ci);
+  $('dMenu').onclick = renderMenu;
+  show('scrDone');
+}
+
+/* =====================  INFORME  ===================== */
+function renderReport(){
+  const done = CASES.filter(c => save.res[c.id]).length;
+  const hits = Object.values(save.res).reduce((n, r) => n + r.hits, 0);
+  const pct = Math.round(hits / totalQ * 100);
+  const rank = done < CASES.length ? 'Fiscalizador en práctica' : pct >= 90 ? 'Consejero de la Agencia' : pct >= 75 ? 'Fiscalizador senior' : pct >= 50 ? 'Fiscalizador' : 'Fiscalizador en formación';
+  const rows = CASES.map((c, i) => {
+    const r = save.res[c.id], h = r ? r.hits : 0, p = Math.round(h / c.qs.length * 100);
+    return `<tr><td>${i + 1}. ${esc(c.block)}<div class="muted mono" style="font-size:12px">${esc(c.arts)}</div></td>
+      <td class="mono">${r ? `${h}/${c.qs.length}` : '—'}</td>
+      <td><div class="bar"><div style="width:${r ? p : 0}%"></div></div></td></tr>`;
+  }).join('');
+  const weak = CASES.filter(c => save.res[c.id] && save.res[c.id].hits < c.qs.length).map(c => c.block);
+  $('reportCard').innerHTML = `<div class="qtag">Informe del fiscalizador</div>
+    <h1 style="margin-top:6px">Tu recorrido por la Ley 21.719</h1>
+    <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin:6px 0 4px">
+      <span class="big">${totalScore()}</span><span class="muted">puntos · ${hits}/${totalQ} aciertos · ${done}/${CASES.length} expedientes</span>
+    </div>
+    <p><span class="rank">${rank}</span></p>
+    ${done < CASES.length ? `<p class="muted">Te faltan ${CASES.length - done} expedientes para cubrir la ley completa.</p>` : ''}
+    ${weak.length ? `<p class="muted">Para repasar: ${weak.map(esc).join(', ')}.</p>` : done === CASES.length ? '<p class="muted">Cerraste todos los expedientes sin errores. Conoces la ley de punta a punta.</p>' : ''}
+    <table class="rtab"><thead><tr><th>Bloque de la ley</th><th>Aciertos</th><th>Dominio</th></tr></thead><tbody>${rows}</tbody></table>
+    <div class="actions" style="margin-top:16px">
+      <button class="btn primary" type="button" id="rMenu">Expedientes</button>
+      <button class="btn" type="button" id="rLey">Abrir Ley de bolsillo</button>
+    </div>`;
+  $('rMenu').onclick = renderMenu;
+  $('rLey').onclick = openLey;
+  show('scrReport');
+}
+
+/* =====================  LEY DE BOLSILLO  ===================== */
+function openLey(){
+  $('leyBody').innerHTML = `<h2>Ley de bolsillo <button class="iconbtn" type="button" id="leyClose">Cerrar</button></h2>
+    <p class="muted" style="font-size:14px">Resumen de la Ley 19.628 modificada por la Ley 21.719. Los artículos son los de la ley ya reformada.</p>
+    <table class="tbl"><tr><th>Gravedad</th><th>Multa máxima</th><th>Reincidencia</th></tr>
+      <tr><td>Leve</td><td>5.000 UTM o amonestación</td><td>15.000 UTM</td></tr>
+      <tr><td>Grave</td><td>10.000 UTM</td><td>30.000 UTM o 2 % ingresos*</td></tr>
+      <tr><td>Gravísima</td><td>20.000 UTM</td><td>60.000 UTM o 4 % ingresos*</td></tr></table>
+    <p class="muted" style="font-size:12px;margin-top:-4px">* Solo empresas que no son de menor tamaño.</p>
+    ${LEY.map((s, i) => `<details${i === 0 ? ' open' : ''}><summary>${esc(s.h)}</summary><div class="dc">${s.b.map(([a, t]) => `<p><b>${esc(a)}</b> · ${esc(t)}</p>`).join('')}</div></details>`).join('')}
+    <p class="note" style="margin-top:12px">Resumen educativo. Para casos reales consulta el texto oficial en BCN Ley Chile.</p>`;
+  $('ley').classList.remove('hidden');
+  $('leyClose').onclick = closeLey;
+  $('leyClose').focus();
+}
+function closeLey(){ $('ley').classList.add('hidden'); }
+$('btnLey').onclick = openLey;
+$('ley').onclick = e => { if (e.target === $('ley')) closeLey(); };
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('ley').classList.contains('hidden')) closeLey(); });
+
+renderMenu();
+</script>
+</body>
+</html>

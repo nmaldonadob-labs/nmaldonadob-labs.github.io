@@ -1,0 +1,1234 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arma tu Firewall</title>
+<meta name="description" content="Juego para practicar reglas de firewall: orden de reglas, política por defecto, puertos e IP de origen y destino.">
+<style>
+:root{
+  --bg:#f4f6fb; --panel:#ffffff; --panel2:#eef1f8; --text:#141a2a; --muted:#5b6478;
+  --line:#d7dce8; --accent:#0a7cff; --accent-ink:#ffffff; --ok:#11885a; --ok-bg:#e3f6ed;
+  --bad:#c8323c; --bad-bg:#fbe6e7; --warn:#b26a00; --net:#0a7cff; --host:#d9480f;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --shadow:0 1px 2px rgba(20,26,42,.06),0 6px 20px rgba(20,26,42,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0b0f17; --panel:#131a26; --panel2:#1a2333; --text:#e6ebf5; --muted:#93a0b8;
+    --line:#26324a; --accent:#3ddc97; --accent-ink:#06120c; --ok:#3ddc97; --ok-bg:#0f2a20;
+    --bad:#ff6b74; --bad-bg:#2c1418; --warn:#ffb547; --net:#5fb0ff; --host:#ff8a5c;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0b0f17; --panel:#131a26; --panel2:#1a2333; --text:#e6ebf5; --muted:#93a0b8;
+  --line:#26324a; --accent:#3ddc97; --accent-ink:#06120c; --ok:#3ddc97; --ok-bg:#0f2a20;
+  --bad:#ff6b74; --bad-bg:#2c1418; --warn:#ffb547; --net:#5fb0ff; --host:#ff8a5c;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+.wrap{max-width:920px;margin:0 auto;padding:20px 16px 48px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:20px;letter-spacing:-.01em}
+.brand .logo{font-family:var(--mono);background:var(--accent);color:var(--accent-ink);border-radius:8px;padding:2px 8px;font-size:15px}
+.iconbtn{background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:6px 10px;cursor:pointer;font:inherit;font-size:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:var(--shadow);margin-bottom:16px}
+h1{font-size:26px;margin:0 0 6px;letter-spacing:-.02em}
+h2{font-size:18px;margin:0 0 12px}
+h3{font-size:15px;margin:0 0 8px}
+p{margin:0 0 10px}
+.muted{color:var(--muted)}
+.small{font-size:14px}
+.levels{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-top:16px}
+.level{text-align:left;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px;cursor:pointer;color:var(--text);font:inherit;transition:transform .1s,border-color .1s}
+.level:hover:not(:disabled){border-color:var(--accent);transform:translateY(-1px)}
+.level:disabled{opacity:.5;cursor:not-allowed}
+.level .num{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.level .name{font-weight:700;margin:2px 0 4px}
+.level .desc{font-size:14px;color:var(--muted)}
+.level .best{font-size:13px;margin-top:8px;font-family:var(--mono)}
+.hud{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.pill{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:14px;font-family:var(--mono)}
+.pill b{font-weight:700}
+.pill.over{border-color:var(--warn);color:var(--warn)}
+.tag{display:inline-block;font-size:12px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--accent);margin-bottom:4px}
+.goals{margin:8px 0 0;padding-left:20px}
+.goals li{margin-bottom:4px}
+.actions{display:flex;flex-wrap:wrap;gap:10px}
+.btn{font:inherit;font-weight:600;border-radius:10px;padding:10px 18px;cursor:pointer;border:1px solid var(--line);background:var(--panel2);color:var(--text)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.sm{padding:6px 12px;font-size:14px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.feedback{margin-top:16px;padding:12px 14px;border-radius:10px;font-weight:600}
+.feedback.ok{background:var(--ok-bg);color:var(--ok)}
+.feedback.bad{background:var(--bad-bg);color:var(--bad)}
+.feedback.info{background:var(--panel2);color:var(--text)}
+.hint{margin-top:12px;padding:10px 14px;border-left:3px solid var(--warn);background:var(--panel2);border-radius:6px;font-size:15px}
+code,pre{font-family:var(--mono)}
+code{background:var(--panel2);padding:1px 5px;border-radius:5px;font-size:.92em}
+.big{font-size:44px;font-weight:800;font-family:var(--mono);letter-spacing:-.02em;margin:8px 0}
+.stars{font-size:32px;letter-spacing:4px}
+details{margin-top:6px}
+summary{cursor:pointer;font-weight:600}
+.hidden{display:none!important}
+.pop{animation:pop .35s ease}
+@keyframes pop{0%{transform:scale(.97);opacity:.6}100%{transform:scale(1);opacity:1}}
+.shake{animation:shake .35s ease}
+@keyframes shake{25%{transform:translateX(-5px)}50%{transform:translateX(5px)}75%{transform:translateX(-3px)}}
+footer{text-align:center;font-size:13px;color:var(--muted);margin-top:24px}
+.allow{color:var(--ok)} .deny{color:var(--bad)}
+
+/* mapa de red */
+.netmap{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center;margin-top:12px}
+.zone{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:14px}
+.zone .zt{font-weight:700;margin-bottom:4px}
+.zone .zt small{font-family:var(--mono);font-weight:400;color:var(--muted);margin-left:6px}
+.zone ul{list-style:none;margin:0;padding:0;font-family:var(--mono);font-size:13px}
+.zone li{display:flex;justify-content:space-between;gap:8px;padding:1px 0}
+.zone li span:last-child{color:var(--muted);font-family:system-ui,sans-serif}
+.zstack{display:grid;gap:10px}
+.fwbox{display:flex;flex-direction:column;align-items:center;gap:2px;font-weight:700;font-size:14px}
+.fwbox .ico{font-size:30px;line-height:1}
+.fwbox .arr{color:var(--muted);font-family:var(--mono);font-weight:400}
+
+/* editor de reglas */
+.policy{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:14px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{font:inherit;font-size:14px;font-weight:700;border:0;padding:7px 14px;background:var(--panel2);color:var(--muted);cursor:pointer}
+.seg button.on[data-p="ALLOW"]{background:var(--ok-bg);color:var(--ok)}
+.seg button.on[data-p="DENY"]{background:var(--bad-bg);color:var(--bad)}
+.seg button:disabled{cursor:not-allowed}
+.lock{font-size:13px;color:var(--warn)}
+.phits{font-size:13px;font-family:var(--mono);color:var(--muted)}
+.rgrid{display:grid;grid-template-columns:28px 128px 96px minmax(0,1fr) minmax(0,1fr) 120px 96px;gap:8px;align-items:start}
+.rhead{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;padding:0 2px 6px}
+.rules{list-style:none;margin:0;padding:0}
+.rule{padding:8px 0;border-top:1px solid var(--line)}
+.rule:first-child{border-top:0}
+.rule .rn{font-family:var(--mono);font-weight:700;color:var(--muted);padding-top:8px;text-align:center}
+.rule .f span{display:none;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:2px}
+.rule select,.rule input,.tester select,.tester input{width:100%;font:inherit;font-family:var(--mono);font-size:14px;padding:7px 8px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--text);outline:none}
+.rule input:focus,.rule select:focus,.tester input:focus,.tester select:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 25%,transparent)}
+.rule input:disabled{opacity:.45}
+.rule select.act-ALLOW{color:var(--ok);font-weight:700}
+.rule select.act-DENY{color:var(--bad);font-weight:700}
+.rule .bad{border-color:var(--bad);background:var(--bad-bg)}
+.rctl{display:flex;gap:4px;padding-top:2px}
+.rctl button{font:inherit;font-size:14px;width:30px;height:32px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text);cursor:pointer}
+.rctl button:disabled{opacity:.35;cursor:not-allowed}
+.rerr{grid-column:4 / -1;font-size:13px;color:var(--bad)}
+.rhits{grid-column:2 / -1;font-size:13px;font-family:var(--mono);color:var(--muted)}
+.rhits.used{color:var(--ok)}
+.rule.flash{animation:flash .8s ease}
+@keyframes flash{0%{background:color-mix(in srgb,var(--accent) 22%,transparent)}100%{background:transparent}}
+.empty{padding:14px;text-align:center;color:var(--muted);font-size:14px;border:1px dashed var(--line);border-radius:10px}
+.export pre{background:var(--panel2);border-radius:10px;padding:12px;font-size:13px;overflow-x:auto;margin:8px 0 0;white-space:pre}
+.tabs{display:flex;gap:6px;margin-top:10px}
+.tabs button{font:inherit;font-size:13px;font-weight:600;padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:var(--panel2);color:var(--muted);cursor:pointer}
+.tabs button.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+
+/* paquetes */
+.pkts{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:10px}
+.pkt{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.pkt.okr{border-color:var(--ok)} .pkt.badr{border-color:var(--bad)}
+.pkt.stale{opacity:.55}
+.ptop{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 12px;align-items:baseline}
+.pdesc{font-weight:600}
+.pdesc .ht{font-size:11px;font-weight:700;text-transform:uppercase;color:var(--warn);border:1px solid var(--warn);border-radius:6px;padding:0 5px;margin-right:6px;vertical-align:1px}
+.chip{font-size:13px;font-weight:700;font-family:var(--mono);white-space:nowrap}
+.pline{font-family:var(--mono);font-size:14px;margin-top:2px;word-break:break-word}
+.pline small{font-family:system-ui,sans-serif;color:var(--muted);margin-left:6px}
+.lane{display:flex;align-items:center;gap:8px;margin-top:8px}
+.lane .end{font-size:18px;width:24px;text-align:center}
+.track{position:relative;flex:1;height:22px}
+.track::before{content:"";position:absolute;left:0;right:0;top:50%;border-top:2px dashed var(--line)}
+.track .fw{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:18px;line-height:1}
+.track .dot{position:absolute;top:50%;left:0;width:12px;height:12px;border-radius:50%;background:var(--accent);transform:translate(-50%,-50%);transition:left .35s ease,background .2s}
+.track .dot.mid{left:calc(50% - 16px)}
+.track .dot.pass{left:100%;background:var(--ok)}
+.track .dot.block{background:var(--bad);animation:shake .35s ease}
+.track .x{position:absolute;left:calc(50% + 16px);top:50%;transform:translate(-50%,-50%);font-weight:800;color:var(--bad);font-size:14px}
+.pwhy{font-size:14px;margin-top:6px}
+.trace{margin:4px 0 0;padding-left:20px;font-size:14px}
+.trace li{margin-bottom:2px}
+.trace .m{color:var(--ok);font-weight:600}
+.trace .skip{color:var(--muted)}
+
+/* quiz */
+.qtable{width:100%;border-collapse:separate;border-spacing:0 6px;font-family:var(--mono);font-size:14px}
+.qrow{cursor:pointer}
+.qrow td{background:var(--panel2);padding:8px 10px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);white-space:nowrap}
+.qrow td:first-child{border-left:1px solid var(--line);border-radius:10px 0 0 10px;color:var(--muted);font-weight:700}
+.qrow td:last-child{border-right:1px solid var(--line);border-radius:0 10px 10px 0}
+.qrow:hover td{border-color:var(--accent)}
+.qrow.ok td{background:var(--ok-bg);border-color:var(--ok)}
+.qrow.bad td{background:var(--bad-bg);border-color:var(--bad)}
+.qrow.done{cursor:default}
+.qwrap{overflow-x:auto}
+.qhead td{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;padding:0 10px;font-family:system-ui,sans-serif}
+.problem{font-family:var(--mono);font-size:clamp(18px,4.6vw,26px);font-weight:700;margin:6px 0 2px;word-break:break-word}
+.problem small{display:block;font-size:14px;font-weight:400;color:var(--muted);margin-top:4px;font-family:system-ui,sans-serif}
+
+/* laboratorio */
+.tester{display:grid;grid-template-columns:110px 1fr 1fr 110px;gap:10px;margin:12px 0}
+.tester label span{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:4px}
+
+.ports{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px;font-family:var(--mono);font-size:13px;margin-top:10px}
+.ports div{background:var(--panel2);border-radius:8px;padding:6px 8px}
+.steps{margin:6px 0 0;padding-left:20px;font-size:15px}
+.steps li{margin-bottom:4px}
+
+@media (max-width:720px){
+  .netmap{grid-template-columns:1fr}
+  .fwbox{flex-direction:row;justify-content:center;gap:10px}
+  .fwbox .arr{transform:rotate(90deg)}
+  .rhead{display:none}
+  .rgrid{grid-template-columns:1fr 1fr}
+  .rule{padding:12px 0}
+  .rule .rn{grid-column:1;text-align:left;padding-top:4px}
+  .rctl{grid-column:2;justify-content:flex-end;grid-row:1}
+  .rule .f span{display:block}
+  .rule .f-src,.rule .f-dst{grid-column:span 1}
+  .rule .f-port{grid-column:1 / -1}
+  .rerr,.rhits{grid-column:1 / -1}
+  .tester{grid-template-columns:1fr 1fr}
+}
+@media (prefers-reduced-motion:reduce){
+  .track .dot{transition:none}
+  .pop,.shake,.track .dot.block,.rule.flash{animation:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a href="../../index.html" style="display:inline-block;margin:0 0 10px;font-size:14px;color:var(--muted);text-decoration:none">&larr; Volver al portafolio</a>
+  <header>
+    <div class="brand"><span class="logo">ACL</span> Arma tu Firewall</div>
+    <div style="display:flex;gap:8px">
+      <button class="iconbtn hidden" id="btnMenu" type="button">Menú</button>
+      <button class="iconbtn" id="btnTheme" type="button" aria-label="Cambiar tema">Tema</button>
+    </div>
+  </header>
+
+  <!-- MENÚ -->
+  <section id="scrMenu">
+    <div class="card">
+      <h1>Construye el firewall de Café Andino</h1>
+      <p class="muted">Café Andino es una cadena inventada que acaba de montar su red. Tú eres quien escribe las reglas del firewall: decides qué tráfico pasa y cuál se bloquea. Cada misión trae pruebas visibles y otras ocultas que corren cuando despliegas, así que piensa en la regla general y no solo en los paquetes que ves.</p>
+      <div class="levels">
+        <button class="level" type="button" id="goQuiz">
+          <div class="num">MODO RÁPIDO</div>
+          <div class="name">¿Qué regla decide?</div>
+          <div class="desc">Te muestro un set de reglas y un paquete. Toca la regla que lo decide. 10 rondas, 3 vidas.</div>
+          <div class="best" id="quizBest"></div>
+        </button>
+        <button class="level" type="button" id="goLab">
+          <div class="num">SIN PUNTAJE</div>
+          <div class="name">Laboratorio libre</div>
+          <div class="desc">Arma cualquier conjunto de reglas, prueba paquetes a mano y expórtalo como iptables o ACL de Cisco.</div>
+        </button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Misiones <span class="muted small" id="starTotal"></span></h2>
+      <p class="muted small">Supera una misión para desbloquear la siguiente. Las estrellas: ★ por cumplirla, ★ por no pasarte del número ideal de reglas, ★ por acertar en el primer despliegue sin mirar la solución.</p>
+      <div class="levels" id="missions"></div>
+    </div>
+    <div class="card">
+      <h2>Chuleta rápida</h2>
+      <details>
+        <summary>¿Cómo decide un firewall?</summary>
+        <ol class="steps">
+          <li>Las reglas se leen <b>de arriba hacia abajo</b>. Gana la <b>primera que coincide</b> y las de abajo ya no se revisan.</li>
+          <li>Una regla coincide solo si calzan <b>todos</b> sus campos: protocolo, origen, destino y puerto. <code>any</code> calza con todo.</li>
+          <li>Si ninguna regla coincide, se aplica la <b>política por defecto</b>.</li>
+          <li>Buena práctica: política <b>BLOQUEAR</b> (lista blanca) y abrir solo lo necesario. Es el principio de mínimo privilegio.</li>
+          <li>Pon lo <b>específico arriba</b> y lo general abajo. Una regla que nunca recibe paquetes porque otra de arriba ya los atrapa está <b>sombreada</b>.</li>
+          <li>Origen y destino aceptan una IP (<code>10.0.0.10</code>) o una red en CIDR (<code>10.0.0.0/24</code>). El puerto acepta uno (<code>22</code>), varios (<code>80,443</code>) o un rango (<code>8000-8100</code>).</li>
+        </ol>
+      </details>
+      <details>
+        <summary>Puertos que vas a usar</summary>
+        <div class="ports">
+          <div>22 · SSH</div><div>23 · Telnet</div><div>25 · SMTP</div><div>53 · DNS (UDP y TCP)</div>
+          <div>80 · HTTP</div><div>110 · POP3</div><div>443 · HTTPS</div><div>993 · IMAPS</div>
+          <div>3306 · MySQL</div><div>3389 · RDP</div><div>5432 · PostgreSQL</div><div>ICMP · ping (sin puerto)</div>
+        </div>
+      </details>
+      <details>
+        <summary>En el mundo real</summary>
+        <ol class="steps">
+          <li>En Linux, <code>iptables -P FORWARD DROP</code> fija la política y <code>iptables -A FORWARD … -j ACCEPT</code> agrega reglas al final, en orden.</li>
+          <li>En Cisco, una ACL extendida termina con un <code>deny ip any any</code> <b>implícito</b>, aunque no lo escribas. Usa <b>wildcard</b> en vez de máscara: /24 se escribe <code>0.0.0.255</code>.</li>
+          <li>Los firewalls reales tienen <b>estado</b>: con <code>-m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT</code> dejan volver las respuestas. Aquí evaluamos solo el primer paquete de cada conexión.</li>
+        </ol>
+      </details>
+    </div>
+  </section>
+
+  <!-- MISIÓN -->
+  <section id="scrMission" class="hidden">
+    <div class="hud">
+      <span class="pill" id="mHudName"></span>
+      <span class="pill" id="mHudRules"></span>
+      <span class="pill">Despliegues fallidos <b id="mHudFails">0</b></span>
+    </div>
+    <div class="card">
+      <div class="tag" id="mTag"></div>
+      <h1 id="mTitle"></h1>
+      <p id="mBrief"></p>
+      <h3 style="margin-top:12px">Objetivos</h3>
+      <ul class="goals" id="mGoals"></ul>
+      <div class="hint" id="mTip"></div>
+      <details id="mapBox">
+        <summary>Mapa de la red</summary>
+        <div class="netmap" id="netmap"></div>
+      </details>
+    </div>
+    <div class="card">
+      <h2>Reglas del firewall</h2>
+      <div id="mEditor"></div>
+      <div class="actions" style="margin-top:12px">
+        <button class="btn sm" type="button" id="btnReset">Reiniciar misión</button>
+        <button class="btn sm hidden" type="button" id="btnSolution">Ver solución</button>
+      </div>
+      <div class="hint hidden" id="solutionBox"></div>
+    </div>
+    <div class="card" id="testCard">
+      <h2>Tráfico de prueba</h2>
+      <p class="muted small">Prueba cuantas veces quieras con los paquetes visibles. Cuando estés seguro, despliega: ahí también corren las pruebas ocultas y un fallo cuenta.</p>
+      <div class="actions">
+        <button class="btn" type="button" id="btnTest">Probar</button>
+        <button class="btn primary" type="button" id="btnDeploy">Desplegar</button>
+      </div>
+      <div class="feedback hidden" id="mFeedback"></div>
+      <ul class="pkts" id="mPkts"></ul>
+    </div>
+  </section>
+
+  <!-- QUIZ -->
+  <section id="scrQuiz" class="hidden">
+    <div class="hud">
+      <span class="pill">Ronda <b id="qHudRound"></b></span>
+      <span class="pill">Puntos <b id="qHudScore">0</b></span>
+      <span class="pill">Racha <b id="qHudStreak">0</b></span>
+      <span class="pill" id="qHudLives"></span>
+    </div>
+    <div class="card" id="qCard">
+      <div class="muted small">Llega este paquete al firewall:</div>
+      <div class="problem" id="qPkt"></div>
+      <p class="muted small" style="margin-top:12px">Toca la regla que decide qué le pasa. Si ninguna coincide, toca la política por defecto.</p>
+      <div class="qwrap"><table class="qtable" id="qTable"></table></div>
+      <div class="feedback hidden" id="qFeedback"></div>
+      <ol class="trace hidden" id="qTrace"></ol>
+      <div class="actions" style="margin-top:14px">
+        <button class="btn primary hidden" type="button" id="qNext">Siguiente →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- LABORATORIO -->
+  <section id="scrLab" class="hidden">
+    <div class="card">
+      <h1>Laboratorio libre</h1>
+      <p class="muted">Tus reglas se guardan en este navegador. Usa la red de Café Andino o inventa la tuya.</p>
+      <details>
+        <summary>Mapa de la red de Café Andino</summary>
+        <div class="netmap" id="netmap2"></div>
+      </details>
+    </div>
+    <div class="card">
+      <h2>Reglas</h2>
+      <div id="lEditor"></div>
+      <div class="actions" style="margin-top:12px">
+        <button class="btn sm" type="button" id="lExample">Cargar ejemplo</button>
+        <button class="btn sm" type="button" id="lClear">Borrar todo</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Probar un paquete</h2>
+      <div class="tester" id="lForm">
+        <label><span>Protocolo</span><select id="lProto"><option>TCP</option><option>UDP</option><option>ICMP</option></select></label>
+        <label><span>IP origen</span><input id="lSrc" value="181.43.12.7" spellcheck="false"></label>
+        <label><span>IP destino</span><input id="lDst" value="10.0.0.10" spellcheck="false"></label>
+        <label><span>Puerto destino</span><input id="lPort" value="443" inputmode="numeric"></label>
+      </div>
+      <div class="actions">
+        <button class="btn primary" type="button" id="lGo">Probar paquete</button>
+        <button class="btn" type="button" id="lRandom">Paquete al azar</button>
+      </div>
+      <ul class="pkts" id="lOut"></ul>
+    </div>
+  </section>
+
+  <!-- RESULTADO -->
+  <section id="scrResult" class="hidden">
+    <div class="card" style="text-align:center">
+      <h1 id="resTitle"></h1>
+      <div class="stars" id="resStars"></div>
+      <div class="big" id="resScore"></div>
+      <p class="muted" id="resDetail"></p>
+      <p id="resUnlock" style="font-weight:600"></p>
+      <div class="actions" style="justify-content:center;margin-top:14px">
+        <button class="btn" id="btnRetry" type="button">Repetir</button>
+        <button class="btn" id="btnBack" type="button">Volver al menú</button>
+        <button class="btn primary" id="btnNextMission" type="button">Siguiente misión →</button>
+      </div>
+    </div>
+  </section>
+
+  <footer>Hecho para estudiar redes y ciberseguridad · Café Andino es inventado · todo corre en tu navegador</footer>
+</div>
+
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+const fmt = n => n.toLocaleString('es-CL');
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- progreso guardado ---------- */
+const KEY = 'arma-tu-firewall-v1';
+let save = { unlocked: 1, stars: {}, quizBest: 0, lab: null };
+try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.unlocked) save = Object.assign(save, s); } catch (e) {}
+const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) {} };
+
+/* ---------- tema ---------- */
+const root = document.documentElement;
+try { const t = localStorage.getItem(KEY + '-theme'); if (t) root.dataset.theme = t; } catch (e) {}
+$('btnTheme').onclick = () => {
+  const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  root.dataset.theme = dark ? 'light' : 'dark';
+  try { localStorage.setItem(KEY + '-theme', root.dataset.theme); } catch (e) {}
+};
+
+/* ---------- utilidades IP / puertos ---------- */
+function ipToInt(s) {
+  const m = /^\s*(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\s*$/.exec(String(s));
+  if (!m) return null;
+  const o = m.slice(1).map(Number);
+  if (o.some(x => x > 255)) return null;
+  return ((o[0] << 24) >>> 0) + (o[1] << 16) + (o[2] << 8) + o[3];
+}
+const intToIp = n => [24, 16, 8, 0].map(s => (n >>> s) & 255).join('.');
+const maskOf = p => p === 0 ? 0 : (0xFFFFFFFF << (32 - p)) >>> 0;
+
+function parseAddr(s) {
+  s = String(s || '').trim().toLowerCase();
+  if (s === '' || s === 'any' || s === '*' || s === '0.0.0.0/0') return { any: true, text: 'any' };
+  const parts = s.split('/');
+  if (parts.length > 2) return null;
+  const n = ipToInt(parts[0]);
+  if (n === null) return null;
+  let p = 32;
+  if (parts.length === 2) { if (!/^\d{1,2}$/.test(parts[1])) return null; p = +parts[1]; if (p > 32) return null; }
+  if (p === 0) return { any: true, text: 'any' };
+  const mask = maskOf(p), net = (n & mask) >>> 0;
+  return { any: false, net, mask, p, text: p === 32 ? intToIp(net) : intToIp(net) + '/' + p, fixed: net !== n };
+}
+const inAddr = (a, ip) => a.any || ((ip & a.mask) >>> 0) === a.net;
+
+function parsePorts(s) {
+  s = String(s || '').trim().toLowerCase();
+  if (s === '' || s === 'any' || s === '*') return { any: true, text: 'any' };
+  const parts = s.split(',').map(x => x.trim()).filter(Boolean);
+  if (!parts.length || parts.length > 15) return null;
+  const list = [];
+  for (const x of parts) {
+    const m = /^(\d{1,5})(?:\s*[-:]\s*(\d{1,5}))?$/.exec(x);
+    if (!m) return null;
+    const a = +m[1], b = m[2] ? +m[2] : a;
+    if (a < 1 || b > 65535 || a > b) return null;
+    list.push([a, b]);
+  }
+  return { any: false, list, text: list.map(([a, b]) => a === b ? a : a + '-' + b).join(',') };
+}
+const hasPorts = proto => proto === 'TCP' || proto === 'UDP';
+
+function checkRule(r) {
+  const src = parseAddr(r.src), dst = parseAddr(r.dst);
+  const ports = hasPorts(r.proto) ? parsePorts(r.port) : { any: true, text: 'any' };
+  const err = [];
+  if (!src) err.push(['src', 'Origen no válido. Usa una IP (10.0.0.5), una red (10.0.0.0/24) o any.']);
+  if (!dst) err.push(['dst', 'Destino no válido. Usa una IP (10.0.0.5), una red (10.0.0.0/24) o any.']);
+  if (!ports) err.push(['port', 'Puerto no válido. Ejemplos: 22, 80,443 o 8000-8100 (de 1 a 65535).']);
+  const warn = [];
+  if (src && src.fixed) warn.push(`El origen se interpreta como la red ${src.text}.`);
+  if (dst && dst.fixed) warn.push(`El destino se interpreta como la red ${dst.text}.`);
+  return { src, dst, ports, err, warn, ok: !err.length };
+}
+
+const ACT = { ALLOW: 'PERMITIR', DENY: 'BLOQUEAR' };
+const VERD = { ALLOW: 'PASA', DENY: 'BLOQUEADO' };
+const PROTO_TXT = { ANY: 'cualquiera', TCP: 'TCP', UDP: 'UDP', ICMP: 'ICMP' };
+
+function mismatch(r, c, p) {
+  if (r.proto !== 'ANY' && r.proto !== p.proto) return `protocolo ${p.proto} ≠ ${r.proto}`;
+  if (!inAddr(c.src, p.src)) return `origen ${intToIp(p.src)} ${c.src.p === 32 ? '≠' : 'no está en'} ${c.src.text}`;
+  if (!inAddr(c.dst, p.dst)) return `destino ${intToIp(p.dst)} ${c.dst.p === 32 ? '≠' : 'no está en'} ${c.dst.text}`;
+  if (!c.ports.any && !c.ports.list.some(([a, b]) => p.port >= a && p.port <= b)) return `puerto ${p.port} no está en ${c.ports.text}`;
+  return null;
+}
+function evaluate(rules, policy, p) {
+  const trace = [];
+  for (let i = 0; i < rules.length; i++) {
+    const r = rules[i], why = mismatch(r, checkRule(r), p);
+    if (why) { trace.push({ i, ok: false, text: why }); continue; }
+    trace.push({ i, ok: true, text: `coincide en todo → ${ACT[r.action]}` });
+    return { verdict: r.action, by: i, trace };
+  }
+  return { verdict: policy, by: -1, trace };
+}
+function traceHtml(res, rules, policy) {
+  let h = res.trace.map(t => `<li${t.ok ? ' class="m"' : ''}>Regla ${t.i + 1}: ${esc(t.text)}</li>`).join('');
+  if (res.by === -1) h += `<li class="m">Ninguna regla coincidió → política por defecto: ${ACT[policy]}</li>`;
+  else if (res.by < rules.length - 1) h += `<li class="skip">Las reglas ${res.by + 2}${res.by + 2 < rules.length ? '–' + rules.length : ''} ya no se revisan.</li>`;
+  return h;
+}
+
+/* ---------- la red de Café Andino ---------- */
+const NAMES = {
+  '10.0.0.10': 'Servidor web', '10.0.0.25': 'Servidor de correo', '10.0.0.30': 'Base de datos', '10.0.0.53': 'Servidor DNS',
+  '192.168.10.5': 'PC del admin', '192.168.10.20': 'PC de desarrollo',
+  '203.0.113.66': 'Atacante', '181.43.12.7': 'Cliente', '190.98.4.20': 'Cliente', '1.1.1.1': 'DNS público', '151.101.1.69': 'Sitio externo'
+};
+const LAN = parseAddr('192.168.10.0/24'), DMZ = parseAddr('10.0.0.0/24');
+const zoneOf = ip => inAddr(LAN, ip) ? 'LAN' : inAddr(DMZ, ip) ? 'DMZ' : 'Internet';
+const ZICON = { LAN: '💻', DMZ: '🖥️', Internet: '🌐' };
+function where(ip) { const n = NAMES[intToIp(ip)]; return zoneOf(ip) + (n ? ` (${n})` : ''); }
+
+function netmapHtml() {
+  const li = (ip, n) => `<li><span>${ip}</span><span>${n}</span></li>`;
+  return `<div class="zone"><div class="zt">🌐 Internet</div><ul>
+      ${li('181.43.12.7', 'cliente')}${li('190.98.4.20', 'cliente')}${li('203.0.113.66', 'atacante')}${li('198.51.100.0/24', 'botnet')}${li('…', 'todo lo demás')}</ul></div>
+    <div class="fwbox"><span class="arr">⇄</span><span class="ico">🔥</span><span>Firewall</span><span class="arr">⇄</span></div>
+    <div class="zstack">
+      <div class="zone"><div class="zt">🖥️ DMZ <small>10.0.0.0/24</small></div><ul>
+        ${li('10.0.0.10', 'web')}${li('10.0.0.25', 'correo')}${li('10.0.0.30', 'base de datos')}${li('10.0.0.53', 'DNS')}</ul></div>
+      <div class="zone"><div class="zt">💻 LAN <small>192.168.10.0/24</small></div><ul>
+        ${li('192.168.10.5', 'PC admin')}${li('192.168.10.20', 'PC desarrollo')}${li('.2 – .254', 'otros PCs')}</ul></div>
+    </div>`;
+}
+$('netmap').innerHTML = netmapHtml();
+$('netmap2').innerHTML = netmapHtml();
+
+/* ---------- paquetes ---------- */
+function P(s) {
+  const m = /^(TCP|UDP|ICMP) (\S+) (\S+?)(?::(\d+))?$/.exec(s);
+  return { proto: m[1], src: ipToInt(m[2]), dst: ipToInt(m[3]), port: m[4] ? +m[4] : null };
+}
+const fmtPkt = p => `${p.proto} ${intToIp(p.src)} → ${intToIp(p.dst)}${p.port != null ? ':' + p.port : ''}`;
+const R = (action, proto, src, dst, port) => ({ action, proto, src, dst, port: port || '' });
+
+/* ---------- misiones ---------- */
+const WEB = () => R('ALLOW', 'TCP', 'any', '10.0.0.10', '80,443');
+const MISSIONS = [
+  { id: 1, title: 'Abre la tienda online', tag: 'Política por defecto',
+    brief: 'Café Andino estrena su tienda en el servidor web 10.0.0.10. El firewall viene con política por defecto BLOQUEAR, así que hoy nadie puede entrar.',
+    goals: ['Cualquiera en internet debe llegar al servidor web (10.0.0.10) por HTTP (TCP 80) y HTTPS (TCP 443).', 'Todo lo demás sigue bloqueado.'],
+    tip: 'Agrega una regla PERMITIR. Una sola regla puede llevar varios puertos si los separas con coma: <code>80,443</code>.',
+    policy: 'DENY', start: [], par: 1, solution: [WEB()],
+    tests: [
+      ['TCP 181.43.12.7 10.0.0.10:443', 'Un cliente abre la tienda por HTTPS', 'ALLOW'],
+      ['TCP 190.98.4.20 10.0.0.10:80', 'Otro cliente entra por HTTP', 'ALLOW'],
+      ['TCP 181.43.12.7 10.0.0.10:22', 'Alguien intenta SSH al servidor web', 'DENY'],
+      ['TCP 181.43.12.7 10.0.0.25:443', 'HTTPS hacia el servidor de correo', 'DENY'],
+      ['TCP 200.27.1.9 10.0.0.10:443', 'Cliente nuevo por HTTPS', 'ALLOW', 1],
+      ['TCP 200.27.1.9 10.0.0.10:8080', 'Puerto alternativo 8080', 'DENY', 1],
+      ['UDP 200.27.1.9 10.0.0.10:443', 'UDP al 443 (no era solo TCP)', 'DENY', 1],
+      ['ICMP 200.27.1.9 10.0.0.10', 'Ping al servidor web', 'DENY', 1],
+    ] },
+  { id: 2, title: 'Bloquea al atacante', tag: 'Reglas BLOQUEAR y any',
+    brief: 'Este firewall heredado tiene política PERMITIR y todavía no te dejan cambiarla. Los registros muestran que 203.0.113.66 está escaneando toda la red.',
+    goals: ['Bloquea todo el tráfico que venga de 203.0.113.66, sin importar protocolo, destino ni puerto.', 'El resto del tráfico tiene que seguir funcionando.'],
+    tip: 'Con protocolo <b>cualquiera</b> y destino <code>any</code>, la regla atrapa todo lo que salga de esa IP.',
+    policy: 'ALLOW', locked: true, start: [], par: 1, solution: [R('DENY', 'ANY', '203.0.113.66', 'any')],
+    tests: [
+      ['TCP 203.0.113.66 10.0.0.10:443', 'El atacante prueba la web', 'DENY'],
+      ['ICMP 203.0.113.66 10.0.0.25', 'Ping de reconocimiento', 'DENY'],
+      ['TCP 181.43.12.7 10.0.0.10:443', 'Un cliente normal compra café', 'ALLOW'],
+      ['UDP 203.0.113.66 10.0.0.53:53', 'El atacante consulta el DNS', 'DENY', 1],
+      ['TCP 203.0.113.66 192.168.10.5:3389', 'Intento de RDP al PC del admin', 'DENY', 1],
+      ['TCP 203.0.113.67 10.0.0.10:443', 'La IP vecina, que no es el atacante', 'ALLOW', 1],
+      ['UDP 190.98.4.20 10.0.0.53:53', 'Consulta DNS normal', 'ALLOW', 1],
+    ] },
+  { id: 3, title: 'El orden importa', tag: 'Primera coincidencia',
+    brief: 'Una botnet opera desde la red 198.51.100.0/24. Tu compañero ya agregó la regla para bloquearla, pero los ataques a la web siguen entrando. ¿Por qué?',
+    goals: ['La red 198.51.100.0/24 no puede llegar a nada, ni siquiera a la web.', 'El resto de internet sigue entrando a la web (TCP 80 y 443).'],
+    tip: 'Las reglas se leen de arriba hacia abajo y gana la primera que coincide. Usa las flechas ↑ ↓ para reordenar.',
+    policy: 'DENY', start: [WEB(), R('DENY', 'ANY', '198.51.100.0/24', 'any')], par: 2,
+    solution: [R('DENY', 'ANY', '198.51.100.0/24', 'any'), WEB()],
+    tests: [
+      ['TCP 198.51.100.7 10.0.0.10:443', 'Bot atacando la web por HTTPS', 'DENY'],
+      ['TCP 198.51.100.200 10.0.0.10:80', 'Bot atacando la web por HTTP', 'DENY'],
+      ['TCP 181.43.12.7 10.0.0.10:443', 'Cliente normal', 'ALLOW'],
+      ['TCP 198.51.100.99 10.0.0.10:443', 'Otro bot de la misma red', 'DENY', 1],
+      ['TCP 198.51.101.5 10.0.0.10:443', 'Cliente de la red de al lado (198.51.101.x)', 'ALLOW', 1],
+      ['UDP 198.51.100.7 10.0.0.53:53', 'Bot consultando el DNS', 'DENY', 1],
+    ] },
+  { id: 4, title: 'SSH solo para el admin', tag: 'Filtrar por origen',
+    brief: 'Los servidores de la DMZ se administran por SSH. Hoy cualquiera podría intentarlo, y eso es una invitación a ataques de fuerza bruta.',
+    goals: ['Solo el PC del administrador (192.168.10.5) puede entrar por SSH (TCP 22) a cualquier servidor de la DMZ (10.0.0.0/24).', 'Nadie más, ni de la LAN ni de internet, puede usar SSH.', 'La web sigue abierta.'],
+    tip: 'Un destino con máscara, como <code>10.0.0.0/24</code>, cubre todos los servidores de la DMZ en una sola regla.',
+    policy: 'DENY', start: [WEB()], par: 2, solution: [WEB(), R('ALLOW', 'TCP', '192.168.10.5', '10.0.0.0/24', '22')],
+    tests: [
+      ['TCP 192.168.10.5 10.0.0.10:22', 'El admin entra al servidor web', 'ALLOW'],
+      ['TCP 192.168.10.5 10.0.0.25:22', 'El admin entra al servidor de correo', 'ALLOW'],
+      ['TCP 192.168.10.8 10.0.0.10:22', 'Otro PC de la oficina intenta SSH', 'DENY'],
+      ['TCP 181.43.12.7 10.0.0.10:22', 'Fuerza bruta desde internet', 'DENY'],
+      ['TCP 181.43.12.7 10.0.0.10:443', 'Cliente en la tienda', 'ALLOW'],
+      ['TCP 192.168.10.5 10.0.0.53:22', 'El admin entra al DNS', 'ALLOW', 1],
+      ['TCP 192.168.10.5 10.0.0.30:22', 'El admin entra a la base de datos', 'ALLOW', 1],
+      ['TCP 192.168.10.50 10.0.0.53:22', 'Un PC de la LAN intenta SSH al DNS', 'DENY', 1],
+      ['TCP 192.168.10.5 10.0.0.10:23', 'El admin intenta Telnet (inseguro)', 'DENY', 1],
+    ] },
+  { id: 5, title: 'Correo y DNS', tag: 'TCP vs UDP',
+    brief: 'Toca publicar el correo y el DNS de la empresa. Ojo: DNS usa UDP para las consultas normales y TCP para respuestas grandes.',
+    goals: ['Correo (10.0.0.25): SMTP (TCP 25) abierto para todo el mundo.', 'Correo (10.0.0.25): IMAPS (TCP 993) solo desde la LAN 192.168.10.0/24.', 'DNS (10.0.0.53): puerto 53 por UDP y por TCP, desde cualquier origen.', 'La web sigue abierta.'],
+    tip: 'Si una regla tiene protocolo <b>cualquiera</b>, no puede filtrar puertos. Para el DNS vas a necesitar una regla UDP y otra TCP.',
+    policy: 'DENY', start: [WEB()], par: 5,
+    solution: [WEB(), R('ALLOW', 'TCP', 'any', '10.0.0.25', '25'), R('ALLOW', 'TCP', '192.168.10.0/24', '10.0.0.25', '993'), R('ALLOW', 'UDP', 'any', '10.0.0.53', '53'), R('ALLOW', 'TCP', 'any', '10.0.0.53', '53')],
+    tests: [
+      ['TCP 190.98.4.20 10.0.0.25:25', 'Otro servidor nos envía un correo', 'ALLOW'],
+      ['TCP 192.168.10.33 10.0.0.25:993', 'Un empleado lee su correo', 'ALLOW'],
+      ['TCP 181.43.12.7 10.0.0.25:993', 'Alguien de internet intenta leer correo', 'DENY'],
+      ['UDP 181.43.12.7 10.0.0.53:53', 'Consulta DNS normal', 'ALLOW'],
+      ['TCP 181.43.12.7 10.0.0.53:53', 'Respuesta DNS grande por TCP', 'ALLOW'],
+      ['TCP 192.168.10.5 10.0.0.25:25', 'El admin envía un correo', 'ALLOW', 1],
+      ['UDP 181.43.12.7 10.0.0.25:25', 'UDP al puerto 25', 'DENY', 1],
+      ['TCP 181.43.12.7 10.0.0.25:110', 'POP3 sin cifrar', 'DENY', 1],
+      ['UDP 192.168.10.33 10.0.0.53:53', 'Consulta DNS desde la LAN', 'ALLOW', 1],
+      ['TCP 181.43.12.7 10.0.0.53:80', 'HTTP al servidor DNS', 'DENY', 1],
+      ['TCP 181.43.12.7 10.0.0.10:443', 'Cliente en la tienda', 'ALLOW', 1],
+    ] },
+  { id: 6, title: 'Ping, pero solo desde adentro', tag: 'ICMP y tráfico saliente',
+    brief: 'Los empleados necesitan diagnosticar la red con ping y navegar en internet. Pero no quieres que desde afuera mapeen tu red haciendo ping.',
+    goals: ['Los equipos de la LAN (192.168.10.0/24) pueden hacer ping (ICMP) a cualquier destino.', 'Nadie más puede hacer ping hacia la red.', 'La LAN puede navegar: TCP 80 y 443 hacia cualquier destino.', 'La web sigue abierta.'],
+    tip: 'ICMP no usa puertos. Piensa en el <b>origen</b>: ¿desde dónde se permite el ping?',
+    policy: 'DENY', start: [WEB()], par: 3,
+    solution: [WEB(), R('ALLOW', 'ICMP', '192.168.10.0/24', 'any'), R('ALLOW', 'TCP', '192.168.10.0/24', 'any', '80,443')],
+    tests: [
+      ['ICMP 192.168.10.5 10.0.0.10', 'El admin hace ping al servidor web', 'ALLOW'],
+      ['ICMP 192.168.10.40 1.1.1.1', 'Un empleado hace ping a internet', 'ALLOW'],
+      ['ICMP 181.43.12.7 10.0.0.10', 'Ping desde internet', 'DENY'],
+      ['TCP 192.168.10.40 151.101.1.69:443', 'Un empleado navega por HTTPS', 'ALLOW'],
+      ['TCP 181.43.12.7 10.0.0.10:443', 'Cliente en la tienda', 'ALLOW'],
+      ['ICMP 203.0.113.66 192.168.10.5', 'El atacante hace ping al PC del admin', 'DENY', 1],
+      ['TCP 192.168.10.40 151.101.1.69:80', 'Un empleado navega por HTTP', 'ALLOW', 1],
+      ['TCP 192.168.10.40 151.101.1.69:25', 'Un PC infectado manda spam', 'DENY', 1],
+      ['ICMP 10.0.0.25 192.168.10.5', 'El servidor de correo hace ping a la LAN', 'DENY', 1],
+    ] },
+  { id: 7, title: 'La excepción', tag: 'Específico antes que general',
+    brief: 'La base de datos 10.0.0.30 (PostgreSQL, TCP 5432) quedó expuesta. El firewall vuelve a tener política PERMITIR bloqueada, así que tienes que encerrar la base de datos con reglas.',
+    goals: ['Solo el servidor web (10.0.0.10) y el PC de desarrollo (192.168.10.20) pueden conectarse a 10.0.0.30 por TCP 5432.', 'Cualquier otro tráfico hacia 10.0.0.30 se bloquea, venga de donde venga.', 'No toques lo demás: el resto del tráfico sigue pasando.'],
+    tip: 'Con política PERMITIR, lo que no bloquees pasa. Pon primero las excepciones y después la regla que cierra todo lo demás.',
+    policy: 'ALLOW', locked: true, start: [], par: 3,
+    solution: [R('ALLOW', 'TCP', '10.0.0.10', '10.0.0.30', '5432'), R('ALLOW', 'TCP', '192.168.10.20', '10.0.0.30', '5432'), R('DENY', 'ANY', 'any', '10.0.0.30')],
+    tests: [
+      ['TCP 10.0.0.10 10.0.0.30:5432', 'La tienda consulta la base de datos', 'ALLOW'],
+      ['TCP 192.168.10.20 10.0.0.30:5432', 'El desarrollador revisa datos', 'ALLOW'],
+      ['TCP 192.168.10.21 10.0.0.30:5432', 'Otro PC de la oficina', 'DENY'],
+      ['TCP 181.43.12.7 10.0.0.30:5432', 'Alguien de internet busca bases de datos expuestas', 'DENY'],
+      ['TCP 181.43.12.7 10.0.0.10:443', 'Cliente en la tienda', 'ALLOW'],
+      ['TCP 192.168.10.20 10.0.0.30:22', 'El desarrollador intenta SSH a la base', 'DENY', 1],
+      ['ICMP 181.43.12.7 10.0.0.30', 'Ping a la base de datos', 'DENY', 1],
+      ['TCP 10.0.0.25 10.0.0.30:5432', 'El servidor de correo intenta conectarse', 'DENY', 1],
+      ['UDP 190.98.4.20 10.0.0.53:53', 'Consulta DNS normal', 'ALLOW', 1],
+    ] },
+  { id: 8, title: 'Auditoría final', tag: 'Reglas sombreadas',
+    brief: 'Heredaste este firewall de alguien que ya no está en la empresa. Funciona “más o menos”, pero tiene errores de orden, permisos de más y una regla temporal que nunca se borró.',
+    goals: ['La red 203.0.113.0/24 está en lista negra: no llega a nada.', 'Web abierta (TCP 80 y 443) para el resto de internet.', 'SSH (TCP 22) a la DMZ solo desde el admin 192.168.10.5.', 'DNS por UDP 53 abierto para todos (menos la lista negra).', 'Todo lo demás, bloqueado.'],
+    tip: 'Prueba primero y mira el contador de paquetes de cada regla: una regla con 0 paquetes puede estar sombreada por otra.',
+    policy: 'DENY', par: 4,
+    start: [WEB(), R('ALLOW', 'TCP', 'any', '10.0.0.0/24', '22'), R('DENY', 'ANY', '203.0.113.0/24', 'any'), R('ALLOW', 'UDP', 'any', '10.0.0.53', '53'), R('ALLOW', 'ANY', 'any', 'any')],
+    solution: [R('DENY', 'ANY', '203.0.113.0/24', 'any'), WEB(), R('ALLOW', 'TCP', '192.168.10.5', '10.0.0.0/24', '22'), R('ALLOW', 'UDP', 'any', '10.0.0.53', '53')],
+    tests: [
+      ['TCP 203.0.113.10 10.0.0.10:443', 'Lista negra intentando entrar a la web', 'DENY'],
+      ['TCP 181.43.12.7 10.0.0.10:22', 'SSH desde internet', 'DENY'],
+      ['TCP 192.168.10.5 10.0.0.25:22', 'El admin entra al correo', 'ALLOW'],
+      ['TCP 181.43.12.7 10.0.0.30:5432', 'Alguien busca la base de datos', 'DENY'],
+      ['UDP 190.98.4.20 10.0.0.53:53', 'Consulta DNS normal', 'ALLOW'],
+      ['UDP 203.0.113.10 10.0.0.53:53', 'Lista negra consultando el DNS', 'DENY', 1],
+      ['TCP 192.168.10.8 10.0.0.10:22', 'Otro PC de la LAN intenta SSH', 'DENY', 1],
+      ['TCP 181.43.12.7 10.0.0.10:80', 'Cliente por HTTP', 'ALLOW', 1],
+      ['TCP 181.43.12.7 10.0.0.53:53', 'DNS por TCP (no se pidió)', 'DENY', 1],
+      ['ICMP 181.43.12.7 10.0.0.10', 'Ping desde internet', 'DENY', 1],
+    ] },
+];
+MISSIONS.forEach(m => { m.tests = m.tests.map(([p, d, exp, hidden]) => ({ p: P(p), d, exp, hidden: !!hidden })); });
+
+/* ---------- editor de reglas (se usa en misiones y laboratorio) ---------- */
+function makeEditor(host, onChange) {
+  const ed = { rules: [], policy: 'DENY', locked: false, hits: null, phits: null, view: 'ipt' };
+  host.innerHTML = `
+    <div class="policy">
+      <b>Política por defecto</b>
+      <div class="seg"><button type="button" data-p="ALLOW">PERMITIR</button><button type="button" data-p="DENY">BLOQUEAR</button></div>
+      <span class="lock"></span><span class="phits"></span>
+    </div>
+    <div class="rgrid rhead"><span>#</span><span>Acción</span><span>Protocolo</span><span>Origen</span><span>Destino</span><span>Puerto destino</span><span></span></div>
+    <ol class="rules"></ol>
+    <div class="empty">Todavía no hay reglas: todo el tráfico cae en la política por defecto.</div>
+    <div class="actions" style="margin-top:10px"><button class="btn sm" type="button" data-add>+ Agregar regla</button></div>
+    <details class="export"><summary>Ver como iptables o ACL de Cisco</summary>
+      <div class="tabs"><button type="button" data-v="ipt">iptables</button><button type="button" data-v="cisco">Cisco IOS</button></div>
+      <pre></pre></details>`;
+  const q = s => host.querySelector(s);
+  const list = q('.rules');
+
+  function rowHtml(r, i) {
+    const o = (v, t, cur) => `<option value="${v}"${v === cur ? ' selected' : ''}>${t}</option>`;
+    return `<li class="rule rgrid" data-i="${i}">
+      <span class="rn">${i + 1}</span>
+      <label class="f"><span>Acción</span><select data-k="action" class="act-${r.action}">${o('ALLOW', 'PERMITIR', r.action)}${o('DENY', 'BLOQUEAR', r.action)}</select></label>
+      <label class="f"><span>Protocolo</span><select data-k="proto">${o('ANY', 'cualquiera', r.proto)}${o('TCP', 'TCP', r.proto)}${o('UDP', 'UDP', r.proto)}${o('ICMP', 'ICMP', r.proto)}</select></label>
+      <label class="f f-src"><span>Origen</span><input data-k="src" value="${esc(r.src)}" placeholder="any" spellcheck="false" autocomplete="off"></label>
+      <label class="f f-dst"><span>Destino</span><input data-k="dst" value="${esc(r.dst)}" placeholder="any" spellcheck="false" autocomplete="off"></label>
+      <label class="f f-port"><span>Puerto destino</span><input data-k="port" value="${esc(hasPorts(r.proto) ? r.port : '')}" placeholder="${hasPorts(r.proto) ? 'any' : '—'}"${hasPorts(r.proto) ? '' : ' disabled'} spellcheck="false" autocomplete="off"></label>
+      <div class="rctl">
+        <button type="button" data-m="up" aria-label="Subir regla ${i + 1}"${i === 0 ? ' disabled' : ''}>↑</button>
+        <button type="button" data-m="down" aria-label="Bajar regla ${i + 1}"${i === ed.rules.length - 1 ? ' disabled' : ''}>↓</button>
+        <button type="button" data-m="del" aria-label="Borrar regla ${i + 1}">✕</button>
+      </div>
+      <div class="rerr"></div>
+      <div class="rhits"></div>
+    </li>`;
+  }
+  function validateRow(li) {
+    const r = ed.rules[+li.dataset.i], c = checkRule(r);
+    li.querySelectorAll('input').forEach(inp => inp.classList.toggle('bad', c.err.some(e => e[0] === inp.dataset.k)));
+    li.querySelector('.rerr').textContent = c.err.map(e => e[1]).concat(c.warn).join(' ');
+    li.querySelector('.rerr').style.color = c.err.length ? '' : 'var(--muted)';
+  }
+  function paintHits() {
+    list.querySelectorAll('.rule').forEach(li => {
+      const el = li.querySelector('.rhits'), i = +li.dataset.i;
+      if (!ed.hits) { el.textContent = ''; el.className = 'rhits'; return; }
+      const n = ed.hits[i] || 0;
+      el.textContent = n ? `✓ ${n} paquete${n > 1 ? 's' : ''} decidido${n > 1 ? 's' : ''} por esta regla` : '· 0 paquetes: ninguna prueba llegó a esta regla';
+      el.className = 'rhits' + (n ? ' used' : '');
+    });
+    q('.phits').textContent = ed.hits ? `· ${ed.phits} paquete${ed.phits === 1 ? '' : 's'} cayeron aquí` : '';
+  }
+  function paintExport() {
+    q('.tabs').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === ed.view));
+    q('.export pre').textContent = ed.view === 'ipt' ? toIptables(ed.rules, ed.policy) : toCisco(ed.rules, ed.policy);
+  }
+  function paintPolicy() {
+    q('.seg').querySelectorAll('button').forEach(b => { b.classList.toggle('on', b.dataset.p === ed.policy); b.disabled = ed.locked; });
+    q('.lock').textContent = ed.locked ? '🔒 fija en esta misión' : '';
+  }
+  function render(flashIdx) {
+    list.innerHTML = ed.rules.map(rowHtml).join('');
+    list.querySelectorAll('.rule').forEach(validateRow);
+    q('.empty').classList.toggle('hidden', ed.rules.length > 0);
+    q('.rhead').classList.toggle('hidden', ed.rules.length === 0);
+    if (flashIdx != null && list.children[flashIdx]) {
+      const li = list.children[flashIdx];
+      li.classList.add('flash');
+      return li;
+    }
+    paintPolicy(); paintHits(); paintExport();
+  }
+  function changed(structural, flashIdx) {
+    ed.hits = null;
+    if (structural) { const li = render(flashIdx); paintPolicy(); paintHits(); paintExport(); return li; }
+    paintHits(); paintExport();
+    onChange && onChange();
+  }
+
+  list.addEventListener('input', e => {
+    const k = e.target.dataset.k; if (!k) return;
+    const li = e.target.closest('.rule'), r = ed.rules[+li.dataset.i];
+    if (e.target.tagName === 'INPUT') { r[k] = e.target.value; validateRow(li); changed(false); }
+  });
+  list.addEventListener('change', e => {
+    const k = e.target.dataset.k; if (!k || e.target.tagName !== 'SELECT') return;
+    const li = e.target.closest('.rule'), i = +li.dataset.i, r = ed.rules[i];
+    r[k] = e.target.value;
+    if (k === 'action') { e.target.className = 'act-' + r.action; changed(false); return; }
+    if (!hasPorts(r.proto)) r.port = '';
+    changed(true);
+    onChange && onChange();
+    list.children[i].querySelector('[data-k="proto"]').focus();
+  });
+  list.addEventListener('click', e => {
+    const b = e.target.closest('button[data-m]'); if (!b) return;
+    const i = +b.closest('.rule').dataset.i, m = b.dataset.m;
+    let j = null;
+    if (m === 'del') ed.rules.splice(i, 1);
+    else {
+      j = m === 'up' ? i - 1 : i + 1;
+      if (j < 0 || j >= ed.rules.length) return;
+      [ed.rules[i], ed.rules[j]] = [ed.rules[j], ed.rules[i]];
+    }
+    const li = changed(true, j);
+    onChange && onChange();
+    if (li) li.querySelector(`[data-m="${m}"]:not(:disabled)`)?.focus();
+  });
+  q('[data-add]').onclick = () => {
+    ed.rules.push(R('ALLOW', 'TCP', 'any', 'any', ''));
+    const li = changed(true, ed.rules.length - 1);
+    onChange && onChange();
+    li && li.querySelector('[data-k="src"]').focus();
+  };
+  q('.seg').addEventListener('click', e => {
+    const b = e.target.closest('button[data-p]'); if (!b || ed.locked) return;
+    ed.policy = b.dataset.p; paintPolicy(); changed(false);
+  });
+  q('.tabs').addEventListener('click', e => {
+    const b = e.target.closest('button[data-v]'); if (!b) return;
+    ed.view = b.dataset.v; paintExport();
+  });
+
+  ed.load = (rules, policy, locked) => {
+    ed.rules = rules.map(r => Object.assign({}, r));
+    ed.policy = policy; ed.locked = !!locked; ed.hits = null;
+    render(); paintPolicy(); paintHits(); paintExport();
+  };
+  ed.valid = () => ed.rules.every(r => checkRule(r).ok);
+  ed.setHits = results => {
+    ed.hits = ed.rules.map(() => 0); ed.phits = 0;
+    results.forEach(res => { if (res.by === -1) ed.phits++; else ed.hits[res.by]++; });
+    paintHits();
+  };
+  ed.focusFirstError = () => {
+    const bad = list.querySelector('input.bad');
+    if (bad) { bad.focus(); bad.closest('.rule').classList.add('flash'); }
+  };
+  return ed;
+}
+
+/* ---------- exportar ---------- */
+const portTxt = ([a, b], sep) => a === b ? String(a) : a + sep + b;
+function toIptables(rules, policy) {
+  const out = ['# Cadena FORWARD: tráfico que atraviesa el firewall', 'iptables -F FORWARD', `iptables -P FORWARD ${policy === 'ALLOW' ? 'ACCEPT' : 'DROP'}`];
+  rules.forEach((r, i) => {
+    const c = checkRule(r);
+    if (!c.ok) { out.push(`# regla ${i + 1}: tiene errores, corrígela primero`); return; }
+    const p = ['iptables -A FORWARD'];
+    if (r.proto !== 'ANY') p.push('-p ' + r.proto.toLowerCase());
+    if (!c.src.any) p.push('-s ' + c.src.text);
+    if (!c.dst.any) p.push('-d ' + c.dst.text);
+    if (!c.ports.any) {
+      if (c.ports.list.length === 1) p.push('--dport ' + portTxt(c.ports.list[0], ':'));
+      else p.push('-m multiport --dports ' + c.ports.list.map(x => portTxt(x, ':')).join(','));
+    }
+    p.push('-j ' + (r.action === 'ALLOW' ? 'ACCEPT' : 'DROP'));
+    out.push(p.join(' '));
+  });
+  return out.join('\n');
+}
+function ciscoAddr(a) {
+  if (a.any) return 'any';
+  if (a.p === 32) return 'host ' + intToIp(a.net);
+  return intToIp(a.net) + ' ' + intToIp((~a.mask) >>> 0);
+}
+function toCisco(rules, policy) {
+  const out = ['ip access-list extended FIREWALL'];
+  rules.forEach((r, i) => {
+    const c = checkRule(r);
+    if (!c.ok) { out.push(` remark regla ${i + 1}: tiene errores`); return; }
+    const head = ` ${r.action === 'ALLOW' ? 'permit' : 'deny  '} ${r.proto === 'ANY' ? 'ip' : r.proto.toLowerCase()} ${ciscoAddr(c.src)} ${ciscoAddr(c.dst)}`;
+    if (c.ports.any) out.push(head);
+    else c.ports.list.forEach(([a, b]) => out.push(head + (a === b ? ` eq ${a}` : ` range ${a} ${b}`)));
+  });
+  if (policy === 'ALLOW') { out.push(' remark política por defecto: PERMITIR'); out.push(' permit ip any any'); }
+  else { out.push(' remark política por defecto: BLOQUEAR (en Cisco ya es implícita)'); out.push(' deny   ip any any'); }
+  out.push('!', '! Aplícala en la interfaz que corresponda:', '! interface GigabitEthernet0/0', '!  ip access-group FIREWALL in');
+  return out.join('\n');
+}
+
+/* ---------- lista de paquetes animada ---------- */
+let animRun = 0;
+function pktHtml(t, res, rules, policy) {
+  const p = t.p, za = zoneOf(p.src), zb = zoneOf(p.dst);
+  let chip = '', why = '', cls = '';
+  if (t.exp && !res) chip = `<span class="chip ${t.exp === 'ALLOW' ? 'allow' : 'deny'}">Debe: ${VERD[t.exp]}</span>`;
+  if (res) {
+    const by = res.by === -1 ? 'política por defecto' : `regla ${res.by + 1}`;
+    if (t.exp) {
+      const ok = res.verdict === t.exp;
+      cls = ok ? 'okr' : 'badr';
+      chip = `<span class="chip ${ok ? 'allow' : 'deny'}">${ok ? '✓' : '✗'} ${VERD[res.verdict]} · ${by}</span>`;
+      if (!ok) why = `<div class="pwhy deny">Debía ${t.exp === 'ALLOW' ? 'pasar' : 'quedar bloqueado'}, pero lo decidió la ${by}.</div>`;
+    } else {
+      chip = `<span class="chip ${res.verdict === 'ALLOW' ? 'allow' : 'deny'}">${VERD[res.verdict]} · ${by}</span>`;
+    }
+  }
+  return `<li class="pkt ${cls}">
+    <div class="ptop"><span class="pdesc">${t.hidden ? '<span class="ht">oculta</span>' : ''}${esc(t.d)}</span>${chip}</div>
+    <div class="pline">${esc(fmtPkt(p))}<small>${esc(where(p.src))} → ${esc(where(p.dst))}</small></div>
+    <div class="lane"><span class="end">${ZICON[za]}</span><span class="track"><span class="fw">🔥</span><span class="dot"></span></span><span class="end">${ZICON[zb]}</span></div>
+    ${why}
+    ${res ? `<details${t.exp && res.verdict !== t.exp ? ' open' : ''}><summary class="small">Recorrido por las reglas</summary><ol class="trace">${traceHtml(res, rules, policy)}</ol></details>` : ''}
+  </li>`;
+}
+function showPackets(ul, items, rules, policy, animate) {
+  const run = ++animRun;
+  ul.innerHTML = items.map(it => pktHtml(it.t, it.res, rules, policy)).join('');
+  if (!items.some(it => it.res)) return;
+  [...ul.children].forEach((li, i) => {
+    const dot = li.querySelector('.dot'), res = items[i].res, track = li.querySelector('.track');
+    const end = () => {
+      if (run !== animRun) return;
+      dot.classList.remove('mid');
+      if (res.verdict === 'ALLOW') dot.classList.add('pass');
+      else { dot.classList.add('mid', 'block'); track.insertAdjacentHTML('beforeend', '<span class="x">✕</span>'); }
+    };
+    if (!animate || reduced) { end(); return; }
+    setTimeout(() => { if (run === animRun) dot.classList.add('mid'); }, 60 + i * 160);
+    setTimeout(end, 420 + i * 160);
+  });
+}
+
+/* ---------- pantallas ---------- */
+const SCREENS = ['scrMenu', 'scrMission', 'scrQuiz', 'scrLab', 'scrResult'];
+function show(id) {
+  SCREENS.forEach(s => $(s).classList.toggle('hidden', s !== id));
+  $('btnMenu').classList.toggle('hidden', id === 'scrMenu');
+  window.scrollTo(0, 0);
+}
+$('btnMenu').onclick = () => { animRun++; renderMenu(); show('scrMenu'); };
+
+function renderMenu() {
+  const total = MISSIONS.reduce((a, m) => a + (save.stars[m.id] || 0), 0);
+  $('starTotal').textContent = `· ★ ${total}/${MISSIONS.length * 3}`;
+  $('missions').innerHTML = MISSIONS.map(m => {
+    const locked = m.id > save.unlocked, st = save.stars[m.id] || 0;
+    return `<button class="level" type="button" data-m="${m.id}"${locked ? ' disabled' : ''}>
+      <div class="num">MISIÓN ${m.id} · ${esc(m.tag.toUpperCase())}</div>
+      <div class="name">${locked ? '🔒 ' : ''}${esc(m.title)}</div>
+      <div class="desc">${esc(m.goals[0])}</div>
+      <div class="best">${st ? '★'.repeat(st) + '☆'.repeat(3 - st) : locked ? 'bloqueada' : 'sin jugar'}</div>
+    </button>`;
+  }).join('');
+  $('quizBest').textContent = save.quizBest ? `récord ${fmt(save.quizBest)} pts` : 'sin récord todavía';
+}
+$('missions').addEventListener('click', e => {
+  const b = e.target.closest('button[data-m]'); if (b && !b.disabled) startMission(MISSIONS[+b.dataset.m - 1]);
+});
+
+/* ---------- modo misión ---------- */
+let M = null;
+const mEd = makeEditor($('mEditor'), () => onMissionEdit());
+
+function startMission(m) {
+  animRun++;
+  M = { m, fails: 0, solution: false, results: null };
+  $('mHudName').textContent = `Misión ${m.id}/${MISSIONS.length}`;
+  $('mTag').textContent = m.tag;
+  $('mTitle').textContent = m.title;
+  $('mBrief').textContent = m.brief;
+  $('mGoals').innerHTML = m.goals.map(g => `<li>${esc(g)}</li>`).join('');
+  $('mTip').innerHTML = '💡 ' + m.tip;
+  $('mapBox').open = m.id <= 2;
+  $('solutionBox').classList.add('hidden');
+  $('btnSolution').classList.add('hidden');
+  mEd.load(m.start, m.policy, m.locked);
+  $('mFeedback').classList.add('hidden');
+  showPackets($('mPkts'), m.tests.filter(t => !t.hidden).map(t => ({ t })), mEd.rules, mEd.policy, false);
+  updateMissionHud();
+  show('scrMission');
+}
+function updateMissionHud() {
+  const n = mEd.rules.length, par = M.m.par;
+  $('mHudRules').innerHTML = `Reglas <b>${n}</b> / ideal ${par}`;
+  $('mHudRules').classList.toggle('over', n > par);
+  $('mHudFails').textContent = M.fails;
+  $('btnSolution').classList.toggle('hidden', M.fails < 2);
+}
+function onMissionEdit() {
+  updateMissionHud();
+  if (M.results) { $('mPkts').querySelectorAll('.pkt').forEach(li => li.classList.add('stale')); }
+  const fb = $('mFeedback');
+  if (!fb.classList.contains('hidden') && M.results) { fb.className = 'feedback info'; fb.textContent = 'Cambiaste las reglas. Vuelve a probar para ver el efecto.'; }
+}
+function runMission(deploy) {
+  const fb = $('mFeedback');
+  if (!mEd.valid()) {
+    fb.className = 'feedback bad'; fb.textContent = 'Hay reglas con errores (marcadas en rojo). Corrígelas antes de probar.';
+    mEd.focusFirstError(); return;
+  }
+  const tests = M.m.tests.filter(t => deploy || !t.hidden);
+  const items = tests.map(t => ({ t, res: evaluate(mEd.rules, mEd.policy, t.p) }));
+  M.results = items;
+  mEd.setHits(items.map(it => it.res));
+  showPackets($('mPkts'), items, mEd.rules, mEd.policy, true);
+  const bad = items.filter(it => it.res.verdict !== it.t.exp);
+  const badHidden = bad.filter(it => it.t.hidden).length;
+  if (!deploy) {
+    fb.className = 'feedback ' + (bad.length ? 'bad' : 'ok');
+    fb.textContent = bad.length ? `${items.length - bad.length} de ${items.length} pruebas visibles salen bien. Revisa las marcadas en rojo.`
+      : `Las ${items.length} pruebas visibles salen bien. Ahora despliega: también correrán las pruebas ocultas.`;
+  } else if (bad.length) {
+    M.fails++;
+    fb.className = 'feedback bad';
+    fb.textContent = `Despliegue fallido: ${bad.length} prueba${bad.length > 1 ? 's' : ''} no cumple${bad.length > 1 ? 'n' : ''} los objetivos` +
+      (badHidden ? ` (${badHidden} oculta${badHidden > 1 ? 's' : ''}). Las pruebas ocultas ya quedaron a la vista abajo.` : '.') +
+      (M.fails >= 2 ? ' Si te atascas, ya puedes ver la solución.' : '');
+    $('testCard').classList.remove('shake'); void $('testCard').offsetWidth; $('testCard').classList.add('shake');
+  } else {
+    fb.className = 'feedback ok'; fb.textContent = '¡Todas las pruebas pasan! Desplegando…';
+    setTimeout(() => missionWin(), reduced ? 300 : 420 + items.length * 160 + 400);
+  }
+  fb.classList.remove('hidden');
+  updateMissionHud();
+  if (deploy && bad.length) fb.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'nearest' });
+}
+$('btnTest').onclick = () => runMission(false);
+$('btnDeploy').onclick = () => runMission(true);
+/* confirm() no funciona dentro del visor de la app: se confirma tocando dos veces */
+function confirmTap(btn, fn) {
+  if (btn.dataset.armed) { clearTimeout(btn._t); btn.innerHTML = btn.dataset.armed; delete btn.dataset.armed; fn(); return; }
+  btn.dataset.armed = btn.innerHTML; btn.textContent = '¿Seguro? Toca otra vez';
+  btn._t = setTimeout(() => { btn.innerHTML = btn.dataset.armed; delete btn.dataset.armed; }, 3000);
+}
+$('btnReset').onclick = () => confirmTap($('btnReset'), () => startMission(M.m));
+$('btnSolution').onclick = () => {
+  const box = $('solutionBox'), m = M.m;
+  box.innerHTML = `<b>Una solución posible (${m.solution.length} regla${m.solution.length > 1 ? 's' : ''}, política ${ACT[m.policy]}):</b>
+    <ol class="trace" style="font-family:var(--mono)">${m.solution.map(r => `<li>${ruleTxt(r)}</li>`).join('')}</ol>
+    <p class="small muted" style="margin:6px 0">Si la cargas, esta misión queda en máximo ★.</p>
+    <button class="btn sm" type="button" id="btnLoadSol">Cargar solución</button>`;
+  box.classList.remove('hidden');
+  $('btnLoadSol').onclick = () => {
+    M.solution = true;
+    mEd.load(m.solution, m.policy, m.locked); onMissionEdit();
+  };
+};
+function ruleTxt(r) {
+  const c = checkRule(r);
+  return `<span class="${r.action === 'ALLOW' ? 'allow' : 'deny'}">${ACT[r.action]}</span> ${PROTO_TXT[r.proto]} · ${esc(c.src ? c.src.text : r.src)} → ${esc(c.dst ? c.dst.text : r.dst)}${hasPorts(r.proto) && c.ports ? ' · puerto ' + esc(c.ports.text) : ''}`;
+}
+function missionWin() {
+  const m = M.m, n = mEd.rules.length;
+  let st = 1;
+  if (!M.solution) { if (n <= m.par) st++; if (M.fails === 0) st++; }
+  const prev = save.stars[m.id] || 0;
+  if (st > prev) save.stars[m.id] = st;
+  let unlock = '';
+  if (m.id === save.unlocked && m.id < MISSIONS.length) { save.unlocked = m.id + 1; unlock = `🔓 Desbloqueaste la misión ${m.id + 1}: ${MISSIONS[m.id].title}.`; }
+  else if (m.id === MISSIONS.length) unlock = '🏆 Terminaste la auditoría. Café Andino tiene un firewall decente gracias a ti.';
+  persist();
+  const tips = [];
+  if (M.solution) tips.push('usaste la solución');
+  else {
+    if (n > m.par) tips.push(`te sobraron ${n - m.par} regla${n - m.par > 1 ? 's' : ''} (ideal ${m.par})`);
+    if (M.fails) tips.push(`${M.fails} despliegue${M.fails > 1 ? 's' : ''} fallido${M.fails > 1 ? 's' : ''}`);
+  }
+  $('resTitle').textContent = 'Misión cumplida';
+  $('resStars').textContent = '★'.repeat(st) + '☆'.repeat(3 - st);
+  $('resScore').textContent = `${n} regla${n > 1 ? 's' : ''}`;
+  $('resDetail').textContent = tips.length ? 'Para la próxima: ' + tips.join(' y ') + '.' : 'Perfecta: mínimo de reglas y a la primera.';
+  $('resUnlock').textContent = unlock;
+  $('btnNextMission').classList.toggle('hidden', m.id >= MISSIONS.length);
+  $('btnRetry').onclick = () => startMission(m);
+  show('scrResult');
+}
+$('btnBack').onclick = () => { renderMenu(); show('scrMenu'); };
+$('btnNextMission').onclick = () => startMission(MISSIONS[M.m.id]);
+
+/* ---------- modo quiz: ¿qué regla decide? ---------- */
+const Q_IPS = ['10.0.0.10', '10.0.0.25', '10.0.0.30', '10.0.0.53', '192.168.10.5', '192.168.10.20', '192.168.10.77', '181.43.12.7', '203.0.113.66', '198.51.100.7', '190.98.4.20'];
+const Q_NETS = [['10.0.0.0/24', '192.168.10.0/24', '203.0.113.0/24', '198.51.100.0/24'], ['192.168.10.0/28', '10.0.0.0/25', '192.168.10.16/28', '10.0.0.0/8']];
+const Q_PORTS = [['22', '25', '53', '80', '443', '3389', '5432'], ['80,443', '1024-65535', '8000-8100', '25,993']];
+const Q_ANYPORTS = [22, 25, 53, 80, 443, 993, 3389, 5432, 8080];
+const ROUNDS = 10, LIVES = 3;
+let G = null;
+
+function wpick(pairs) { let t = Math.random() * pairs.reduce((a, p) => a + p[1], 0); for (const [v, w] of pairs) { if ((t -= w) < 0) return v; } return pairs[0][0]; }
+function qAddr(d, anyW) {
+  return wpick([['any', anyW], ['host', 1 - anyW - .25], ['net', .25]]) === 'any' ? 'any'
+    : Math.random() < .55 ? pick(Q_IPS) : pick(d ? Q_NETS[0].concat(Q_NETS[1]) : Q_NETS[0]);
+}
+function qRule(d) {
+  const proto = wpick([['TCP', .5], ['UDP', .15], ['ICMP', .1], ['ANY', .25]]);
+  const src = qAddr(d, .45), dst = qAddr(d, .3);
+  let port = '';
+  if (hasPorts(proto) && Math.random() > .25) port = pick(d ? Q_PORTS[0].concat(Q_PORTS[1]) : Q_PORTS[0]);
+  return R(Math.random() < .5 ? 'ALLOW' : 'DENY', proto, src, dst, port);
+}
+function ipIn(addrStr) {
+  const a = parseAddr(addrStr);
+  if (a.any) return ipToInt(pick(Q_IPS.concat(['200.27.1.9', '151.101.1.69'])));
+  if (a.p === 32) return a.net;
+  const size = Math.pow(2, 32 - a.p);
+  return (a.net + rnd(1, Math.min(size - 2, 254))) >>> 0;
+}
+function qPacketFor(r) {
+  const proto = r.proto === 'ANY' ? pick(['TCP', 'TCP', 'UDP', 'ICMP']) : r.proto;
+  let port = null;
+  if (hasPorts(proto)) {
+    const ps = hasPorts(r.proto) ? parsePorts(r.port) : { any: true };
+    if (ps.any) port = pick(Q_ANYPORTS);
+    else { const [a, b] = pick(ps.list); port = rnd(a, Math.min(b, a + 50)); }
+  }
+  return { proto, src: ipIn(r.src), dst: ipIn(r.dst), port };
+}
+function qRandomPacket() {
+  const proto = wpick([['TCP', .6], ['UDP', .25], ['ICMP', .15]]);
+  return { proto, src: ipToInt(pick(Q_IPS)), dst: ipToInt(pick(Q_IPS)), port: hasPorts(proto) ? pick(Q_ANYPORTS) : null };
+}
+function qGenerate(round) {
+  const d = round > 4 ? 1 : 0, n = round <= 3 ? 3 : round <= 7 ? 4 : 5;
+  const rules = [];
+  while (rules.length < n) {
+    const r = qRule(d);
+    if (r.proto === 'ANY' && r.src === 'any' && r.dst === 'any') continue;
+    if (r.src !== 'any' && r.src === r.dst) continue;
+    rules.push(r);
+  }
+  const policy = Math.random() < .6 ? 'DENY' : 'ALLOW';
+  const target = rnd(0, n);
+  let pkt = null, res = null;
+  for (let k = 0; k < 400; k++) {
+    const p = target < n && k < 300 ? qPacketFor(rules[target]) : qRandomPacket();
+    if (p.src === p.dst) continue;
+    const e = evaluate(rules, policy, p);
+    if (e.by === (target < n ? target : -1) || k >= 300) { pkt = p; res = e; break; }
+  }
+  if (!pkt) { pkt = qPacketFor(rules[0]); res = evaluate(rules, policy, pkt); }
+  return { rules, policy, pkt, res };
+}
+function startQuiz() {
+  animRun++;
+  G = { round: 0, score: 0, streak: 0, best: 0, lives: LIVES, right: 0 };
+  show('scrQuiz');
+  qNext();
+}
+function qHud() {
+  $('qHudRound').textContent = `${G.round}/${ROUNDS}`;
+  $('qHudScore').textContent = fmt(G.score);
+  $('qHudStreak').textContent = G.streak + (G.streak >= 2 ? ` ×${Math.min(G.streak, 3)}` : '');
+  $('qHudLives').textContent = '♥'.repeat(G.lives) + '♡'.repeat(LIVES - G.lives);
+}
+function qNext() {
+  if (G.lives <= 0 || G.round >= ROUNDS) return qFinish();
+  G.round++; G.answered = false;
+  G.q = qGenerate(G.round);
+  const { rules, policy, pkt } = G.q;
+  $('qPkt').innerHTML = `${esc(fmtPkt(pkt))}<small>${esc(where(pkt.src))} → ${esc(where(pkt.dst))}</small>`;
+  $('qTable').innerHTML = `<tr class="qhead"><td>#</td><td>Acción</td><td>Proto</td><td>Origen</td><td>Destino</td><td>Puerto</td></tr>` +
+    rules.map((r, i) => `<tr class="qrow" data-i="${i}" tabindex="0" role="button" aria-label="Regla ${i + 1}">
+      <td>${i + 1}</td><td class="${r.action === 'ALLOW' ? 'allow' : 'deny'}"><b>${ACT[r.action]}</b></td><td>${PROTO_TXT[r.proto]}</td>
+      <td>${esc(parseAddr(r.src).text)}</td><td>${esc(parseAddr(r.dst).text)}</td><td>${hasPorts(r.proto) ? esc(parsePorts(r.port).text) : '—'}</td></tr>`).join('') +
+    `<tr class="qrow" data-i="-1" tabindex="0" role="button" aria-label="Política por defecto"><td>★</td><td colspan="5">Política por defecto: <b class="${policy === 'ALLOW' ? 'allow' : 'deny'}">${ACT[policy]}</b></td></tr>`;
+  $('qFeedback').classList.add('hidden');
+  $('qTrace').classList.add('hidden');
+  $('qNext').classList.add('hidden');
+  qHud();
+}
+function qAnswer(i) {
+  if (G.answered) return;
+  G.answered = true;
+  const { rules, policy, res } = G.q, ok = i === res.by;
+  $('qTable').querySelectorAll('.qrow').forEach(tr => {
+    const k = +tr.dataset.i;
+    tr.classList.add('done');
+    if (k === res.by) tr.classList.add('ok');
+    else if (k === i) tr.classList.add('bad');
+  });
+  const who = res.by === -1 ? 'la política por defecto' : `la regla ${res.by + 1}`;
+  let msg;
+  if (ok) {
+    G.streak++; G.right++; G.best = Math.max(G.best, G.streak);
+    const pts = 100 * Math.min(G.streak, 3);
+    G.score += pts;
+    msg = `¡Correcto! Lo decide ${who}: ${VERD[res.verdict]}. +${pts} pts`;
+  } else {
+    G.streak = 0; G.lives--;
+    msg = `No. Lo decide ${who} y el paquete queda ${res.verdict === 'ALLOW' ? 'pasando' : 'BLOQUEADO'}. Pierdes una vida.`;
+  }
+  const fb = $('qFeedback');
+  fb.className = 'feedback ' + (ok ? 'ok' : 'bad'); fb.textContent = msg;
+  $('qTrace').innerHTML = traceHtml(res, rules, policy);
+  $('qTrace').classList.remove('hidden');
+  $('qCard').classList.remove('pop', 'shake'); void $('qCard').offsetWidth; $('qCard').classList.add(ok ? 'pop' : 'shake');
+  const nb = $('qNext');
+  nb.textContent = (G.lives <= 0 || G.round >= ROUNDS) ? 'Ver resultado →' : 'Siguiente →';
+  nb.classList.remove('hidden'); nb.focus();
+  qHud();
+}
+$('qTable').addEventListener('click', e => { const tr = e.target.closest('.qrow'); if (tr) qAnswer(+tr.dataset.i); });
+$('qTable').addEventListener('keydown', e => {
+  const tr = e.target.closest('.qrow');
+  if (tr && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); qAnswer(+tr.dataset.i); }
+});
+$('qNext').onclick = qNext;
+function qFinish() {
+  const prev = save.quizBest || 0;
+  if (G.score > prev) save.quizBest = G.score;
+  persist();
+  const st = G.right >= 9 ? 3 : G.right >= 6 ? 2 : G.right >= 3 ? 1 : 0;
+  $('resTitle').textContent = G.lives <= 0 ? 'Sin vidas 💥' : 'Fin de la partida';
+  $('resStars').textContent = '★'.repeat(st) + '☆'.repeat(3 - st);
+  $('resScore').textContent = fmt(G.score);
+  $('resDetail').textContent = `${G.right} de ${G.round} aciertos · mejor racha ${G.best}` + (G.score > prev ? ' · ¡nuevo récord!' : ` · récord ${fmt(prev)}`);
+  $('resUnlock').textContent = '';
+  $('btnNextMission').classList.add('hidden');
+  $('btnRetry').onclick = startQuiz;
+  show('scrResult');
+}
+$('goQuiz').onclick = startQuiz;
+
+/* ---------- laboratorio libre ---------- */
+const LAB_EXAMPLE = { policy: 'DENY', rules: [
+  R('DENY', 'ANY', '203.0.113.0/24', 'any'), R('ALLOW', 'TCP', 'any', '10.0.0.10', '80,443'),
+  R('ALLOW', 'TCP', '192.168.10.5', '10.0.0.0/24', '22'), R('ALLOW', 'UDP', 'any', '10.0.0.53', '53'),
+  R('ALLOW', 'ICMP', '192.168.10.0/24', 'any')] };
+const lEd = makeEditor($('lEditor'), () => { save.lab = { rules: lEd.rules, policy: lEd.policy }; persist(); });
+function startLab() {
+  animRun++;
+  const s = save.lab && Array.isArray(save.lab.rules) ? save.lab : LAB_EXAMPLE;
+  lEd.load(s.rules, s.policy === 'ALLOW' ? 'ALLOW' : 'DENY', false);
+  $('lOut').innerHTML = '';
+  lProtoSync();
+  show('scrLab');
+}
+function lProtoSync() { const on = hasPorts($('lProto').value); $('lPort').disabled = !on; if (!on) $('lPort').value = ''; else if (!$('lPort').value) $('lPort').value = '80'; }
+$('lProto').onchange = lProtoSync;
+function labTest() {
+  const proto = $('lProto').value, src = ipToInt($('lSrc').value), dst = ipToInt($('lDst').value);
+  const port = hasPorts(proto) ? Number($('lPort').value) : null;
+  $('lSrc').classList.toggle('bad', src === null); $('lDst').classList.toggle('bad', dst === null);
+  const portBad = hasPorts(proto) && !(Number.isInteger(port) && port >= 1 && port <= 65535);
+  $('lPort').classList.toggle('bad', portBad);
+  const out = $('lOut');
+  if (src === null || dst === null || portBad) {
+    out.innerHTML = '<li class="feedback bad">Revisa el paquete: las IP van como 10.0.0.10 y el puerto entre 1 y 65535.</li>'; return;
+  }
+  if (!lEd.valid()) { out.innerHTML = '<li class="feedback bad">Hay reglas con errores (marcadas en rojo). Corrígelas primero.</li>'; lEd.focusFirstError(); return; }
+  const p = { proto, src, dst, port }, res = evaluate(lEd.rules, lEd.policy, p);
+  lEd.setHits([res]);
+  showPackets(out, [{ t: { p, d: 'Tu paquete' }, res }], lEd.rules, lEd.policy, true);
+}
+$('lGo').onclick = labTest;
+$('lForm').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('input')) { e.preventDefault(); labTest(); } });
+$('lRandom').onclick = () => {
+  const p = qRandomPacket();
+  if (p.src === p.dst) p.dst = ipToInt('10.0.0.10');
+  $('lProto').value = p.proto; lProtoSync();
+  $('lSrc').value = intToIp(p.src); $('lDst').value = intToIp(p.dst);
+  if (p.port) $('lPort').value = p.port;
+  labTest();
+};
+$('lExample').onclick = () => { lEd.load(LAB_EXAMPLE.rules, LAB_EXAMPLE.policy, false); save.lab = { rules: lEd.rules, policy: lEd.policy }; persist(); };
+$('lClear').onclick = () => confirmTap($('lClear'), () => { lEd.load([], 'DENY', false); save.lab = { rules: [], policy: 'DENY' }; persist(); $('lOut').innerHTML = ''; });
+$('goLab').onclick = startLab;
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && G && G.answered && !$('scrQuiz').classList.contains('hidden') && document.activeElement !== $('qNext')) { e.preventDefault(); qNext(); }
+});
+
+renderMenu();
+})();
+</script>
+</body>
+</html>

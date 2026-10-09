@@ -1,0 +1,1092 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Capa a Capa</title>
+<meta name="description" content="Simulador interactivo del modelo OSI y TCP/IP: mira cómo se encapsula un mensaje capa por capa, cómo cruza un switch y un router, y ponte a prueba con un desafío.">
+<style>
+:root{
+  --bg:#f4f6fb; --panel:#ffffff; --panel2:#eef1f8; --text:#141a2a; --muted:#5b6478;
+  --line:#d7dce8; --accent:#0a7cff; --accent-ink:#ffffff; --ok:#11885a; --ok-bg:#e3f6ed;
+  --bad:#c8323c; --bad-bg:#fbe6e7; --warn:#b26a00; --warn-bg:#fff3dc;
+  --l7:#7c3aed; --l6:#c026d3; --l5:#db2777; --l4:#ea580c; --l3:#0a6fe0; --l2:#0d9488; --l1:#64748b;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --shadow:0 1px 2px rgba(20,26,42,.06),0 6px 20px rgba(20,26,42,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0b0f17; --panel:#131a26; --panel2:#1a2333; --text:#e6ebf5; --muted:#93a0b8;
+    --line:#26324a; --accent:#3ddc97; --accent-ink:#06120c; --ok:#3ddc97; --ok-bg:#0f2a20;
+    --bad:#ff6b74; --bad-bg:#2c1418; --warn:#ffb547; --warn-bg:#2b2010;
+    --l7:#a78bfa; --l6:#e879f9; --l5:#f472b6; --l4:#fb923c; --l3:#5fb0ff; --l2:#2dd4bf; --l1:#94a3b8;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0b0f17; --panel:#131a26; --panel2:#1a2333; --text:#e6ebf5; --muted:#93a0b8;
+  --line:#26324a; --accent:#3ddc97; --accent-ink:#06120c; --ok:#3ddc97; --ok-bg:#0f2a20;
+  --bad:#ff6b74; --bad-bg:#2c1418; --warn:#ffb547; --warn-bg:#2b2010;
+  --l7:#a78bfa; --l6:#e879f9; --l5:#f472b6; --l4:#fb923c; --l3:#5fb0ff; --l2:#2dd4bf; --l1:#94a3b8;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+.wrap{max-width:880px;margin:0 auto;padding:20px 16px 48px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:20px;letter-spacing:-.01em}
+.brand .logo{font-family:var(--mono);background:var(--accent);color:var(--accent-ink);border-radius:8px;padding:2px 8px;font-size:15px}
+.iconbtn{background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:6px 10px;cursor:pointer;font:inherit;font-size:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:var(--shadow);margin-bottom:16px}
+h1{font-size:26px;margin:0 0 6px;letter-spacing:-.02em}
+h2{font-size:18px;margin:0 0 12px}
+h3{font-size:15px;margin:0 0 8px}
+p{margin:0 0 10px}
+.muted{color:var(--muted)}
+.mono{font-family:var(--mono)}
+code{font-family:var(--mono);background:var(--panel2);padding:1px 5px;border-radius:5px;font-size:.92em}
+.hidden{display:none!important}
+.pop{animation:pop .35s ease}
+@keyframes pop{0%{transform:scale(.97);opacity:.6}100%{transform:scale(1);opacity:1}}
+.shake{animation:shake .35s ease}
+@keyframes shake{25%{transform:translateX(-5px)}50%{transform:translateX(5px)}75%{transform:translateX(-3px)}}
+footer{text-align:center;font-size:13px;color:var(--muted);margin-top:24px}
+details{margin-top:6px}
+summary{cursor:pointer;font-weight:600}
+
+/* ----- pestañas ----- */
+.tabs{display:flex;gap:4px;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:4px;margin-bottom:16px}
+.tab{flex:1;font:inherit;font-weight:600;font-size:15px;border:0;border-radius:9px;padding:8px 10px;background:transparent;color:var(--muted);cursor:pointer}
+.tab[aria-selected="true"]{background:var(--panel);color:var(--text);box-shadow:var(--shadow)}
+
+/* ----- botones ----- */
+.btn{font:inherit;font-weight:600;border-radius:10px;padding:10px 18px;cursor:pointer;border:1px solid var(--line);background:var(--panel2);color:var(--text)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.actions{display:flex;flex-wrap:wrap;gap:10px}
+
+/* ----- configuración ----- */
+.seg{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 14px}
+.seg button{font:inherit;font-size:14px;font-weight:600;border:1px solid var(--line);background:var(--panel2);color:var(--text);border-radius:999px;padding:6px 14px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.field label{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:4px}
+.inrow{display:flex;gap:8px}
+.inrow input{flex:1;min-width:0;font-family:var(--mono);font-size:15px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--text);outline:none}
+.inrow input:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 25%,transparent)}
+
+/* ----- topología ----- */
+.topo{display:grid;grid-template-columns:auto 1fr auto 1fr auto 1fr auto;align-items:start;gap:0;margin:2px 0 4px}
+.dev{display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;min-width:64px}
+.dev .ico{font-family:var(--mono);font-weight:700;font-size:14px;width:52px;height:42px;display:grid;place-items:center;border-radius:10px;border:2px solid var(--line);background:var(--panel2);transition:border-color .2s,background .2s,transform .2s}
+.dev .nm{font-size:13px;font-weight:600;line-height:1.2}
+.dev .ad{font-family:var(--mono);font-size:11px;color:var(--muted);line-height:1.25}
+.dev.on .ico{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 16%,var(--panel));transform:translateY(-2px);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 18%,transparent)}
+.link{position:relative;height:3px;background:var(--line);border-radius:3px;margin:0 4px;align-self:start;margin-top:21px}
+.link.flow{background:color-mix(in srgb,var(--accent) 45%,var(--line))}
+.link.flow::after{content:"";position:absolute;top:-5px;left:0;width:13px;height:13px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent);animation:travel 1.1s ease-in-out infinite}
+@keyframes travel{0%{left:0;opacity:0}12%{opacity:1}88%{opacity:1}100%{left:calc(100% - 13px);opacity:0}}
+.netnote{font-size:12px;color:var(--muted);text-align:center;margin-top:8px}
+
+/* ----- simulador ----- */
+.sim{display:grid;grid-template-columns:232px 1fr;gap:16px}
+.sim>div{min-width:0}
+.stack{display:grid;grid-template-columns:1fr 92px;grid-template-rows:repeat(7,auto);gap:4px;align-content:start}
+.srow{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:9px;border:1px solid var(--line);background:var(--panel2);font-size:14px;transition:opacity .2s,background .2s,border-color .2s}
+.srow .no{font-family:var(--mono);font-weight:700;color:var(--c);width:14px;flex:none}
+.srow .tx{flex:1;min-width:0;line-height:1.2}
+.srow .pdu{display:block;font-size:11px;color:var(--muted);font-family:var(--mono)}
+.srow.on{border-color:var(--c);background:color-mix(in srgb,var(--c) 18%,var(--panel));font-weight:700}
+.srow.off,.tcell.off{opacity:.35}
+.tcell{grid-column:2;display:grid;place-items:center;text-align:center;font-size:12px;font-weight:600;border:1px dashed var(--line);border-radius:9px;padding:4px;color:var(--muted);line-height:1.2;transition:opacity .2s,background .2s}
+.tcell.on{border-style:solid;border-color:var(--accent);color:var(--text);background:color-mix(in srgb,var(--accent) 12%,var(--panel))}
+.stackhead{display:grid;grid-template-columns:1fr 92px;gap:4px;font-size:11px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+.stackhead span:last-child{text-align:center}
+.dirtag{margin-top:10px;font-size:13px;font-family:var(--mono);color:var(--muted);text-align:center}
+
+.stephead{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:6px}
+.badge{font-family:var(--mono);font-size:12px;font-weight:700;border-radius:999px;padding:2px 10px;color:#fff;background:var(--c,var(--accent))}
+.badge.soft{background:var(--panel2);color:var(--muted);border:1px solid var(--line)}
+.stitle{font-size:20px;font-weight:700;letter-spacing:-.01em;margin:0 0 10px;line-height:1.25}
+
+.pduinfo{font-size:13px;font-family:var(--mono);color:var(--muted);margin-bottom:6px}
+.blocks{display:flex;gap:4px;align-items:stretch;overflow-x:auto;padding:4px 2px 8px}
+.blk{flex:none;min-width:56px;text-align:left;font:inherit;cursor:pointer;border:1.5px solid var(--c);background:color-mix(in srgb,var(--c) 14%,var(--panel));color:var(--text);border-radius:9px;padding:6px 9px;transition:transform .15s,box-shadow .15s}
+.blk.data{flex:1 1 90px;min-width:90px}
+.blk .bn{display:block;font-weight:700;font-size:13px;color:var(--c)}
+.blk .bs{display:block;font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.blk{overflow:hidden}
+.blk.sel{box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 35%,transparent)}
+.blk.new{animation:slidein .45s ease}
+@keyframes slidein{0%{transform:translateY(-10px);opacity:0}100%{transform:none;opacity:1}}
+.blk.read{outline:2px dashed var(--c);outline-offset:2px}
+.blk.chg{border-style:dashed}
+.blk .tagx{display:inline-block;font-size:10px;font-family:var(--mono);background:var(--warn-bg);color:var(--warn);border-radius:4px;padding:0 4px;margin-left:4px;vertical-align:1px}
+.bits{font-family:var(--mono);font-size:13px;line-height:1.7;letter-spacing:.06em;background:var(--panel2);border-radius:10px;padding:10px 12px;word-break:break-all;color:var(--l1);max-height:120px;overflow:hidden;position:relative}
+.bits span{opacity:0;animation:bit .02s linear forwards}
+@keyframes bit{to{opacity:1}}
+.bits .sig{display:block;margin-top:6px;color:var(--muted);letter-spacing:0}
+
+.ftable{width:100%;border-collapse:collapse;font-size:14px;margin:6px 0 4px}
+.ftable td{padding:5px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+.ftable td:first-child{color:var(--muted);width:40%;font-size:13px}
+.ftable td:last-child{font-family:var(--mono);font-size:13px;word-break:break-all}
+.ftable tr.ch td{background:var(--warn-bg)}
+.ftable tr.ch td:last-child::after{content:" ← cambió";color:var(--warn);font-family:system-ui,sans-serif;font-size:12px;font-weight:600}
+.fcap{font-size:13px;font-weight:600;margin-top:4px}
+.fcap i{font-style:normal;color:var(--c)}
+.txt{font-size:15px;margin-top:12px}
+.txt p{margin:0 0 8px}
+.sec{margin-top:10px;padding:10px 14px;border-left:3px solid var(--warn);background:var(--panel2);border-radius:6px;font-size:14px}
+.sec b{color:var(--warn)}
+.mini{width:100%;border-collapse:collapse;font-size:14px;margin:6px 0}
+.mini th,.mini td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}
+.mini th{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.mini td.y{color:var(--warn);font-weight:700}
+.mini td.n{color:var(--ok);font-weight:700}
+
+.controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:16px;padding-top:14px;border-top:1px dashed var(--line)}
+.controls .grow{flex:1}
+.prog{height:6px;background:var(--panel2);border-radius:99px;overflow:hidden;margin-top:12px}
+.prog div{height:100%;background:var(--accent);transition:width .3s}
+.tip{font-size:13px;text-align:center}
+
+/* ----- guía de capas ----- */
+.map{display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:14px}
+.map .o{padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);display:flex;gap:8px;align-items:center}
+.map .o b{font-family:var(--mono);color:var(--c)}
+.map .t{grid-column:2;display:grid;place-items:center;border:1px dashed var(--line);border-radius:8px;font-weight:600;color:var(--muted);text-align:center;padding:4px}
+.lcards{display:grid;gap:10px}
+.lcard{border:1px solid var(--line);border-left:5px solid var(--c);border-radius:12px;background:var(--panel);overflow:hidden}
+.lcard summary{list-style:none;display:flex;align-items:center;gap:12px;padding:12px 14px}
+.lcard summary::-webkit-details-marker{display:none}
+.lcard summary .num{font-family:var(--mono);font-size:22px;font-weight:800;color:var(--c);width:24px;text-align:center}
+.lcard summary .nm{flex:1}
+.lcard summary .nm small{display:block;font-weight:400;color:var(--muted);font-size:13px}
+.lcard summary .chev{color:var(--muted);transition:transform .2s}
+.lcard[open] summary .chev{transform:rotate(90deg)}
+.lbody{padding:0 14px 14px 50px;font-size:15px}
+.lbody dl{display:grid;grid-template-columns:130px 1fr;gap:6px 12px;margin:8px 0 0}
+.lbody dt{color:var(--muted);font-size:13px;font-weight:600}
+.lbody dd{margin:0}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chips span{font-family:var(--mono);font-size:12px;background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:1px 6px}
+
+/* ----- desafío ----- */
+.levels{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-top:16px}
+.level{text-align:left;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px;cursor:pointer;color:var(--text);font:inherit;transition:transform .1s,border-color .1s}
+.level:hover:not(:disabled){border-color:var(--accent);transform:translateY(-1px)}
+.level:disabled{opacity:.5;cursor:not-allowed}
+.level .num{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.level .name{font-weight:700;margin:2px 0 4px}
+.level .desc{font-size:14px;color:var(--muted)}
+.level .best{font-size:13px;margin-top:8px;font-family:var(--mono)}
+.hud{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.pill{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:14px;font-family:var(--mono)}
+.pill b{font-weight:700}
+.timer-bar{height:6px;background:var(--panel2);border-radius:99px;overflow:hidden;margin:-4px 0 14px}
+.timer-bar div{height:100%;background:var(--accent);width:100%;transition:width .25s linear}
+.kind{font-size:13px;color:var(--muted);margin-bottom:8px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em}
+.qtext{font-size:clamp(19px,4.6vw,24px);font-weight:700;letter-spacing:-.01em;margin:0 0 16px;line-height:1.3}
+.qtext em{font-style:normal;font-family:var(--mono);background:var(--panel2);border-radius:6px;padding:0 6px}
+.opts{display:grid;gap:8px}
+.opts.layers{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.opt{text-align:left;font:inherit;font-size:15px;font-weight:600;border:1px solid var(--line);border-left:4px solid var(--c,var(--line));background:var(--panel2);color:var(--text);border-radius:10px;padding:10px 12px;cursor:pointer;display:flex;gap:8px;align-items:center}
+.opt:hover:not(:disabled){border-color:var(--c,var(--accent))}
+.opt .k{font-family:var(--mono);font-size:12px;color:var(--muted);flex:none}
+.opt:disabled{cursor:default}
+.opt.right{background:var(--ok-bg);border-color:var(--ok);color:var(--ok)}
+.opt.wrong{background:var(--bad-bg);border-color:var(--bad);color:var(--bad)}
+.order-slots{display:flex;flex-wrap:wrap;gap:6px;min-height:48px;padding:8px;border:2px dashed var(--line);border-radius:10px;margin-bottom:10px;align-items:center}
+.order-slots:empty::before{content:"Toca las piezas en orden…";color:var(--muted);font-size:14px}
+.order-pool{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:inherit;font-size:14px;font-weight:600;border:1px solid var(--line);background:var(--panel2);color:var(--text);border-radius:8px;padding:7px 11px;cursor:pointer}
+.chip .ix{font-family:var(--mono);font-size:11px;color:var(--muted);margin-right:5px}
+.chip.right{background:var(--ok-bg);border-color:var(--ok);color:var(--ok)}
+.chip.wrong{background:var(--bad-bg);border-color:var(--bad);color:var(--bad)}
+.chip:disabled{cursor:default}
+.feedback{margin-top:16px;padding:12px 14px;border-radius:10px;font-weight:600}
+.feedback.ok{background:var(--ok-bg);color:var(--ok)}
+.feedback.bad{background:var(--bad-bg);color:var(--bad)}
+.explain{margin-top:12px;font-size:15px}
+.big{font-size:44px;font-weight:800;font-family:var(--mono);letter-spacing:-.02em;margin:8px 0}
+.stars{font-size:32px;letter-spacing:4px}
+.review{list-style:none;padding:0;margin:14px 0 0;text-align:left}
+.review li{display:flex;gap:10px;align-items:baseline;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
+.review li:last-child{border-bottom:0}
+.review .m{flex:none;font-weight:700;width:18px}
+.review .ok{color:var(--ok)} .review .bad{color:var(--bad)}
+
+@media (max-width:700px){
+  .sim{grid-template-columns:1fr}
+  .stack{grid-template-columns:1fr 84px}
+  .stackhead{grid-template-columns:1fr 84px}
+  .srow{padding:5px 8px;font-size:13px}
+  .lbody{padding-left:14px}
+  .lbody dl{grid-template-columns:1fr}
+  .lbody dt{margin-top:4px}
+}
+@media (max-width:520px){
+  .card{padding:16px}
+  .dev{min-width:0}
+  .dev .ico{width:44px;height:38px;font-size:12px}
+  .dev .ad{display:none}
+  .link{margin-top:19px}
+  .controls .btn{padding:9px 13px}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms!important;transition:none!important}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a href="../../index.html" style="display:inline-block;margin:0 0 10px;font-size:14px;color:var(--muted);text-decoration:none">&larr; Volver al portafolio</a>
+  <header>
+    <div class="brand"><span class="logo">L1-7</span> Capa a Capa</div>
+    <button class="iconbtn" id="btnTheme" type="button" aria-label="Cambiar tema">Tema</button>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab" role="tab" data-tab="sim" aria-selected="true" type="button">Simulador</button>
+    <button class="tab" role="tab" data-tab="guide" aria-selected="false" type="button">Capas</button>
+    <button class="tab" role="tab" data-tab="quiz" aria-selected="false" type="button">Desafío</button>
+  </nav>
+
+  <!-- ================= SIMULADOR ================= -->
+  <section id="tabSim">
+    <div class="card">
+      <h1>Sigue tu mensaje por la red</h1>
+      <p class="muted">Elige qué quieres enviar y avanza paso a paso. Vas a ver cómo cada capa le pone su encabezado (encapsulación), cómo el switch y el router leen solo lo que les importa, y cómo el servidor lo desarma todo al llegar. Toca cualquier bloque del paquete para ver sus campos.</p>
+      <div class="seg" id="scnBtns"></div>
+      <div class="field">
+        <label for="msgIn" id="msgLabel">Mensaje</label>
+        <div class="inrow">
+          <input id="msgIn" maxlength="60" autocomplete="off" spellcheck="false">
+          <button class="btn primary" id="btnSend" type="button">Enviar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="topo" id="topo"></div>
+      <div class="netnote">En internet real hay muchos routers en el camino; cada uno repite lo que hace este.</div>
+    </div>
+
+    <div class="card">
+      <div class="sim">
+        <div>
+          <div class="stackhead"><span>OSI</span><span>TCP/IP</span></div>
+          <div class="stack" id="stack"></div>
+          <div class="dirtag" id="dirtag"></div>
+        </div>
+        <div>
+          <div class="stephead" id="stephead"></div>
+          <div class="stitle" id="stitle"></div>
+          <div class="pduinfo" id="pduinfo"></div>
+          <div id="pduview"></div>
+          <div id="fieldview"></div>
+          <div class="txt" id="steptext"></div>
+          <div class="sec hidden" id="stepsec"></div>
+        </div>
+      </div>
+      <div class="prog"><div id="progBar"></div></div>
+      <div class="controls">
+        <button class="btn" id="btnPrev" type="button">◀ Anterior</button>
+        <button class="btn primary" id="btnNextStep" type="button">Siguiente ▶</button>
+        <button class="btn" id="btnAuto" type="button">▶ Auto</button>
+        <span class="grow"></span>
+        <span class="pill" id="stepCount"></span>
+      </div>
+    </div>
+    <p class="muted tip">Teclas: <code>←</code> anterior · <code>→</code> siguiente · <code>Espacio</code> auto</p>
+  </section>
+
+  <!-- ================= GUÍA ================= -->
+  <section id="tabGuide" class="hidden">
+    <div class="card">
+      <h1>Las 7 capas, una por una</h1>
+      <p class="muted">OSI es el modelo de referencia para estudiar y diagnosticar; TCP/IP es el que se usa de verdad en internet. Este es el mapa entre los dos:</p>
+      <div class="map" id="map"></div>
+      <details>
+        <summary>Trucos para memorizarlas</summary>
+        <ul style="margin:8px 0 0;padding-left:20px;font-size:15px">
+          <li><b>De la 1 a la 7:</b> <i>"<b>F</b>elipe <b>E</b>ncontró <b>R</b>atones <b>T</b>omando <b>S</b>opa <b>P</b>ara <b>A</b>lmorzar"</i> (Física, Enlace, Red, Transporte, Sesión, Presentación, Aplicación).</li>
+          <li><b>En inglés, de la 1 a la 7:</b> <i>"Please Do Not Throw Sausage Pizza Away"</i> (Physical, Data link, Network, Transport, Session, Presentation, Application).</li>
+          <li><b>PDUs de la 4 a la 1:</b> Segmento, Paquete, Trama, Bits. "<b>S</b>i <b>P</b>ierdes, <b>T</b>e <b>B</b>orran".</li>
+          <li><b>Dirección en cada capa:</b> puerto (4), IP (3), MAC (2).</li>
+        </ul>
+      </details>
+    </div>
+    <div class="lcards" id="lcards"></div>
+  </section>
+
+  <!-- ================= DESAFÍO ================= -->
+  <section id="tabQuiz" class="hidden">
+    <div id="scrMenu">
+      <div class="card">
+        <h1>Desafío Capa a Capa</h1>
+        <p class="muted">Cada nivel tiene 8 preguntas y 3 vidas. Responde rápido para sumar más puntos y encadena aciertos para la racha. Acierta al menos 6 para desbloquear el siguiente nivel.</p>
+        <div class="levels" id="levels"></div>
+      </div>
+    </div>
+
+    <div id="scrGame" class="hidden">
+      <div class="hud">
+        <span class="pill" id="hudLevel"></span>
+        <span class="pill">Pregunta <b id="hudRound"></b></span>
+        <span class="pill">Puntos <b id="hudScore">0</b></span>
+        <span class="pill">Racha <b id="hudStreak">0</b></span>
+        <span class="pill" id="hudLives"></span>
+      </div>
+      <div class="timer-bar"><div id="timerBar"></div></div>
+      <div class="card" id="gameCard">
+        <div class="kind" id="qkind"></div>
+        <div class="qtext" id="qtext"></div>
+        <div id="qbody"></div>
+        <div id="feedback" class="feedback hidden"></div>
+        <div id="explain" class="explain hidden"></div>
+        <div class="actions" style="margin-top:14px">
+          <button class="btn primary hidden" id="btnCheck" type="button">Comprobar</button>
+          <button class="btn hidden" id="btnUndo" type="button">Deshacer</button>
+          <button class="btn primary hidden" id="btnNext" type="button">Siguiente →</button>
+          <span style="flex:1"></span>
+          <button class="btn" id="btnQuit" type="button">Salir</button>
+        </div>
+      </div>
+      <p class="muted tip">Teclas: <code>1</code>–<code>7</code> para responder · <code>Enter</code> comprobar / siguiente</p>
+    </div>
+
+    <div id="scrResult" class="hidden">
+      <div class="card" style="text-align:center">
+        <h1 id="resTitle"></h1>
+        <div class="stars" id="resStars"></div>
+        <div class="big" id="resScore"></div>
+        <p class="muted" id="resDetail"></p>
+        <p id="resUnlock" style="font-weight:600"></p>
+        <div class="actions" style="justify-content:center;margin-top:14px">
+          <button class="btn" id="btnRetry" type="button">Reintentar nivel</button>
+          <button class="btn primary" id="btnBack" type="button">Volver a los niveles</button>
+        </div>
+        <ul class="review" id="review"></ul>
+      </div>
+    </div>
+  </section>
+
+  <footer>Direcciones de ejemplo: red privada 192.168.1.0/24 y rango de documentación 203.0.113.0/24 (RFC 5737). Hecho con HTML, CSS y JS, sin dependencias.</footer>
+</div>
+
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const root = document.documentElement;
+const KEY = 'capa-a-capa-v1';
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+/* ---------- tema ---------- */
+try { const t = localStorage.getItem(KEY + '-theme'); if (t) root.dataset.theme = t; } catch (e) {}
+$('btnTheme').onclick = () => {
+  const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  root.dataset.theme = dark ? 'light' : 'dark';
+  try { localStorage.setItem(KEY + '-theme', root.dataset.theme); } catch (e) {}
+};
+
+/* ---------- pestañas ---------- */
+const TABS = {sim:'tabSim', guide:'tabGuide', quiz:'tabQuiz'};
+document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
+  document.querySelectorAll('.tab').forEach(x => x.setAttribute('aria-selected', x === t));
+  Object.entries(TABS).forEach(([k, id]) => $(id).classList.toggle('hidden', k !== t.dataset.tab));
+  if (t.dataset.tab !== 'sim') stopAuto();
+  if (t.dataset.tab !== 'quiz' && G) { clearInterval(timer); renderMenu(); }
+});
+
+/* ======================================================================
+   DATOS DE LAS CAPAS
+   ====================================================================== */
+const LY = {
+  7:{n:'Aplicación', pdu:'Datos', tcp:'Aplicación'},
+  6:{n:'Presentación', pdu:'Datos', tcp:'Aplicación'},
+  5:{n:'Sesión', pdu:'Datos', tcp:'Aplicación'},
+  4:{n:'Transporte', pdu:'Segmento', tcp:'Transporte'},
+  3:{n:'Red', pdu:'Paquete', tcp:'Internet'},
+  2:{n:'Enlace de datos', pdu:'Trama', tcp:'Acceso a red'},
+  1:{n:'Física', pdu:'Bits', tcp:'Acceso a red'},
+};
+const TCPIP = [{n:'Aplicación', rows:[7,6,5]}, {n:'Transporte', rows:[4]}, {n:'Internet', rows:[3]}, {n:'Acceso a red', rows:[2,1]}];
+const cv = l => `var(--l${l})`;
+
+const GUIDE = {
+  7:{fn:'Es la capa que usan las aplicaciones para hablar por la red: define cómo se pide y se entrega cada servicio (web, correo, nombres). Ojo: no es Chrome ni Outlook, sino el protocolo que usan.',
+     pr:['HTTP','HTTPS','DNS','DHCP','SMTP','IMAP','POP3','FTP','SSH','SNMP'], dev:'Firewalls de nueva generación, WAF, proxies.', id:'Nombres (URL, dominio, correo).',
+     atk:'Phishing, inyección SQL, XSS, DNS spoofing, fuerza bruta a logins, HTTP flood.', def:'WAF, validar entradas, MFA, filtros de correo, parches al día.', an:'El contenido de la carta.'},
+  6:{fn:'Traduce los datos a un formato que ambos lados entiendan: codificación de caracteres, compresión y cifrado.',
+     pr:['TLS/SSL','UTF-8','ASCII','JPEG','PNG','MP4','gzip'], dev:'Lo hace el software (no hay un equipo "de capa 6").', id:'—',
+     atk:'SSL stripping, certificados falsos, cifrados débiles o viejos.', def:'TLS 1.2+, HSTS, validar certificados.', an:'Traducir la carta y meterla en un sobre sellado.'},
+  5:{fn:'Abre, mantiene y cierra el diálogo entre dos aplicaciones, y permite retomarlo si se corta.',
+     pr:['NetBIOS','RPC','Sesiones SMB','Sockets'], dev:'Lo hace el software.', id:'ID de sesión, cookies, tokens.',
+     atk:'Secuestro de sesión, robo de cookies o tokens, ataques de repetición (replay).', def:'Tokens aleatorios que expiran, cookies Secure y HttpOnly, cerrar sesión.', an:'Una llamada: marcar, conversar y colgar.'},
+  4:{fn:'Comunicación de extremo a extremo entre procesos, usando puertos. TCP es fiable (handshake, secuencia, ACK, retransmisión, control de flujo); UDP es rápido y sin garantías.',
+     pr:['TCP','UDP'], dev:'Firewalls stateful, balanceadores de carga L4.', id:'Puertos (0 a 65535; los "bien conocidos" van del 0 al 1023).',
+     atk:'SYN flood, escaneo de puertos, UDP flood, secuestro de conexiones TCP.', def:'SYN cookies, firewall stateful, cerrar los puertos que no uses.', an:'El número de departamento dentro del edificio.'},
+  3:{fn:'Direccionamiento lógico y enrutamiento: decide por dónde va el paquete para llegar a otra red.',
+     pr:['IPv4','IPv6','ICMP','OSPF','EIGRP','BGP','IPsec'], dev:'Router, switch multicapa (capa 3).', id:'Dirección IP.',
+     atk:'IP spoofing, ataque Smurf, ICMP flood, ataques a protocolos de ruteo.', def:'ACLs, filtrado anti-spoofing (uRPF), IPsec.', an:'La dirección de la casa (calle, ciudad, país).'},
+  2:{fn:'Entrega tramas dentro de la misma red local usando direcciones MAC, controla el acceso al medio y detecta errores con el FCS. Tiene dos subcapas: LLC y MAC.',
+     pr:['Ethernet 802.3','WiFi 802.11','PPP','VLAN 802.1Q','STP','ARP*'], dev:'Switch, bridge, access point, tarjeta de red (NIC).', id:'Dirección MAC (48 bits).',
+     atk:'ARP spoofing, MAC flooding, VLAN hopping, ataques a STP, MAC spoofing.', def:'Port security, Dynamic ARP Inspection, DHCP snooping, BPDU guard, 802.1X.', an:'El cartero de tu barrio, que solo conoce las casas de su cuadra.', note:'* ARP traduce IP a MAC, así que vive en la frontera entre la capa 2 y la 3.'},
+  1:{fn:'Transmite los bits como señales: pulsos eléctricos, luz o radio. Define cables, conectores, voltajes y frecuencias.',
+     pr:['UTP Cat5e/6','Fibra óptica','RJ-45','Radio 2,4/5 GHz','Bluetooth'], dev:'Hub, repetidor, cables, transceptores.', id:'—',
+     atk:'Pinchar cables (wiretapping), jamming de WiFi, robo o daño de equipos.', def:'Control de acceso físico, racks con llave, cámaras, fibra óptica.', an:'El camión y la carretera.'},
+};
+
+function renderGuide() {
+  let m = '';
+  TCPIP.forEach(g => {
+    g.rows.forEach((l, i) => {
+      m += `<div class="o" style="--c:${cv(l)};grid-column:1;grid-row:${8 - l}"><b>${l}</b>${LY[l].n}</div>`;
+      if (i === 0) m += `<div class="t" style="grid-row:${8 - l} / span ${g.rows.length}">${g.n}</div>`;
+    });
+  });
+  $('map').innerHTML = m;
+  $('lcards').innerHTML = [7,6,5,4,3,2,1].map(l => {
+    const g = GUIDE[l];
+    return `<details class="lcard" style="--c:${cv(l)}">
+      <summary><span class="num">${l}</span><span class="nm"><b>${LY[l].n}</b><small>PDU: ${LY[l].pdu} · TCP/IP: ${LY[l].tcp}</small></span><span class="chev">▶</span></summary>
+      <div class="lbody">
+        <p>${g.fn}</p>
+        <dl>
+          <dt>Protocolos</dt><dd><div class="chips">${g.pr.map(p => `<span>${p}</span>`).join('')}</div></dd>
+          <dt>Equipos</dt><dd>${g.dev}</dd>
+          <dt>Identificador</dt><dd>${g.id}</dd>
+          <dt>Analogía</dt><dd>${g.an}</dd>
+          <dt>🔓 Ataques</dt><dd>${g.atk}</dd>
+          <dt>🛡️ Defensas</dt><dd>${g.def}</dd>
+        </dl>
+        ${g.note ? `<p class="muted" style="font-size:13px;margin-top:8px">${g.note}</p>` : ''}
+      </div>
+    </details>`;
+  }).join('');
+}
+
+/* ======================================================================
+   SIMULADOR
+   ====================================================================== */
+const NET = {
+  pc:{ip:'192.168.1.10', mac:'3C:52:82:1A:2B:10'},
+  rl:{ip:'192.168.1.1', mac:'00:1E:58:AA:01:01'},
+  rw:{ip:'203.0.113.1', mac:'00:1E:58:AA:02:02'},
+  srvMac:'52:54:00:12:34:80',
+};
+const SCN = {
+  https:{label:'Web segura (HTTPS)', app:'HTTP', tls:true, l4:'TCP', sport:51432, dport:443, srvIp:'203.0.113.80', srv:'Servidor web', proc:'el servidor web (nginx)', def:'usuario=nico&clave=Hola1234', inLabel:'Lo que mandas en el formulario de login'},
+  http:{label:'Web sin cifrar (HTTP)', app:'HTTP', tls:false, l4:'TCP', sport:51433, dport:80, srvIp:'203.0.113.80', srv:'Servidor web', proc:'el servidor web (nginx)', def:'usuario=nico&clave=Hola1234', inLabel:'Lo que mandas en el formulario de login'},
+  dns:{label:'Consulta DNS', app:'DNS', tls:false, l4:'UDP', sport:53124, dport:53, srvIp:'203.0.113.53', srv:'Servidor DNS', proc:'el servidor DNS (BIND)', def:'www.ejemplo.cl', inLabel:'Dominio que quieres resolver'},
+};
+let scnKey = 'https';
+let msgs = {https:SCN.https.def, http:SCN.http.def, dns:SCN.dns.def};
+
+const fnv = s => { let h = 0x811c9dc5; for (const ch of s) { h ^= ch.codePointAt(0); h = Math.imul(h, 0x01000193) >>> 0; } return h; };
+const hex = (n, d = 8) => '0x' + (n >>> 0).toString(16).toUpperCase().padStart(d, '0').slice(-d);
+const blen = s => new TextEncoder().encode(s).length;
+function fakeCipher(s, n) {
+  const A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+  let h = fnv(s) || 1, out = '';
+  for (let i = 0; i < n; i++) { h ^= h << 13; h ^= h >>> 17; h ^= h << 5; h >>>= 0; out += A[h % 64]; }
+  return out;
+}
+
+function payload(sc, msg) {
+  return sc.app === 'DNS' ? `Consulta tipo A: ${msg}` : `POST /login HTTP/1.1\r\nHost: www.ejemplo.cl\r\n\r\n${msg}`;
+}
+
+/* bloques del paquete */
+function makeBlocks(sc, msg, o) {
+  const pl = payload(sc, msg), n = blen(pl);
+  const B = [];
+  const dataLen = sc.tls && o.enc ? n + 22 : n;            // TLS: 5 bytes de cabecera + 16 de tag
+  const l4Len = dataLen + (sc.l4 === 'TCP' ? 20 : 8);
+  const ipLen = l4Len + 20;
+  const wan = o.hop === 'wan';
+  const ttl = wan ? 63 : 64;
+  if (o.l2) B.push({k:'eth', l:2, name:'Ethernet', sub:`→ ${(wan ? NET.srvMac : NET.rl.mac).slice(-5)}`, fields:[
+    ['MAC destino', wan ? NET.srvMac : NET.rl.mac, wan],
+    ['MAC origen', wan ? NET.rw.mac : NET.pc.mac, wan],
+    ['Tipo (EtherType)', '0x0800 (IPv4)'],
+  ]});
+  if (o.l3) B.push({k:'ip', l:3, name:'IP', sub:`→ ${sc.srvIp}`, fields:[
+    ['Versión', '4'],
+    ['Largo total', ipLen + ' bytes'],
+    ['TTL', String(ttl), wan],
+    ['Protocolo', sc.l4 === 'TCP' ? '6 (TCP)' : '17 (UDP)'],
+    ['Checksum', hex(fnv('ip' + ttl + msg), 4), wan],
+    ['IP origen', NET.pc.ip],
+    ['IP destino', sc.srvIp],
+  ]});
+  if (o.l4) B.push(sc.l4 === 'TCP'
+    ? {k:'l4', l:4, name:'TCP', sub:`:${sc.sport}→:${sc.dport}`, fields:[
+        ['Puerto origen', sc.sport + ' (efímero, lo elige tu PC)'],
+        ['Puerto destino', sc.dport + (sc.dport === 443 ? ' (HTTPS)' : ' (HTTP)')],
+        ['Nº de secuencia', '1 (relativo)'],
+        ['Nº de acuse (ACK)', '1 (relativo)'],
+        ['Flags', 'PSH, ACK'],
+        ['Ventana', '64240'],
+        ['Checksum', hex(fnv('tcp' + msg), 4)],
+      ]}
+    : {k:'l4', l:4, name:'UDP', sub:`:${sc.sport}→:${sc.dport}`, fields:[
+        ['Puerto origen', sc.sport + ' (efímero, lo elige tu PC)'],
+        ['Puerto destino', sc.dport + ' (DNS)'],
+        ['Largo', l4Len + ' bytes'],
+        ['Checksum', hex(fnv('udp' + msg), 4)],
+      ]});
+  if (sc.tls && o.enc) {
+    B.push({k:'tls', l:6, name:'TLS', sub:'v1.3', fields:[
+      ['Tipo de contenido', 'Application Data (23)'],
+      ['Versión', 'TLS 1.3'],
+      ['Largo', (n + 16) + ' bytes'],
+    ]});
+    const c = fakeCipher(pl, 44);
+    B.push({k:'data', l:6, name:'Datos cifrados', sub:c, fields:[
+      ['Contenido', c + '…'],
+      ['¿Y tu clave?', 'Ilegible. Solo tu navegador y el servidor tienen las llaves de la sesión.'],
+    ]});
+  } else {
+    B.push({k:'data', l:7, name:sc.app + ' · datos', sub: sc.app === 'DNS' ? `A? ${msg}` : `POST /login · ${msg}`, fields:
+      sc.app === 'DNS'
+        ? [['Tipo de consulta', 'A (quiero la IPv4)'], ['Nombre', msg], ['ID de transacción', hex(fnv('id' + msg), 4)]]
+        : [['Línea de petición', 'POST /login HTTP/1.1'], ['Host', 'www.ejemplo.cl'], ['Cuerpo', msg]]
+    });
+  }
+  if (o.l2) B.push({k:'fcs', l:2, name:'FCS', sub:'CRC-32', fields:[
+    ['FCS (CRC-32)', hex(fnv('fcs' + (wan ? 'w' : 'l') + msg)), wan],
+    ['Para qué sirve', 'El que recibe recalcula el CRC: si no coincide, la trama se bota.'],
+  ]});
+  const total = ipLen + (o.l2 ? 18 : 0);
+  return {B, size: o.l2 ? total : o.l3 ? ipLen : o.l4 ? l4Len : dataLen};
+}
+
+function bitsOf(sc, msg) {
+  const src = `${NET.rl.mac}${NET.pc.mac}${payload(sc, msg)}`;
+  let out = '';
+  for (const b of new TextEncoder().encode(src).slice(0, 26)) out += b.toString(2).padStart(8, '0') + ' ';
+  return out.trim();
+}
+
+/* pasos */
+function buildSteps() {
+  const sc = SCN[scnKey], msg = msgs[scnKey];
+  const isDns = sc.app === 'DNS', isTcp = sc.l4 === 'TCP';
+  const seg = isTcp ? 'Segmento' : 'Datagrama';
+  const pl = esc(msg);
+  const lan = {hop:'lan'}, wan = {hop:'wan'};
+  const P = (o) => makeBlocks(sc, msg, o);
+  const S = [];
+
+  /* ---- PC: encapsulación ---- */
+  S.push({dev:0, layer:7, dir:'down', title:`Tu app arma el mensaje ${sc.app}`, pdu:'Datos', ...P({...lan, enc:false}), focus:'data', newK:['data'],
+    text: isDns
+      ? `<p>Quieres entrar a <code>${pl}</code>, pero tu PC necesita su IP. El sistema operativo arma una <b>consulta DNS</b>: "¿cuál es la dirección IPv4 (registro A) de ${pl}?".</p><p>La capa 7 define <b>qué</b> se dice y en qué formato del protocolo. Todavía no hay direcciones ni puertos: solo datos.</p>`
+      : `<p>Le das a "Iniciar sesión" y el navegador arma una petición <b>HTTP POST</b> con lo que escribiste: <code>${pl}</code>.</p><p>La capa 7 define <b>qué</b> se dice y en qué formato del protocolo. Todavía no hay direcciones ni puertos: solo datos.</p>`,
+    sec: isDns ? 'Aquí actúa el <b>DNS spoofing</b>: si alguien responde antes con una IP falsa, terminas en un sitio clonado.' : 'Aquí viven ataques como el <b>phishing</b>, la <b>inyección SQL</b> y el <b>XSS</b>. Un WAF protege esta capa.'});
+
+  S.push(sc.tls
+    ? {dev:0, layer:6, dir:'down', title:'TLS cifra los datos', pdu:'Datos', ...P({...lan, enc:true}), focus:'data', newK:['tls','data'],
+       text:`<p>La capa de presentación prepara los datos para el viaje: los codifica (UTF-8) y, como es HTTPS, <b>TLS los cifra</b> con las llaves acordadas al conectarse. También les pone un pequeño encabezado de registro TLS.</p><p>Desde aquí en adelante, nadie en el camino puede leer tu clave.</p>`,
+       sec:'Aunque alguien capture el paquete con Wireshark, solo ve basura. Ataque típico contra esto: <b>SSL stripping</b>, que intenta bajarte a HTTP. La defensa es <b>HSTS</b>.'}
+    : {dev:0, layer:6, dir:'down', title: isDns ? 'Se codifica, sin cifrar' : 'Se codifica… y nada más', pdu:'Datos', ...P({...lan, enc:false}), focus:'data', newK:[],
+       text: isDns
+         ? `<p>La capa de presentación codifica el nombre en el formato de DNS. El DNS clásico <b>no se cifra</b>: viaja tal cual.</p>`
+         : `<p>La capa de presentación codifica el texto (UTF-8), pero como es <b>HTTP sin S</b>, no hay cifrado. Tu clave sigue en texto plano.</p>`,
+       sec: isDns ? 'Cualquiera en el camino puede ver qué sitios consultas. Para ocultarlo existen <b>DNS over HTTPS (DoH)</b> y <b>DNS over TLS (DoT)</b>.' : 'Sin cifrado, cualquiera que capture el tráfico (alguien en el mismo WiFi, un router comprometido) <b>lee tu clave tal cual</b>. Cambia a HTTPS arriba y compara.'});
+
+  S.push({dev:0, layer:5, dir:'down', title: isTcp ? 'La sesión ya está abierta' : 'UDP no abre sesión', pdu:'Datos', ...P({...lan, enc:true}), focus:'data', newK:[],
+    text: isTcp
+      ? `<p>La capa de sesión se encarga del diálogo: abrirlo, mantenerlo y cerrarlo. Antes de este mensaje ya hubo un handshake TCP (<code>SYN</code>, <code>SYN-ACK</code>, <code>ACK</code>)${sc.tls ? ' y uno TLS' : ''}, y la conexión queda abierta para varias peticiones.</p><p>No agrega un encabezado propio: por eso en TCP/IP las capas 5, 6 y 7 se juntan en <b>Aplicación</b>.</p>`
+      : `<p>DNS sobre UDP no abre ni mantiene una sesión: dispara la pregunta y espera la respuesta. Si no llega, simplemente pregunta de nuevo.</p><p>Esta capa no agrega encabezado: por eso en TCP/IP las capas 5, 6 y 7 se juntan en <b>Aplicación</b>.</p>`,
+    sec:'<b>Secuestro de sesión:</b> si alguien roba tu cookie o token de sesión, se hace pasar por ti sin saber tu clave. Por eso las cookies deben ir con <code>Secure</code> y <code>HttpOnly</code>.'});
+
+  S.push({dev:0, layer:4, dir:'down', title:`${sc.l4} agrega los puertos`, pdu:seg, ...P({...lan, enc:true, l4:true}), focus:'l4', newK:['l4'],
+    text: isTcp
+      ? `<p>TCP envuelve los datos en un <b>segmento</b>. Lo clave son los <b>puertos</b>: destino <code>${sc.dport}</code> le dice al servidor a qué programa entregarlo, y origen <code>${sc.sport}</code> (efímero) le dice a tu PC a qué pestaña devolver la respuesta.</p><p>TCP además numera los bytes (secuencia) y espera acuses (ACK) para retransmitir lo que se pierda.</p>`
+      : `<p>UDP envuelve los datos en un <b>datagrama</b> con un encabezado mínimo de 8 bytes: puertos, largo y checksum. El puerto destino <code>53</code> es el de DNS.</p><p>Sin handshake ni ACKs: más rápido, ideal para consultas cortas.</p>`,
+    sec:'Aquí atacan el <b>SYN flood</b> (abrir miles de conexiones a medias) y el <b>escaneo de puertos</b> con nmap. Los firewalls clásicos filtran justamente por puerto.'});
+
+  S.push({dev:0, layer:3, dir:'down', title:'IP agrega origen y destino', pdu:'Paquete', ...P({...lan, enc:true, l4:true, l3:true}), focus:'ip', newK:['ip'],
+    text:`<p>La capa de red arma el <b>paquete</b> con la IP de tu PC (<code>${NET.pc.ip}</code>) y la del ${sc.srv.toLowerCase()} (<code>${sc.srvIp}</code>). Estas IP se mantienen de punta a punta.</p><p>El <b>TTL</b> parte en 64 y cada router le resta 1. Si llega a 0, el paquete se bota.</p>`,
+    sec:'<b>IP spoofing:</b> falsificar la IP de origen (muy usado en ataques DDoS). Las <b>ACL</b> del router filtran por IP.'});
+
+  S.push({dev:0, layer:2, dir:'down', title:'Ethernet arma la trama', pdu:'Trama', ...P({...lan, enc:true, l4:true, l3:true, l2:true}), focus:'eth', newK:['eth','fcs'],
+    text:`<p>Tu PC compara la IP destino con su red: <code>${sc.srvIp}</code> no está en <code>192.168.1.0/24</code>, así que la trama no va directo al servidor, sino a la <b>MAC del router</b> (tu puerta de enlace). Esa MAC la averiguó antes con <b>ARP</b>.</p><p>Al final se agrega el <b>FCS</b>, un CRC para detectar errores.</p>`,
+    sec:'<b>ARP spoofing:</b> un atacante responde "yo soy el router" y se pone en medio (MITM). Defensa: <b>Dynamic ARP Inspection</b> y port security en el switch.'});
+
+  S.push({dev:0, layer:1, dir:'down', title:'Todo se convierte en bits', pdu:'Bits', ...P({...lan, enc:true, l4:true, l3:true, l2:true}), view:'bits', flow:0,
+    text:`<p>La tarjeta de red convierte la trama en <b>señales</b>: pulsos eléctricos en un cable UTP, luz en una fibra u ondas de radio en WiFi. Antes van un preámbulo y un delimitador para que el otro lado se sincronice.</p><p>La capa física no entiende de MAC ni de IP: solo mueve unos y ceros.</p>`,
+    sec:'Pinchar un cable (<b>wiretapping</b>) o interferir el WiFi (<b>jamming</b>) son ataques de capa 1. Defensa: seguridad física, racks con llave.'});
+
+  /* ---- switch ---- */
+  S.push({dev:1, layer:2, dir:'mid', title:'El switch solo mira la MAC', pdu:'Trama', ...P({...lan, enc:true, l4:true, l3:true, l2:true}), focus:'eth', read:['eth'], flow:1,
+    text:`<p>El switch recibe los bits (capa 1), reconstruye la trama y lee <b>solo la MAC destino</b> (capa 2). Busca en su tabla MAC:</p>
+      <table class="mini"><tr><th>MAC</th><th>Puerto</th></tr><tr><td class="mono">${NET.pc.mac}</td><td>Fa0/1</td></tr><tr><td class="mono"><b>${NET.rl.mac}</b></td><td><b>Fa0/24</b></td></tr></table>
+      <p>La reenvía por <b>Fa0/24</b>, hacia el router, sin tocar nada. No le importan la IP ni los puertos.</p>`,
+    sec:'<b>MAC flooding:</b> llenar la tabla MAC con direcciones falsas para que el switch reenvíe todo a todos, como un hub. Defensa: <b>port security</b>.'});
+
+  /* ---- router ---- */
+  S.push({dev:2, layer:3, dir:'up', title:'El router sube hasta la capa 3', pdu:'Paquete', ...P({...wan, enc:true, l4:true, l3:true}), focus:'ip', read:['ip'], chg:['ip'],
+    text:`<p>La MAC destino es la suya, así que el router <b>revisa el FCS y quita la trama</b>. Lee la <b>IP destino</b> y busca en su tabla de rutas:</p>
+      <table class="mini"><tr><th>Red</th><th>Interfaz</th></tr><tr><td class="mono">192.168.1.0/24</td><td>G0/0</td></tr><tr><td class="mono"><b>203.0.113.0/24</b></td><td><b>G0/1</b></td></tr></table>
+      <p>Sale por <b>G0/1</b>. Antes de reenviar, le resta 1 al <b>TTL</b> (64 → 63) y recalcula el checksum.</p>`,
+    sec:'El <b>TTL</b> evita que un paquete dé vueltas para siempre. <code>traceroute</code> lo aprovecha: manda paquetes con TTL 1, 2, 3… para descubrir cada salto.'});
+
+  S.push({dev:2, layer:2, dir:'down', title:'Trama nueva, MAC nuevas', pdu:'Trama', ...P({...wan, enc:true, l4:true, l3:true, l2:true}), focus:'eth', chg:['eth','fcs'], flow:2,
+    text:`<p>El router arma una <b>trama nueva</b> para la siguiente red: MAC origen = su interfaz G0/1, MAC destino = el servidor. Luego la convierte en bits y la envía.</p><p>Fíjate en la regla de oro: <b>las MAC cambian en cada salto, las IP no</b> (los puertos tampoco).</p>`,
+    sec:'Si tu router hace <b>NAT</b> (como el de tu casa), además cambia la IP de origen privada por su IP pública. Aquí lo dejamos fuera para ver la regla clara.'});
+
+  /* ---- servidor: desencapsulación ---- */
+  S.push({dev:3, layer:1, dir:'up', title:'Llegan los bits al servidor', pdu:'Bits', ...P({...wan, enc:true, l4:true, l3:true, l2:true}), view:'bits',
+    text:`<p>La tarjeta de red del ${sc.srv.toLowerCase()} recibe las señales y las vuelve a convertir en unos y ceros. Ahora empieza la <b>desencapsulación</b>: cada capa lee su encabezado, lo quita y le pasa el resto a la de arriba.</p>`});
+  S.push({dev:3, layer:2, dir:'up', title:'¿Esta trama es para mí?', pdu:'Trama', ...P({...wan, enc:true, l4:true, l3:true, l2:true}), focus:'eth', read:['eth','fcs'],
+    text:`<p>La MAC destino <code>${NET.srvMac}</code> es la suya y el FCS cuadra, así que <b>quita el encabezado Ethernet y el FCS</b> y sube el paquete. Si la MAC no fuera suya, la botaría.</p>`});
+  S.push({dev:3, layer:3, dir:'up', title:'¿Este paquete es para mí?', pdu:'Paquete', ...P({...wan, enc:true, l4:true, l3:true}), focus:'ip', read:['ip'],
+    text:`<p>La IP destino <code>${sc.srvIp}</code> es la suya. El campo Protocolo dice <code>${isTcp ? '6' : '17'}</code>, así que entrega el contenido a <b>${sc.l4}</b>. Además anota la IP origen (<code>${NET.pc.ip}</code>) para saber a quién responder.</p>`});
+  S.push({dev:3, layer:4, dir:'up', title:`El puerto ${sc.dport} decide el programa`, pdu:seg, ...P({...wan, enc:true, l4:true}), focus:'l4', read:['l4'],
+    text:`<p>El puerto destino <code>${sc.dport}</code> le indica al sistema operativo que esto es para <b>${sc.proc}</b>, que está escuchando ahí.${isTcp ? ' TCP revisa la secuencia, ordena los datos y responde con un ACK.' : ''}</p>`,
+    sec:`Si nadie escuchara en el puerto ${sc.dport}, el servidor respondería ${isTcp ? 'con un <code>RST</code>' : 'con un ICMP "puerto inalcanzable"'}. Así es como un escáner de puertos distingue puertos abiertos de cerrados.`});
+  S.push({dev:3, layer:5, dir:'up', title: isTcp ? 'Se asocia a tu sesión' : 'Sin sesión que asociar', pdu:'Datos', ...P({...wan, enc:true}), focus:'data',
+    text: isTcp
+      ? `<p>El servidor asocia los datos a la conexión que ya tiene abierta contigo (tu IP + tu puerto ${sc.sport}). Así puede atender a miles de clientes a la vez sin mezclarlos.</p>`
+      : `<p>Con UDP no hay sesión: el servidor DNS solo guarda tu IP y puerto (${sc.sport}) para mandarte la respuesta.</p>`});
+  S.push(sc.tls
+    ? {dev:3, layer:6, dir:'up', title:'TLS descifra los datos', pdu:'Datos', ...P({...wan, enc:false}), focus:'data', newK:['data'],
+       text:`<p>Con las llaves de la sesión, TLS <b>descifra</b> el contenido. Recién aquí, dentro del servidor, tu clave vuelve a ser legible.</p>`}
+    : {dev:3, layer:6, dir:'up', title:'Nada que descifrar', pdu:'Datos', ...P({...wan, enc:false}), focus:'data',
+       text:`<p>Como no venía cifrado, la capa de presentación solo decodifica el texto. Ojo: llegó igual que como salió, a la vista de todos los que estaban en el camino.</p>`});
+  S.push({dev:3, layer:7, dir:'up', title: isDns ? 'El servidor DNS responde' : 'La app recibe tu login', pdu:'Datos', ...P({...wan, enc:false}), focus:'data', read:['data'],
+    text: isDns
+      ? `<p>BIND recibe la consulta por <code>${pl}</code>, busca el registro A y prepara la respuesta. ¡Mensaje entregado!</p>`
+      : `<p>La aplicación web recibe <code>${pl}</code>, valida el usuario y prepara la respuesta (por ejemplo, <code>302</code> hacia tu panel). ¡Mensaje entregado!</p>`});
+
+  /* ---- resumen ---- */
+  S.push({dev:3, layer:0, dir:'end', title:'Resumen del viaje', pdu:'', B:[], view:'end',
+    text:`<p>Así cambiaron los encabezados en cada salto:</p>
+      <table class="mini">
+        <tr><th>Campo</th><th>PC → Router</th><th>Router → Servidor</th></tr>
+        <tr><td>MAC origen</td><td class="mono">…${NET.pc.mac.slice(-5)}</td><td class="y mono">…${NET.rw.mac.slice(-5)}</td></tr>
+        <tr><td>MAC destino</td><td class="mono">…${NET.rl.mac.slice(-5)}</td><td class="y mono">…${NET.srvMac.slice(-5)}</td></tr>
+        <tr><td>IP origen / destino</td><td class="mono">igual</td><td class="n">no cambia</td></tr>
+        <tr><td>Puertos</td><td class="mono">:${sc.sport} → :${sc.dport}</td><td class="n">no cambian</td></tr>
+        <tr><td>TTL</td><td class="mono">64</td><td class="y mono">63</td></tr>
+      </table>
+      <p><b>¿Y la respuesta?</b> Hace el mismo viaje al revés: el servidor encapsula con origen y destino invertidos (puerto ${sc.dport} → ${sc.sport}) y tu PC desencapsula hasta entregársela a ${isDns ? 'tu sistema operativo' : 'tu navegador'}.</p>
+      <p class="muted">Prueba otro escenario arriba o cambia el mensaje y vuelve a enviar.</p>`});
+  return S;
+}
+
+const DEVS = [
+  {ico:'PC', nm:'Tu PC', ad:() => `${NET.pc.ip}<br>…${NET.pc.mac.slice(-5)}`, max:7},
+  {ico:'SW', nm:'Switch', ad:() => 'capa 2', max:2},
+  {ico:'R1', nm:'Router', ad:() => `${NET.rl.ip}<br>${NET.rw.ip}`, max:3},
+  {ico:'SRV', nm:() => SCN[scnKey].srv, ad:() => `${SCN[scnKey].srvIp}<br>…${NET.srvMac.slice(-5)}`, max:7},
+];
+
+let steps = [], cur = 0, selBlock = null, auto = null;
+
+function renderScenarioBtns() {
+  $('scnBtns').innerHTML = Object.entries(SCN).map(([k, s]) => `<button type="button" data-k="${k}" aria-pressed="${k === scnKey}">${s.label}</button>`).join('');
+  $('scnBtns').querySelectorAll('button').forEach(b => b.onclick = () => { msgs[scnKey] = $('msgIn').value || SCN[scnKey].def; scnKey = b.dataset.k; renderScenarioBtns(); loadMsg(); send(); });
+}
+function loadMsg() { $('msgIn').value = msgs[scnKey]; $('msgLabel').textContent = SCN[scnKey].inLabel; }
+function send() {
+  stopAuto();
+  const v = $('msgIn').value.trim();
+  msgs[scnKey] = v || SCN[scnKey].def;
+  if (!v) $('msgIn').value = msgs[scnKey];
+  steps = buildSteps(); cur = 0; renderStep(true);
+}
+
+function renderTopo(s) {
+  let h = '';
+  DEVS.forEach((d, i) => {
+    if (i) h += `<div class="link${s.flow === i - 1 ? ' flow' : ''}"></div>`;
+    const nm = typeof d.nm === 'function' ? d.nm() : d.nm;
+    h += `<div class="dev${s.dev === i ? ' on' : ''}"><div class="ico">${d.ico}</div><div class="nm">${esc(nm)}</div><div class="ad">${d.ad()}</div></div>`;
+  });
+  $('topo').innerHTML = h;
+}
+
+function renderStack(s) {
+  const max = DEVS[s.dev].max;
+  let h = '';
+  [7,6,5,4,3,2,1].forEach(l => {
+    const cls = l === s.layer ? 'on' : l > max ? 'off' : '';
+    h += `<div class="srow ${cls}" style="--c:${cv(l)};grid-column:1;grid-row:${8 - l}"><span class="no">${l}</span><span class="tx">${LY[l].n}<span class="pdu">${l === 4 && SCN[scnKey].l4 === 'UDP' ? 'Datagrama' : LY[l].pdu}</span></span></div>`;
+  });
+  TCPIP.forEach(g => {
+    const top = g.rows[0], on = g.rows.includes(s.layer), off = Math.max(...g.rows) > max && Math.min(...g.rows) > max;
+    h += `<div class="tcell ${on ? 'on' : off ? 'off' : ''}" style="grid-row:${8 - top} / span ${g.rows.length}">${g.n}</div>`;
+  });
+  $('stack').innerHTML = h;
+  $('dirtag').textContent = s.dir === 'down' ? '⬇ encapsulando' : s.dir === 'up' ? '⬆ desencapsulando' : s.dir === 'mid' ? '⇄ reenviando' : '✓ entregado';
+}
+
+function renderFields() {
+  const s = steps[cur];
+  const b = s.B.find(x => x.k === selBlock);
+  if (!b) { $('fieldview').innerHTML = ''; return; }
+  const chgBlock = s.chg && s.chg.includes(b.k);
+  $('fieldview').innerHTML = `<div class="fcap" style="--c:${cv(b.l)}">Campos de <i>${esc(b.name)}</i></div>
+    <table class="ftable">${b.fields.map(([k, v, ch]) => `<tr class="${ch && chgBlock ? 'ch' : ''}"><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join('')}</table>`;
+}
+
+function renderStep(animate) {
+  const s = steps[cur], sc = SCN[scnKey];
+  renderTopo(s); renderStack(s);
+  const dev = DEVS[s.dev], devName = typeof dev.nm === 'function' ? dev.nm() : dev.nm;
+  $('stephead').innerHTML = s.layer
+    ? `<span class="badge" style="--c:${cv(s.layer)}">Capa ${s.layer} · ${LY[s.layer].n}</span><span class="badge soft">${esc(devName)}</span>`
+    : `<span class="badge">Fin</span>`;
+  $('stitle').textContent = s.title;
+  $('pduinfo').textContent = s.pdu ? `PDU: ${s.pdu}${s.size ? ` · ${s.size} bytes` : ''}` : '';
+  if (s.view === 'bits') {
+    const bits = bitsOf(sc, msgs[scnKey]);
+    $('pduview').innerHTML = `<div class="bits">${[...bits].map((c, i) => `<span style="animation-delay:${animate ? i * 4 : 0}ms">${c}</span>`).join('')}…<span class="sig">${s.dev === 0 ? '→ por el cable hacia el switch' : '← desde el router'}</span></div>`;
+    selBlock = null;
+  } else if (s.view === 'end') {
+    $('pduview').innerHTML = ''; selBlock = null;
+  } else {
+    selBlock = s.focus;
+    $('pduview').innerHTML = `<div class="blocks">${s.B.map(b => {
+      const cls = [b.k === 'data' ? 'data' : '', animate && s.newK && s.newK.includes(b.k) ? 'new' : '', s.read && s.read.includes(b.k) ? 'read' : '', s.chg && s.chg.includes(b.k) ? 'chg' : ''].join(' ');
+      return `<button type="button" class="blk ${cls}" data-k="${b.k}" style="--c:${cv(b.l)}"><span class="bn">${esc(b.name)}${s.chg && s.chg.includes(b.k) ? '<span class="tagx" title="Cambió en este salto">✱</span>' : ''}</span><span class="bs">${esc(b.sub)}</span></button>`;
+    }).join('')}</div>`;
+    $('pduview').querySelectorAll('.blk').forEach(el => el.onclick = () => { selBlock = el.dataset.k; markSel(); renderFields(); });
+    markSel();
+  }
+  renderFields();
+  $('steptext').innerHTML = s.text;
+  $('stepsec').classList.toggle('hidden', !s.sec);
+  $('stepsec').innerHTML = s.sec ? '🔐 ' + s.sec : '';
+  $('progBar').style.width = `${(cur + 1) / steps.length * 100}%`;
+  $('stepCount').textContent = `Paso ${cur + 1}/${steps.length}`;
+  $('btnPrev').disabled = cur === 0;
+  $('btnNextStep').textContent = cur === steps.length - 1 ? '↺ Otra vez' : 'Siguiente ▶';
+}
+function markSel() { $('pduview').querySelectorAll('.blk').forEach(el => el.classList.toggle('sel', el.dataset.k === selBlock)); }
+
+function go(d) {
+  if (d > 0 && cur === steps.length - 1) { cur = 0; renderStep(true); return; }
+  const n = Math.min(steps.length - 1, Math.max(0, cur + d));
+  if (n === cur) return;
+  cur = n; renderStep(d > 0);
+}
+function stopAuto() { clearInterval(auto); auto = null; $('btnAuto').textContent = '▶ Auto'; }
+function toggleAuto() {
+  if (auto) { stopAuto(); return; }
+  if (cur === steps.length - 1) { cur = 0; renderStep(true); }
+  $('btnAuto').textContent = '⏸ Pausa';
+  auto = setInterval(() => { if (cur >= steps.length - 1) { stopAuto(); return; } go(1); }, 4200);
+}
+$('btnPrev').onclick = () => { stopAuto(); go(-1); };
+$('btnNextStep').onclick = () => { stopAuto(); go(1); };
+$('btnAuto').onclick = toggleAuto;
+$('btnSend').onclick = send;
+$('msgIn').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); send(); } });
+
+/* ======================================================================
+   DESAFÍO
+   ====================================================================== */
+const ROUNDS = 8, LIVES = 3, NEED = 6;
+const pick = (q, a, why) => ({t:'pick', q, a, why});
+const tcp = (q, a, why) => ({t:'tcp', q, a, why});
+const ord = (q, items, why) => ({t:'order', q, items, why});
+const mc = (q, opts, why) => ({t:'mc', q, opts, a:opts[0], why});
+
+const LEVELS = [
+  {name:'Lo básico', desc:'Protocolos, PDUs y qué hace cada capa.', time:25, pool:[
+    pick('HTTP', 7, 'Es el protocolo de la web: define cómo se piden y entregan las páginas.'),
+    pick('DNS', 7, 'Traduce nombres a IP; es un servicio que usan las aplicaciones.'),
+    pick('SMTP', 7, 'Es el protocolo para enviar correos.'),
+    pick('DHCP', 7, 'Entrega IPs automáticamente. Es un servicio de aplicación que viaja sobre UDP 67/68.'),
+    pick('FTP', 7, 'Transferencia de archivos: protocolo de aplicación.'),
+    pick('TCP', 4, 'Transporte fiable: puertos, secuencia, ACKs y retransmisión.'),
+    pick('UDP', 4, 'Transporte sin conexión: puertos y nada más.'),
+    pick('IPv4', 3, 'Direccionamiento lógico y enrutamiento entre redes.'),
+    pick('ICMP (el del ping)', 3, 'Mensajes de control de IP. Va dentro de un paquete IP y no usa puertos.'),
+    pick('Ethernet', 2, 'Arma tramas con MAC de origen y destino, y las cierra con el FCS.'),
+    pick('La PDU llamada "segmento"', 4, 'Segmento = capa 4 (en UDP se le dice datagrama).'),
+    pick('La PDU llamada "paquete"', 3, 'Paquete = capa 3.'),
+    pick('La PDU llamada "trama"', 2, 'Trama = capa 2.'),
+    pick('Unos y ceros convertidos en señales', 1, 'La capa física transmite bits como electricidad, luz o radio.'),
+    pick('Cifrar y comprimir los datos', 6, 'Presentación: formato, compresión y cifrado.'),
+    pick('Abrir, mantener y cerrar el diálogo entre dos apps', 5, 'Eso es justo la capa de sesión.'),
+    pick('Elegir la mejor ruta hacia otra red', 3, 'El enrutamiento es trabajo de la capa de red.'),
+    pick('Control de flujo y reenviar lo que se perdió', 4, 'TCP, en la capa de transporte, hace control de flujo y retransmisión.'),
+    pick('Detectar tramas dañadas con el FCS', 2, 'El FCS (un CRC) va al final de la trama, en la capa 2.'),
+    pick('Formatos como JPEG o UTF-8', 6, 'Formatos y codificación son de presentación.'),
+  ]},
+  {name:'Equipos y direcciones', desc:'Switch, router, hub, MAC, IP, puertos y el modelo TCP/IP.', time:25, pool:[
+    pick('Switch', 2, 'Reenvía tramas según la MAC destino.'),
+    pick('Router', 3, 'Reenvía paquetes entre redes según la IP destino.'),
+    pick('Hub', 1, 'Repite la señal por todos los puertos sin leer nada: solo bits.'),
+    pick('Repetidor', 1, 'Regenera la señal para alargar el alcance. No entiende de direcciones.'),
+    pick('Access point WiFi', 2, 'Puentea tramas entre la red inalámbrica y la cableada usando MAC.'),
+    pick('Bridge (puente)', 2, 'Une segmentos de red filtrando por MAC, como un switch de pocos puertos.'),
+    pick('Dirección MAC', 2, 'La dirección física de 48 bits que usa la capa de enlace.'),
+    pick('Dirección IP', 3, 'La dirección lógica de la capa de red.'),
+    pick('Número de puerto', 4, 'Identifica el proceso o servicio: es de la capa de transporte.'),
+    pick('Cable UTP y conector RJ-45', 1, 'Medio y conector: puro hardware de capa física.'),
+    pick('Switch multicapa', 3, 'Además de conmutar, enruta entre VLANs usando IP.'),
+    pick('El campo TTL', 3, 'Va en el encabezado IP y baja en 1 en cada router.'),
+    pick('Máscara de subred', 3, 'Define qué parte de la IP es red y cuál es host.'),
+    pick('Handshake de 3 vías (SYN, SYN-ACK, ACK)', 4, 'Así TCP establece la conexión.'),
+    pick('VLAN (802.1Q)', 2, 'Una etiqueta dentro de la trama Ethernet separa redes en un mismo switch.'),
+    pick('Fibra óptica', 1, 'Transmite bits como pulsos de luz.'),
+    tcp('HTTPS', 'Aplicación', 'Todo lo de las capas 5 a 7 de OSI cae en Aplicación en TCP/IP.'),
+    tcp('El cifrado TLS (capa 6 en OSI)', 'Aplicación', 'TCP/IP no tiene capa de presentación: eso queda en Aplicación.'),
+    tcp('TCP', 'Transporte', 'Igual que en OSI: transporte.'),
+    tcp('IP', 'Internet', 'La capa 3 de OSI se llama Internet en TCP/IP.'),
+    tcp('Un router', 'Internet', 'Trabaja con IP, la capa Internet.'),
+    tcp('Un switch', 'Acceso a red', 'Enlace y física de OSI se juntan en Acceso a red.'),
+    tcp('La dirección MAC', 'Acceso a red', 'La capa 2 de OSI queda dentro de Acceso a red.'),
+    tcp('El cable de red', 'Acceso a red', 'La capa física de OSI queda dentro de Acceso a red.'),
+  ]},
+  {name:'Modo ciber', desc:'Ataques y defensas: ¿en qué capa pegan?', time:25, pool:[
+    pick('ARP spoofing', 2, 'Envenena la tabla ARP con MACs falsas para ponerse en medio (MITM).'),
+    pick('MAC flooding', 2, 'Llena la tabla MAC del switch para que reenvíe todo como un hub.'),
+    pick('VLAN hopping', 2, 'Abusa del etiquetado 802.1Q para saltar a otra VLAN.'),
+    pick('SYN flood', 4, 'Abre miles de handshakes TCP a medias para agotar al servidor.'),
+    pick('Escaneo de puertos con nmap', 4, 'Prueba puertos TCP/UDP para ver cuáles responden.'),
+    pick('IP spoofing', 3, 'Falsifica la IP de origen del paquete.'),
+    pick('Ataque Smurf (ICMP a broadcast)', 3, 'Usa ICMP, que vive en la capa de red, para amplificar tráfico.'),
+    pick('Inyección SQL', 7, 'Ataca la aplicación a través de lo que le mandas.'),
+    pick('XSS (cross-site scripting)', 7, 'Inyecta scripts en una aplicación web.'),
+    pick('Phishing', 7, 'Engaña al usuario por correo o web: capa 7… o la famosa "capa 8", el humano.'),
+    pick('Secuestro de sesión (robo de cookie)', 5, 'Se apropia de una sesión ya abierta.'),
+    pick('SSL stripping', 6, 'Degrada HTTPS a HTTP para ver los datos sin cifrar.'),
+    pick('Jamming de WiFi', 1, 'Interfiere la señal de radio: ataca el medio físico.'),
+    pick('Pinchar un cable (wiretapping)', 1, 'Acceso directo al medio físico.'),
+    pick('Port security en el switch', 2, 'Limita qué MAC pueden usar cada puerto.'),
+    pick('ACL en un router que bloquea IPs', 3, 'Filtra por dirección IP: capa de red.'),
+    pick('Firewall que bloquea el puerto 23 (Telnet)', 4, 'Filtrar por puerto es filtrar en transporte.'),
+    pick('WAF (firewall de aplicaciones web)', 7, 'Entiende HTTP y bloquea ataques como SQLi o XSS.'),
+    pick('Dynamic ARP Inspection (DAI)', 2, 'Valida las respuestas ARP en el switch para frenar el ARP spoofing.'),
+    pick('Rack con llave y control de acceso', 1, 'La seguridad física protege la capa 1.'),
+  ]},
+  {name:'Encapsulación pro', desc:'Ordena tramas y procesos, y piensa como un router.', time:40, pool:[
+    ord('Ordena cómo viaja por el cable una petición HTTP, de izquierda a derecha.', ['Ethernet','IP','TCP','HTTP (datos)','FCS'], 'Cada capa envuelve a la de arriba: Ethernet va por fuera al inicio y el FCS cierra la trama al final.'),
+    ord('Ordena cómo viaja por el cable una consulta DNS, de izquierda a derecha.', ['Ethernet','IP','UDP','DNS (datos)','FCS'], 'DNS normalmente va sobre UDP puerto 53.'),
+    ord('Ordena cómo viaja por el cable una petición HTTPS, de izquierda a derecha.', ['Ethernet','IP','TCP','TLS','HTTP cifrado','FCS'], 'TLS va entre TCP y los datos de la aplicación, que viajan cifrados.'),
+    ord('Ordena las capas OSI de la 7 a la 1.', ['Aplicación','Presentación','Sesión','Transporte','Red','Enlace de datos','Física'], 'Felipe Encontró Ratones Tomando Sopa Para Almorzar, leído al revés.'),
+    ord('Ordena las capas de TCP/IP de arriba hacia abajo.', ['Aplicación','Transporte','Internet','Acceso a red'], 'Cuatro capas: OSI 7-5, 4, 3 y 2-1.'),
+    ord('Ordena las PDU como se van formando al encapsular.', ['Datos','Segmento','Paquete','Trama','Bits'], 'De arriba hacia abajo: datos, segmento (4), paquete (3), trama (2) y bits (1).'),
+    ord('Ordena lo que hace un router al recibir una trama.', ['Recibe los bits','Revisa el FCS y quita la trama','Busca la IP destino en su tabla','Resta 1 al TTL','Arma una trama con MAC nuevas','Envía los bits'], 'Sube hasta la capa 3, decide, y vuelve a bajar con una trama nueva.'),
+    mc('Un paquete cruza un router. ¿Qué cambia?', ['Las MAC de origen y destino','Las IP de origen y destino','Los puertos','Nada'], 'Las MAC solo valen dentro de cada red local, así que el router arma una trama nueva. Las IP se mantienen de punta a punta (salvo NAT); también baja el TTL.'),
+    mc('Tu PC le escribe a 8.8.8.8, que está fuera de tu red. ¿Qué MAC destino lleva la trama?', ['La del router (puerta de enlace)','La de 8.8.8.8','FF:FF:FF:FF:FF:FF','La del switch'], 'La trama solo llega hasta el siguiente salto: tu puerta de enlace. Tu PC averigua su MAC con ARP.'),
+    mc('¿Qué hace un switch con una trama cuya MAC destino no está en su tabla?', ['La inunda por todos los puertos menos el de entrada','La bota','Se la manda al router','Le pregunta al DNS'], 'Eso se llama flooding (inundación). Cuando el destino responda, el switch aprende su MAC.'),
+    mc('¿Qué campo evita que un paquete dé vueltas para siempre?', ['TTL','FCS','Puerto destino','Nº de secuencia'], 'Cada router le resta 1 al TTL; al llegar a 0, el paquete se bota.'),
+    mc('¿Cómo sabe el servidor a qué programa entregar los datos?', ['Por el puerto destino','Por la MAC destino','Por el TTL','Por la IP de origen'], 'El puerto destino (ej. 443) identifica el servicio que está escuchando.'),
+    mc('Capturas tráfico HTTP con Wireshark. ¿Puedes ver la clave de un login?', ['Sí, va en texto plano','No, HTTP siempre cifra','Solo si va por UDP','Solo en IPv6'], 'HTTP no cifra nada. Por eso los logins siempre deben ir por HTTPS.'),
+    mc('¿Cuál de estos hace un handshake antes de enviar datos?', ['TCP','UDP','IP','Ethernet'], 'TCP: SYN, SYN-ACK, ACK.'),
+    mc('En TCP/IP, ¿qué capas de OSI se juntan en "Aplicación"?', ['7, 6 y 5','7 y 6','4 y 3','2 y 1'], 'Aplicación, presentación y sesión quedan en una sola capa.'),
+  ]},
+];
+
+let save = {unlocked:1, best:{}};
+try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.unlocked) save = s; } catch (e) {}
+const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) {} };
+
+let G = null, timer = null;
+function showQ(scr) { ['scrMenu', 'scrGame', 'scrResult'].forEach(s => $(s).classList.toggle('hidden', s !== scr)); window.scrollTo(0, 0); }
+
+function renderMenu() {
+  G = null;
+  $('levels').innerHTML = LEVELS.map((L, i) => {
+    const n = i + 1, locked = n > save.unlocked, b = save.best[n];
+    return `<button class="level" data-lv="${n}" ${locked ? 'disabled' : ''} type="button">
+      <div class="num">NIVEL ${n}${locked ? ' · 🔒' : ''}</div>
+      <div class="name">${L.name}</div>
+      <div class="desc">${L.desc}</div>
+      <div class="best">${b ? `Mejor: ${b.score} pts · ${b.hits}/${ROUNDS} ${'★'.repeat(b.stars)}` : (locked ? `Acierta ${NEED}/${ROUNDS} en el nivel ${n - 1}` : 'Sin jugar')}</div>
+    </button>`;
+  }).join('');
+  $('levels').querySelectorAll('.level').forEach(b => b.onclick = () => start(Number(b.dataset.lv)));
+  showQ('scrMenu');
+}
+
+function start(lv) {
+  G = {lv, deck:shuffle(LEVELS[lv - 1].pool).slice(0, ROUNDS), i:0, score:0, streak:0, lives:LIVES, hits:0, log:[]};
+  showQ('scrGame');
+  next();
+}
+
+function hud() {
+  $('hudLevel').textContent = `Nivel ${G.lv} · ${LEVELS[G.lv - 1].name}`;
+  $('hudRound').textContent = `${Math.min(G.i + 1, ROUNDS)}/${ROUNDS}`;
+  $('hudScore').textContent = G.score;
+  $('hudStreak').textContent = G.streak;
+  $('hudLives').textContent = '❤'.repeat(G.lives) + '♡'.repeat(LIVES - G.lives);
+}
+
+function next() {
+  if (G.i >= G.deck.length || G.lives <= 0) return finish();
+  const q = G.deck[G.i];
+  G.answered = false; G.order = [];
+  hud();
+  ['feedback', 'explain', 'btnNext', 'btnCheck', 'btnUndo'].forEach(id => $(id).classList.add('hidden'));
+  const card = $('gameCard'); card.classList.remove('pop', 'shake'); void card.offsetWidth; card.classList.add('pop');
+
+  if (q.t === 'pick') {
+    $('qkind').textContent = 'Capa OSI';
+    $('qtext').innerHTML = `¿A qué capa OSI corresponde <em>${esc(q.q)}</em>?`;
+    $('qbody').innerHTML = `<div class="opts layers">${[7,6,5,4,3,2,1].map(l => `<button type="button" class="opt" data-v="${l}" style="--c:${cv(l)}"><span class="k">${l}</span>${LY[l].n}</button>`).join('')}</div>`;
+  } else if (q.t === 'tcp') {
+    $('qkind').textContent = 'Modelo TCP/IP';
+    $('qtext').innerHTML = `En el modelo TCP/IP, ¿a qué capa corresponde <em>${esc(q.q)}</em>?`;
+    $('qbody').innerHTML = `<div class="opts">${TCPIP.map((g, i) => `<button type="button" class="opt" data-v="${g.n}"><span class="k">${i + 1}</span>${g.n}</button>`).join('')}</div>`;
+  } else if (q.t === 'mc') {
+    $('qkind').textContent = 'Piensa como la red';
+    $('qtext').textContent = q.q;
+    $('qbody').innerHTML = `<div class="opts">${shuffle(q.opts).map((o, i) => `<button type="button" class="opt" data-v="${esc(o)}"><span class="k">${i + 1}</span>${esc(o)}</button>`).join('')}</div>`;
+  } else {
+    $('qkind').textContent = 'Ordena';
+    $('qtext').textContent = q.q;
+    let sh = shuffle(q.items); while (sh.every((x, i) => x === q.items[i])) sh = shuffle(q.items);
+    G.pool = sh;
+    $('qbody').innerHTML = `<div class="order-slots" id="slots"></div><div class="order-pool" id="opool"></div>`;
+    renderOrder();
+    $('btnCheck').classList.remove('hidden');
+  }
+  $('qbody').querySelectorAll('.opt').forEach(b => b.onclick = () => answer(b.dataset.v));
+
+  clearInterval(timer);
+  const T = LEVELS[G.lv - 1].time;
+  G.t0 = Date.now(); G.T = T;
+  $('timerBar').style.width = '100%';
+  timer = setInterval(() => {
+    const left = Math.max(0, T - (Date.now() - G.t0) / 1000);
+    $('timerBar').style.width = `${left / T * 100}%`;
+    if (left <= 0) answer(null, true);
+  }, 200);
+}
+
+function renderOrder() {
+  $('slots').innerHTML = G.order.map((ix, k) => `<button type="button" class="chip" data-ix="${ix}"><span class="ix">${k + 1}</span>${esc(G.pool[ix])}</button>`).join('');
+  $('opool').innerHTML = G.pool.map((it, ix) => G.order.includes(ix) ? '' : `<button type="button" class="chip" data-ix="${ix}">${esc(it)}</button>`).join('');
+  $('slots').querySelectorAll('.chip').forEach(b => b.onclick = () => { if (G.answered) return; G.order = G.order.filter(x => x !== Number(b.dataset.ix)); renderOrder(); });
+  $('opool').querySelectorAll('.chip').forEach(b => b.onclick = () => { if (G.answered) return; G.order.push(Number(b.dataset.ix)); renderOrder(); });
+  $('btnCheck').disabled = G.order.length !== G.pool.length;
+  $('btnUndo').classList.toggle('hidden', !G.order.length || G.answered);
+}
+
+function answer(v, timeout = false) {
+  if (!G || G.answered) return;
+  const q = G.deck[G.i];
+  if (q.t === 'order' && !timeout && G.order.length !== G.pool.length) return;
+  G.answered = true;
+  clearInterval(timer);
+  let ok = false, right = '';
+  if (q.t === 'pick') { ok = Number(v) === q.a; right = `Capa ${q.a} · ${LY[q.a].n}`; }
+  else if (q.t === 'tcp' || q.t === 'mc') { ok = v === q.a; right = q.a; }
+  else { ok = !timeout && G.order.every((ix, k) => G.pool[ix] === q.items[k]); right = q.items.join(' → '); }
+
+  if (q.t === 'order') {
+    $('slots').querySelectorAll('.chip').forEach((b, k) => { b.disabled = true; b.classList.add(G.pool[Number(b.dataset.ix)] === q.items[k] ? 'right' : 'wrong'); });
+    $('opool').querySelectorAll('.chip').forEach(b => b.disabled = true);
+    ['btnCheck', 'btnUndo'].forEach(id => $(id).classList.add('hidden'));
+  } else {
+    $('qbody').querySelectorAll('.opt').forEach(b => {
+      b.disabled = true;
+      const val = q.t === 'pick' ? Number(b.dataset.v) : b.dataset.v;
+      if (val === q.a) b.classList.add('right');
+      else if (!timeout && String(val) === String(v)) b.classList.add('wrong');
+    });
+  }
+
+  let gain = 0;
+  if (ok) {
+    G.hits++; G.streak++;
+    const left = Math.max(0, G.T - (Date.now() - G.t0) / 1000);
+    gain = 100 + Math.min(G.streak - 1, 5) * 20 + Math.round(left / G.T * 50);
+    G.score += gain;
+  } else {
+    G.streak = 0; G.lives--;
+    const card = $('gameCard'); card.classList.remove('pop', 'shake'); void card.offsetWidth; card.classList.add('shake');
+  }
+  G.log.push({q, ok, timeout, right});
+  const fb = $('feedback');
+  fb.className = 'feedback ' + (ok ? 'ok' : 'bad');
+  fb.textContent = ok ? `✓ ¡Correcto! +${gain} pts` : timeout ? `⏱ Se acabó el tiempo. Era: ${right}` : `✗ No. Era: ${right}`;
+  $('explain').textContent = q.why;
+  $('explain').classList.remove('hidden');
+  $('btnNext').textContent = G.lives <= 0 || G.i >= ROUNDS - 1 ? 'Ver resultado →' : 'Siguiente →';
+  $('btnNext').classList.remove('hidden');
+  hud();
+}
+
+function finish() {
+  clearInterval(timer);
+  const {lv, score, hits} = G;
+  const out = G.lives <= 0;
+  const stars = hits >= 8 ? 3 : hits >= 7 ? 2 : hits >= NEED ? 1 : 0;
+  const passed = !out && hits >= NEED;
+  const b = save.best[lv];
+  if (!b || score > b.score) save.best[lv] = {score, hits, stars};
+  let unlockMsg = '';
+  if (passed && lv < LEVELS.length && save.unlocked <= lv) { save.unlocked = lv + 1; unlockMsg = `🔓 Desbloqueaste el nivel ${lv + 1}: ${LEVELS[lv].name}`; }
+  else if (passed && lv === LEVELS.length) unlockMsg = '🧠 Dominaste la encapsulación. Ya piensas como un router.';
+  else if (!passed) unlockMsg = `Necesitas ${NEED}/${ROUNDS} aciertos sin quedarte sin vidas para avanzar.`;
+  persist();
+  $('resTitle').textContent = out ? 'Te quedaste sin vidas' : passed ? '¡Nivel superado!' : 'Casi…';
+  $('resStars').textContent = '★'.repeat(stars) + '☆'.repeat(3 - stars);
+  $('resScore').textContent = `${score} pts`;
+  $('resDetail').textContent = `${hits} de ${G.log.length} aciertos en el nivel ${lv} (${LEVELS[lv - 1].name}).`;
+  $('resUnlock').textContent = unlockMsg;
+  $('review').innerHTML = G.log.map(({q, ok, timeout, right}) => {
+    return `<li><span class="m ${ok ? 'ok' : 'bad'}">${ok ? '✓' : '✗'}</span><span><b>${esc(q.q)}</b><br><span class="muted">${esc(right)}${timeout ? ' · sin respuesta' : ''}</span></span></li>`;
+  }).join('');
+  showQ('scrResult');
+}
+
+$('btnCheck').onclick = () => answer(null);
+$('btnUndo').onclick = () => { if (G && !G.answered && G.order.length) { G.order.pop(); renderOrder(); } };
+$('btnNext').onclick = () => { G.i++; next(); };
+$('btnRetry').onclick = () => start(G.lv);
+$('btnBack').onclick = renderMenu;
+$('btnQuit').onclick = () => { clearInterval(timer); renderMenu(); };
+
+/* ---------- teclado ---------- */
+document.addEventListener('keydown', e => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const tag = (e.target.tagName || '').toLowerCase();
+  if (tag === 'input' || tag === 'textarea') return;
+  if (!$('tabSim').classList.contains('hidden')) {
+    if (e.key === 'ArrowRight') { stopAuto(); go(1); }
+    else if (e.key === 'ArrowLeft') { stopAuto(); go(-1); }
+    else if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+    return;
+  }
+  if ($('tabQuiz').classList.contains('hidden') || $('scrGame').classList.contains('hidden') || !G) return;
+  const q = G.deck[G.i];
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    if (G.answered) { G.i++; next(); }
+    else if (q.t === 'order') answer(null);
+    return;
+  }
+  if (G.answered || !/^[1-7]$/.test(e.key)) return;
+  const n = Number(e.key);
+  if (q.t === 'pick') answer(String(n));
+  else if (q.t === 'order') { const free = G.pool.map((_, i) => i).filter(i => !G.order.includes(i)); if (free[n - 1] !== undefined) { G.order.push(free[n - 1]); renderOrder(); } }
+  else { const b = $('qbody').querySelectorAll('.opt')[n - 1]; if (b) answer(b.dataset.v); }
+});
+
+/* ---------- inicio ---------- */
+renderGuide();
+renderScenarioBtns();
+loadMsg();
+send();
+renderMenu();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1665 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phishing o No v2</title>
+<meta name="description" content="Juego para entrenar el ojo contra el phishing, ahora con modo forense: lee encabezados reales (SPF, DKIM, DMARC, Received, Return-Path) y analiza los tuyos en el navegador.">
+<style>
+:root{
+  --bg:#f4f6fb; --panel:#ffffff; --panel2:#eef1f8; --text:#141a2a; --muted:#5b6478;
+  --line:#d7dce8; --accent:#0a7cff; --accent-ink:#ffffff; --ok:#11885a; --ok-bg:#e3f6ed;
+  --bad:#c8323c; --bad-bg:#fbe6e7; --warn:#b26a00; --warn-bg:#fff3dc;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --shadow:0 1px 2px rgba(20,26,42,.06),0 6px 20px rgba(20,26,42,.06);
+  --bubble:#e9edf5;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0b0f17; --panel:#131a26; --panel2:#1a2333; --text:#e6ebf5; --muted:#93a0b8;
+    --line:#26324a; --accent:#3ddc97; --accent-ink:#06120c; --ok:#3ddc97; --ok-bg:#0f2a20;
+    --bad:#ff6b74; --bad-bg:#2c1418; --warn:#ffb547; --warn-bg:#2b2010;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+    --bubble:#222d40;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0b0f17; --panel:#131a26; --panel2:#1a2333; --text:#e6ebf5; --muted:#93a0b8;
+  --line:#26324a; --accent:#3ddc97; --accent-ink:#06120c; --ok:#3ddc97; --ok-bg:#0f2a20;
+  --bad:#ff6b74; --bad-bg:#2c1418; --warn:#ffb547; --warn-bg:#2b2010;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+  --bubble:#222d40;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+.wrap{max-width:820px;margin:0 auto;padding:20px 16px 48px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:20px;letter-spacing:-.01em}
+.brand .logo{font-family:var(--mono);background:var(--accent);color:var(--accent-ink);border-radius:8px;padding:2px 8px;font-size:15px}
+.iconbtn{background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:6px 10px;cursor:pointer;font:inherit;font-size:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:var(--shadow);margin-bottom:16px}
+h1{font-size:26px;margin:0 0 6px;letter-spacing:-.02em}
+h2{font-size:18px;margin:0 0 12px}
+h3{font-size:15px;margin:0 0 8px}
+p{margin:0 0 10px}
+.muted{color:var(--muted)}
+.mono{font-family:var(--mono)}
+.levels{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:16px}
+.level{text-align:left;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px;cursor:pointer;color:var(--text);font:inherit;transition:transform .1s,border-color .1s}
+.level:hover:not(:disabled){border-color:var(--accent);transform:translateY(-1px)}
+.level:disabled{opacity:.5;cursor:not-allowed}
+.level .num{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.level .name{font-weight:700;margin:2px 0 4px}
+.level .desc{font-size:14px;color:var(--muted)}
+.level .best{font-size:13px;margin-top:8px;font-family:var(--mono)}
+.hud{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.pill{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:14px;font-family:var(--mono)}
+.pill b{font-weight:700}
+.timer-bar{height:6px;background:var(--panel2);border-radius:99px;overflow:hidden;margin:-4px 0 14px}
+.timer-bar div{height:100%;background:var(--accent);width:100%;transition:width .25s linear}
+.ctx{font-size:14px;padding:8px 12px;border-left:3px solid var(--accent);background:var(--panel2);border-radius:6px;margin-bottom:12px}
+.kind{font-size:13px;color:var(--muted);margin-bottom:8px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em}
+
+/* ----- correo ----- */
+.mail{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--bg)}
+.mhead{padding:14px 16px;border-bottom:1px solid var(--line);background:var(--panel)}
+.subj{font-weight:700;font-size:18px;margin-bottom:10px;display:inline-block}
+.from{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.av{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;font-size:14px;flex:none}
+.from .who{min-width:0}
+.from .name{font-weight:600}
+.addr{font-family:var(--mono);font-size:13px;color:var(--muted);word-break:break-all}
+.meta{font-size:13px;color:var(--muted)}
+.atts{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.att{font-family:var(--mono);font-size:13px;border:1px solid var(--line);background:var(--panel2);border-radius:8px;padding:6px 10px}
+.mbody{padding:16px;font-size:15px;line-height:1.6;word-break:break-word}
+.mbody p{margin:0 0 10px}
+.mbody .btnlink{display:inline-block;background:var(--bl,#0a7cff);color:#fff;text-decoration:none;font-weight:600;padding:8px 16px;border-radius:8px;margin:4px 0 10px}
+.mbody .sig{color:var(--muted);font-size:13px;margin-top:14px}
+.lnk{color:var(--accent);text-decoration:underline;cursor:pointer}
+.status{font-family:var(--mono);font-size:12px;padding:6px 12px;border-top:1px solid var(--line);background:var(--panel2);color:var(--muted);min-height:30px;word-break:break-all}
+.status b{color:var(--text)}
+.qr{display:block;margin:6px 0 10px;width:120px;height:120px;border-radius:6px;background:#fff;padding:6px}
+
+/* ----- SMS ----- */
+.phone{max-width:380px;margin:0 auto;border:1px solid var(--line);border-radius:22px;background:var(--bg);overflow:hidden}
+.phead{text-align:center;padding:12px;border-bottom:1px solid var(--line);background:var(--panel)}
+.phead .av{margin:0 auto 4px}
+.phead .num{font-family:var(--mono);font-size:14px;font-weight:600;display:inline-block}
+.pbody{padding:16px;min-height:150px}
+.bubble{background:var(--bubble);border-radius:16px 16px 16px 4px;padding:10px 14px;font-size:15px;max-width:90%;word-break:break-word}
+.ptime{font-size:12px;color:var(--muted);margin-top:4px}
+
+/* ----- web ----- */
+.browser{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--bg)}
+.bbar{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--panel2);border-bottom:1px solid var(--line)}
+.dots{display:flex;gap:5px;flex:none}.dots i{width:10px;height:10px;border-radius:50%;background:var(--line);display:block}
+.urlbar{flex:1;min-width:0;display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-family:var(--mono);font-size:13px;word-break:break-all}
+.urlbar .lock{flex:none;font-family:system-ui,sans-serif;font-size:12px}
+.urlbar .lock.ns{color:var(--bad);font-weight:600}
+.page{padding:24px 16px;display:flex;justify-content:center}
+.login{width:100%;max-width:330px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px}
+.login .lg{display:flex;align-items:center;gap:8px;font-weight:700;margin-bottom:12px}
+.login .lg .av{width:30px;height:30px;font-size:12px;border-radius:8px}
+.login label{display:block;font-size:13px;color:var(--muted);margin:8px 0 3px}
+.login .in{border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:14px;color:var(--muted);background:var(--bg)}
+.login .go{margin-top:14px;text-align:center;color:#fff;font-weight:600;border-radius:8px;padding:9px;background:var(--bl,#0a7cff)}
+.login .small{font-size:12px;color:var(--muted);margin-top:10px}
+
+/* ----- señales ----- */
+[data-n]{position:relative;border-radius:4px;outline:2px solid var(--fc);outline-offset:1px;background:color-mix(in srgb,var(--fc) 14%,transparent)}
+[data-n]::after{content:attr(data-n);position:absolute;top:-10px;right:-10px;background:var(--fc);color:#fff;font:700 11px/18px var(--mono);width:18px;height:18px;border-radius:50%;text-align:center;z-index:2}
+.isphish [data-n]{--fc:var(--bad)}
+.islegit [data-n]{--fc:var(--ok)}
+.flags{list-style:none;padding:0;margin:8px 0 0}
+.flags li{display:flex;gap:10px;margin-bottom:8px;font-size:15px}
+.flags .n{flex:none;width:22px;height:22px;border-radius:50%;color:#fff;font:700 12px/22px var(--mono);text-align:center;background:var(--fc)}
+.flags.bad{--fc:var(--bad)} .flags.good{--fc:var(--ok)}
+
+.answer{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
+.btn{font:inherit;font-weight:600;border-radius:10px;padding:10px 18px;cursor:pointer;border:1px solid var(--line);background:var(--panel2);color:var(--text)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.big-bad,.btn.big-ok{padding:14px;font-size:17px}
+.btn.big-bad{border-color:var(--bad);color:var(--bad);background:var(--bad-bg)}
+.btn.big-ok{border-color:var(--ok);color:var(--ok);background:var(--ok-bg)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.actions{display:flex;flex-wrap:wrap;gap:10px}
+.feedback{margin-top:16px;padding:12px 14px;border-radius:10px;font-weight:600}
+.feedback.ok{background:var(--ok-bg);color:var(--ok)}
+.feedback.bad{background:var(--bad-bg);color:var(--bad)}
+.explain{margin-top:16px;border-top:1px dashed var(--line);padding-top:14px}
+.todo{margin-top:10px;padding:10px 14px;border-left:3px solid var(--warn);background:var(--panel2);border-radius:6px;font-size:15px}
+.tip{font-size:13px;text-align:center}
+code{font-family:var(--mono);background:var(--panel2);padding:1px 5px;border-radius:5px;font-size:.92em}
+.big{font-size:44px;font-weight:800;font-family:var(--mono);letter-spacing:-.02em;margin:8px 0}
+.stars{font-size:32px;letter-spacing:4px}
+.review{list-style:none;padding:0;margin:14px 0 0;text-align:left}
+.review li{display:flex;gap:10px;align-items:baseline;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
+.review li:last-child{border-bottom:0}
+.review .m{flex:none;font-weight:700;width:18px}
+.review .ok{color:var(--ok)} .review .bad{color:var(--bad)}
+details{margin-top:6px}
+summary{cursor:pointer;font-weight:600}
+.checklist{margin:8px 0 0;padding-left:20px;font-size:15px}
+.checklist li{margin-bottom:5px}
+.hidden{display:none!important}
+.pop{animation:pop .35s ease}
+@keyframes pop{0%{transform:scale(.97);opacity:.6}100%{transform:scale(1);opacity:1}}
+.shake{animation:shake .35s ease}
+@keyframes shake{25%{transform:translateX(-5px)}50%{transform:translateX(5px)}75%{transform:translateX(-3px)}}
+.v2{font-family:var(--mono);font-size:12px;border:1px solid var(--accent);color:var(--accent);border-radius:6px;padding:1px 6px}
+
+/* ----- encabezados (modo forense) ----- */
+.raw{border:1px solid var(--line);border-radius:12px;margin-top:14px;background:var(--bg)}
+.rawbar{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 12px;padding:8px 12px;background:var(--panel2);border-bottom:1px solid var(--line);border-radius:12px 12px 0 0;font-size:13px}
+.rawbody{font:12.5px/1.6 var(--mono);padding:10px 12px}
+.hl{white-space:pre-wrap;word-break:break-all;padding:0 2px;margin:1px 0}
+.hl[data-n]::after{right:2px;top:-9px}
+.hk{all:unset;cursor:pointer;color:var(--accent);font-weight:700;border-bottom:1px dotted var(--accent)}
+.hk:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.hk.on{background:var(--accent);color:var(--accent-ink);border-radius:3px}
+.tk-pass{color:var(--ok);font-weight:700}
+.tk-fail{color:var(--bad);font-weight:700}
+.tk-mid{color:var(--warn);font-weight:700}
+.hinfo{margin:0;padding:10px 12px;border-top:1px solid var(--line);font-size:14px;background:var(--panel);border-radius:0 0 12px 12px}
+.hinfo b{font-family:var(--mono)}
+
+/* ----- analizador ----- */
+textarea{width:100%;min-height:220px;font:13px/1.5 var(--mono);background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px;resize:vertical}
+textarea:focus{outline:2px solid var(--accent);outline-offset:1px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 12px}
+.chip{font:600 14px var(--mono);border-radius:8px;padding:6px 12px;border:1px solid var(--line);background:var(--panel2)}
+.chip.ok{color:var(--ok);background:var(--ok-bg);border-color:var(--ok)}
+.chip.bad{color:var(--bad);background:var(--bad-bg);border-color:var(--bad)}
+.chip.mid{color:var(--warn);background:var(--warn-bg);border-color:var(--warn)}
+.idt{width:100%;border-collapse:collapse;font-size:14px;margin-bottom:12px}
+.idt th,.idt td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+.idt th{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.idt td{word-break:break-all}
+.idt td:first-child{font-family:var(--mono);white-space:nowrap;word-break:normal}
+.hops{list-style:none;padding:0;margin:0 0 12px;counter-reset:h}
+.hops li{position:relative;padding:6px 0 6px 34px;font-size:14px;border-left:2px solid var(--line);margin-left:11px;padding-left:22px}
+.hops li::before{counter-increment:h;content:counter(h);position:absolute;left:-12px;top:6px;width:22px;height:22px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font:700 12px/22px var(--mono);text-align:center}
+.alerts{list-style:none;padding:0;margin:0}
+.alerts li{padding:8px 12px;border-radius:8px;margin-bottom:6px;font-size:14px}
+.alerts .bad{background:var(--bad-bg)} .alerts .mid{background:var(--warn-bg)} .alerts .ok{background:var(--ok-bg)} .alerts .info{background:var(--panel2)}
+.anal h3{margin-top:14px}
+.modehead{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.tag{font:700 11px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--accent-ink);background:var(--accent);border-radius:6px;padding:2px 7px}
+footer{text-align:center;font-size:13px;color:var(--muted);margin-top:24px}
+@media (max-width:480px){.answer{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a href="../../index.html" style="display:inline-block;margin:0 0 10px;font-size:14px;color:var(--muted);text-decoration:none">&larr; Volver al portafolio</a>
+  <header>
+    <div class="brand"><span class="logo">@?</span> Phishing o No <span class="v2">v2</span></div>
+    <div style="display:flex;gap:8px">
+      <button class="iconbtn hidden" id="btnMenu" type="button">Menú</button>
+      <button class="iconbtn" id="btnTheme" type="button" aria-label="Cambiar tema">Tema</button>
+    </div>
+  </header>
+
+  <!-- MENÚ -->
+  <section id="scrMenu">
+    <div class="card">
+      <div class="modehead"><h1>¿Es phishing o no?</h1><span class="tag">Modo clásico</span></div>
+      <p class="muted">Te muestro correos, SMS y páginas de login de marcas inventadas. Tú decides si son <b>phishing</b> o <b>legítimos</b>. Revisa remitentes, pasa el mouse (o toca) los enlaces para ver a dónde llevan de verdad y desconfía de la urgencia. Cada nivel tiene 8 mensajes y 3 vidas; acierta al menos 6 para desbloquear el siguiente.</p>
+      <div class="levels" id="levels"></div>
+    </div>
+    <div class="card">
+      <div class="modehead"><h2 style="font-size:22px">Modo forense: encabezados</h2><span class="tag">Nuevo</span></div>
+      <p class="muted">Ahora no basta con mirar el correo: abajo de cada mensaje vas a ver su <b>original</b>, con los encabezados tal como los muestra Gmail o Outlook. Lee <code>Authentication-Results</code> (SPF, DKIM, DMARC), sigue la ruta de los <code>Received</code> y compara <code>From</code>, <code>Return-Path</code> y <code>Reply-To</code>. Toca el nombre de cualquier encabezado para saber qué es. Son 6 mensajes por nivel, 3 vidas, y necesitas 4 aciertos para avanzar.</p>
+      <div class="levels" id="levelsH"></div>
+      <div class="actions" style="margin-top:14px">
+        <button class="btn" id="btnTool" type="button">🔬 Analizar encabezados de un correo tuyo</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Chuleta anti-phishing</h2>
+      <details>
+        <summary>Señales de alerta</summary>
+        <ol class="checklist">
+          <li><b>Remitente raro:</b> el nombre dice una marca, pero el dominio del correo es otro (Gmail, guiones extra, letras cambiadas como <code>I</code> por <code>l</code>).</li>
+          <li><b>Enlace que no calza:</b> el texto muestra una URL y el destino real es otra. El dominio real es lo que está justo antes de la primera <code>/</code>: en <code>banco.cl.verifica.com/login</code> manda <code>verifica.com</code>.</li>
+          <li><b>Urgencia o amenaza:</b> "24 horas", "será bloqueada", "último aviso".</li>
+          <li><b>Te piden lo que nunca piden:</b> contraseña, PIN, coordenadas, códigos de verificación o datos completos de tarjeta.</li>
+          <li><b>Premios y regalos</b> que no pediste, o pagos chicos para "liberar" algo.</li>
+          <li><b>Adjuntos peligrosos:</b> doble extensión (<code>.pdf.exe</code>), <code>.zip</code>, macros.</li>
+          <li><b>Cambios de cuenta bancaria</b> o pedidos de pago "confidenciales" de un jefe o proveedor.</li>
+          <li><b>Saludo genérico</b> ("Estimado cliente") y errores de ortografía.</li>
+        </ol>
+      </details>
+      <details>
+        <summary>Cómo leer los encabezados</summary>
+        <ol class="checklist">
+          <li><b>SPF</b> revisa si la IP que entregó el correo está autorizada por el dominio del <b>sobre</b> (<code>Return-Path</code> / <code>smtp.mailfrom</code>), no del "De" que tú ves.</li>
+          <li><b>DKIM</b> es una firma criptográfica. <code>header.d=</code> dice qué dominio firmó. Si alguien cambia el mensaje después de firmado, da <code>fail</code>.</li>
+          <li><b>DMARC</b> une todo: pasa solo si SPF o DKIM pasan <b>y</b> su dominio calza (está <i>alineado</i>) con el dominio del <code>From</code>. Su política dice qué hacer si falla: <code>p=none</code> (nada, solo reportar), <code>p=quarantine</code> (a spam) o <code>p=reject</code> (rechazar).</li>
+          <li><b>"pass" no es sinónimo de seguro:</b> mira <i>para qué dominio</i> pasó. Un dominio parecido (<code>streamix-billing.com</code>) puede pasar todo perfecto.</li>
+          <li><b>Received se lee de abajo hacia arriba:</b> cada servidor agrega uno arriba. El de más abajo es el origen; solo los que agregó tu proveedor son confiables.</li>
+          <li><b>Confía solo en el <code>Authentication-Results</code> de tu proveedor</b> (el de más arriba, con su nombre). Cualquiera puede escribir uno falso más abajo.</li>
+          <li><b>Return-Path distinto al From</b> es normal cuando la empresa usa un servicio de envío masivo. <b>Reply-To de otro dominio</b> es mucho más sospechoso: tu respuesta se va a otra parte.</li>
+          <li><b>Encabezados limpios no bastan:</b> si le roban la cuenta a alguien real, todo pasa. Ahí manda el contenido.</li>
+        </ol>
+      </details>
+      <details>
+        <summary>Qué hacer si dudas</summary>
+        <ol class="checklist">
+          <li>No hagas clic: entra escribiendo tú la dirección oficial o desde la app.</li>
+          <li>Verifica por otro canal: llama al número de la tarjeta o de la web oficial, no al del mensaje.</li>
+          <li>El candado (HTTPS) solo dice que la conexión va cifrada, no que el sitio sea quien dice ser.</li>
+          <li>Reporta el mensaje a TI o al área de seguridad y bórralo.</li>
+        </ol>
+      </details>
+    </div>
+  </section>
+
+  <!-- JUEGO -->
+  <section id="scrGame" class="hidden">
+    <div class="hud">
+      <span class="pill" id="hudLevel"></span>
+      <span class="pill">Mensaje <b id="hudRound"></b></span>
+      <span class="pill">Puntos <b id="hudScore">0</b></span>
+      <span class="pill">Racha <b id="hudStreak">0</b></span>
+      <span class="pill" id="hudLives"></span>
+      <span class="pill" id="hudTime"></span>
+    </div>
+    <div class="timer-bar" id="timerWrap"><div id="timerBar"></div></div>
+    <div class="card" id="gameCard">
+      <div class="kind" id="kind"></div>
+      <div class="ctx hidden" id="ctx"></div>
+      <div id="stage"></div>
+      <div class="answer" id="answer">
+        <button class="btn big-bad" id="btnPhish" type="button">🎣 Es phishing</button>
+        <button class="btn big-ok" id="btnLegit" type="button">✅ Es legítimo</button>
+      </div>
+      <div id="feedback" class="feedback hidden"></div>
+      <div id="explain" class="explain hidden"></div>
+      <div class="actions" style="margin-top:14px">
+        <button class="btn primary hidden" id="btnNext" type="button">Siguiente →</button>
+      </div>
+    </div>
+    <p class="muted tip">Teclas: <code>P</code> phishing · <code>L</code> legítimo · <code>Enter</code> siguiente</p>
+  </section>
+
+  <!-- ANALIZADOR -->
+  <section id="scrTool" class="hidden">
+    <div class="card">
+      <h1>Analizador de encabezados</h1>
+      <p class="muted">Pega los encabezados de un correo y te explico qué dicen. En Gmail: menú ⋮ → <b>Mostrar original</b>. En Outlook: … → <b>Ver</b> → <b>Ver origen del mensaje</b>. Todo se procesa en tu navegador: no se envía nada a ningún lado.</p>
+      <textarea id="raw" spellcheck="false" placeholder="Return-Path: &lt;...&gt;&#10;Received: from ...&#10;Authentication-Results: ...&#10;From: ...&#10;..."></textarea>
+      <div class="actions" style="margin-top:10px">
+        <button class="btn primary" id="btnAnal" type="button">Analizar</button>
+        <button class="btn" id="btnSample" type="button">Cargar un ejemplo del juego</button>
+        <button class="btn" id="btnClear" type="button">Limpiar</button>
+      </div>
+      <div id="anal" class="anal"></div>
+    </div>
+  </section>
+
+  <!-- RESULTADO -->
+  <section id="scrResult" class="hidden">
+    <div class="card" style="text-align:center">
+      <h1 id="resTitle"></h1>
+      <div class="stars" id="resStars"></div>
+      <div class="big" id="resScore"></div>
+      <p class="muted" id="resDetail"></p>
+      <p id="resUnlock" style="font-weight:600"></p>
+      <div class="actions" style="justify-content:center;margin-top:14px">
+        <button class="btn" id="btnRetry" type="button">Reintentar nivel</button>
+        <button class="btn primary" id="btnBack" type="button">Volver al menú</button>
+      </div>
+      <ul class="review" id="review"></ul>
+    </div>
+  </section>
+
+  <footer>Todas las marcas, personas y dominios de este juego son inventados. Las IP son de rangos reservados para documentación. Hecho con HTML, CSS y JS, sin dependencias.</footer>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+/* ---------- marcas inventadas ---------- */
+const B = {
+  cordillera: {n:'Banco Cordillera', c:'#0b5d3b', i:'BC'},
+  streamix:   {n:'Streamix',         c:'#c2185b', i:'SX'},
+  condor:     {n:'Envíos Cóndor',    c:'#e65100', i:'EC'},
+  pehuen:     {n:'Mercado Pehuén',   c:'#6a1b9a', i:'MP'},
+  telcosur:   {n:'TelcoSur',         c:'#0277bd', i:'TS'},
+  nubebox:    {n:'NubeBox',          c:'#1565c0', i:'NB'},
+  andino:     {n:'Instituto Andino', c:'#37474f', i:'IA'},
+  paylama:    {n:'PayLama',          c:'#00897b', i:'PL'},
+  pixelhub:   {n:'Pixelhub',         c:'#24292f', i:'PH'},
+  altiplano:  {n:'Redes Altiplano',  c:'#5d4037', i:'RA'},
+  person:     {n:'',                 c:'#78909c', i:'?'},
+};
+
+/* helpers para escribir los mensajes */
+const A = (text, url, f) => `<a class="lnk" href="#" data-url="${url}"${f ? ` data-f="${f}"` : ''}>${text}</a>`;
+const BTN = (text, url, f) => `<a class="btnlink" href="#" data-url="${url}"${f ? ` data-f="${f}"` : ''}>${text}</a>`;
+const F = (f, text) => `<span data-f="${f}">${text}</span>`;
+const P = (...ps) => ps.map(p => `<p>${p}</p>`).join('');
+const SIG = t => `<div class="sig">${t}</div>`;
+
+/*
+  Cada mensaje:
+  t: 'email' | 'sms' | 'web'   lv: nivel   phish: true/false
+  b: marca   name/addr: remitente   subj, date, atts, body (HTML)
+  url, lock: para 'web'          ctx: contexto opcional
+  flags: [[clave, explicación]]  (clave = data-f del elemento: from, subj, url, att0… o una del cuerpo)
+  todo: qué hacer
+*/
+const S = [
+/* ================= NIVEL 1 ================= */
+{t:'email', lv:1, phish:true, b:'cordillera', name:'Banco Cordilera', addr:'seguridad@bancocordilera-alertas.com',
+ subj:'URGENTE!!! Su cuenta sera bloqueada', date:'hoy, 03:12',
+ body: P(F('greet','Estimado cliente:'),
+   `Detectamos actividad sospechosa en su cuenta. ${F('threat','Si no valida sus datos en las próximas 24 horas su cuenta sera bloqueada permanentemente.')}`,
+   `Para validar ingrese ${A('aqui','http://bancocordilera-alertas.com/validar.php','l1')} y ${F('ask','complete su RUT, clave de internet y tarjeta de coordenadas completa')}.`)
+   + SIG('Departamento de Seguridad<br>Banco Cordilera'),
+ flags:[['from','El dominio no es bancocordillera.cl: está mal escrito ("Cordilera", con una sola l) y le agregaron "-alertas.com".'],
+        ['subj','Asunto en mayúsculas, con signos de exclamación y faltas de ortografía ("sera").'],
+        ['greet','Saludo genérico: tu banco sabe tu nombre.'],
+        ['threat','Amenaza con plazo para que actúes sin pensar.'],
+        ['l1','El enlace lleva a un dominio falso y usa http (sin cifrar).'],
+        ['ask','Ningún banco te pide la tarjeta de coordenadas completa ni tu clave por correo.']],
+ todo:'Bórralo y, si te quedó la duda, entra a la app del banco o llama al número que sale en tu tarjeta.'},
+
+{t:'email', lv:1, phish:false, b:'streamix', name:'Streamix', addr:'no-reply@streamix.tv',
+ subj:'Tu recibo de octubre', date:'1 oct, 09:00',
+ body: P(F('g1','Hola Nicolás,'),
+   'Gracias por seguir con nosotros. Cobramos <b>$7.990</b> a tu tarjeta terminada en <b>4821</b> por tu plan Básico.',
+   `Puedes ver tus pagos en ${A('www.streamix.tv/cuenta','https://www.streamix.tv/cuenta','l1')}.`,
+   F('g2','Recuerda: Streamix nunca te pedirá tu contraseña ni datos de tarjeta por correo.'))
+   + SIG('El equipo de Streamix'),
+ flags:[['from','Viene del dominio oficial streamix.tv.'],
+        ['g1','Te saluda por tu nombre.'],
+        ['l1','El enlace lleva al dominio oficial, por https, y coincide con lo que muestra.'],
+        ['g2','No te pide nada ni te mete apuro; solo informa.']],
+ todo:'Es un recibo normal. Igual, si no reconoces el cobro, revísalo entrando tú mismo a la web o la app.'},
+
+{t:'sms', lv:1, phish:true, b:'person', addr:'+56 9 7731 4402', date:'hoy, 11:47',
+ body:`${F('n','ENVIOS CONDOR')}: Su paquete esta ${F('u','retenido')}. ${F('pay','Pague $1.290 de arancel')} para liberarlo aqui: ${A('http://condor-envio.top/pago','http://condor-envio.top/pago','l1')}`,
+ flags:[['from','Llega desde un número celular cualquiera, no desde un remitente identificado de la empresa.'],
+        ['u','Te dice que hay un problema para generar urgencia.'],
+        ['pay','Cobro chico para "liberar" un paquete: la trampa clásica para robarte los datos de la tarjeta.'],
+        ['l1','Dominio .top que no tiene nada que ver con envioscondor.cl.']],
+ todo:'No pagues nada desde un SMS. Si esperas un paquete, revisa el seguimiento en la web oficial escribiendo tú la dirección.'},
+
+{t:'email', lv:1, phish:true, b:'pehuen', name:'Mercado Pehuén Premios', addr:'promo@mercadopehuen-premios.net',
+ subj:'🎉 ¡¡FELICIDADES!! Ganaste un iPhone 17', date:'ayer, 22:15',
+ body: P(F('win','¡Eres nuestro visitante número 1.000.000 y ganaste un iPhone 17 Pro!'),
+   `Solo debes ${F('pay','pagar $3.500 de envío')}. ${F('t','Tienes 15 minutos para reclamarlo')} antes que pase al siguiente ganador.`,
+   BTN('RECLAMAR MI PREMIO','https://mercadopehuen-premios.net/reclamar?id=88213','l1')),
+ flags:[['from','"mercadopehuen-premios.net" no es mercadopehuen.cl.'],
+        ['win','Premio que no pediste por algo que no hiciste: si suena demasiado bueno, es falso.'],
+        ['pay','Te piden pagar para recibir un premio: el objetivo es tu tarjeta.'],
+        ['t','Cuenta regresiva para que no pienses.'],
+        ['l1','El botón lleva al mismo dominio falso.']],
+ todo:'Ignóralo y márcalo como spam.'},
+
+{t:'sms', lv:1, phish:false, b:'telcosur', addr:'TelcoSur', date:'hoy, 10:02',
+ body:`TelcoSur: tu boleta de octubre por $18.990 ya está disponible en la app Mi TelcoSur. ${F('g1','No respondas este mensaje.')}`,
+ flags:[['from','Remitente con nombre de la empresa (código corto oficial), no un número cualquiera.'],
+        ['g1','No trae enlaces ni te pide datos: te manda a la app que ya tienes.']],
+ todo:'Nada que hacer: revisa la boleta desde la app si quieres.'},
+
+{t:'email', lv:1, phish:true, b:'nubebox', name:'NubeBox Soporte', addr:'nubebox.support@gmail.com',
+ subj:'Su almacenamiento esta lleno - sus fotos seran ELIMINADAS', date:'hoy, 07:30',
+ body: P('Hola usuario,',
+   `${F('t','Su espacio esta al 100%. En 48 hrs eliminaremos sus fotos y archivos')}.`,
+   `Para evitarlo actualice gratis su plan ${A('aqui','http://nubebox-storage.xyz/upgrade','l1')} con su correo y contraseña.`),
+ flags:[['from','Una empresa no te escribe desde una cuenta de Gmail.'],
+        ['subj','Asunto alarmista y con faltas.'],
+        ['t','Amenaza de borrar tus archivos con plazo.'],
+        ['l1','El enlace va a "nubebox-storage.xyz", no a nubebox.com, y por http.']],
+ todo:'Revisa tu espacio entrando a la app o a nubebox.com directamente. Reporta el correo como phishing.'},
+
+{t:'email', lv:1, phish:false, b:'andino', name:'Coordinación Académica', addr:'coordinacion@iandino.cl',
+ subj:'Recordatorio: evaluación Redes II este jueves', date:'lun, 15:20',
+ body: P('Hola Nicolás,',
+   'Te recordamos que la Evaluación 2 de Redes II es este <b>jueves a las 10:00</b> en el laboratorio L-204. Trae tu credencial.',
+   `El temario está publicado en ${A('campus.iandino.cl','https://campus.iandino.cl/redes2','l1')}.`)
+   + SIG('Coordinación Académica · Instituto Andino'),
+ flags:[['from','Dominio oficial del instituto: iandino.cl.'],
+        ['l1','El enlace va a un subdominio del dominio oficial (campus.iandino.cl), con https.'],
+        ['subj','Información concreta y esperable, sin pedirte nada.']],
+ todo:'A estudiar 😉'},
+
+{t:'email', lv:1, phish:true, b:'person', name:'Abogado Richard M.', addr:'richard.m.law@outlook-mail.com',
+ subj:'Herencia pendiente a su nombre', date:'dom, 04:51',
+ body: P('Saludos cordiales,',
+   `Soy el abogado del difunto Sr. Esteban Maldonado, ${F('m','quien dejo una herencia de USD 4.500.000 sin herederos')}. Usted comparte su apellido y puede reclamarla.`,
+   `${F('ask','Envíe su nombre completo, RUT, foto de su carnet y número de cuenta')}, y ${F('pay','pague USD 250 por gastos notariales')}.`,
+   F('sec','Mantenga esto en estricta confidencialidad.')),
+ flags:[['from','Correo genérico de un dominio que imita a Outlook.'],
+        ['m','Millones de un desconocido: la estafa del "pago por adelantado".'],
+        ['ask','Pide datos personales y documentos con los que te pueden suplantar.'],
+        ['pay','Te pide pagar primero.'],
+        ['sec','Te pide secreto para que no le preguntes a nadie.']],
+ todo:'No respondas. Bloquea y borra.'},
+
+{t:'email', lv:1, phish:false, b:'paylama', name:'PayLama', addr:'avisos@paylama.com',
+ subj:'Recibiste $15.000 de Camila Rojas', date:'hoy, 13:05',
+ ctx:'Le prestaste plata a tu compañera Camila y quedó en devolvértela hoy.',
+ body: P('Hola Nicolás,',
+   'Camila Rojas te envió <b>$15.000</b> con el mensaje "gracias por el almuerzo 🙌".',
+   `Revisa tus movimientos en ${A('app.paylama.com/movimientos','https://app.paylama.com/movimientos','l1')}.`)
+   + SIG('PayLama · No respondas este correo'),
+ flags:[['from','Dominio oficial paylama.com.'],
+        ['subj','Calza con lo que esperabas (contexto).'],
+        ['l1','Subdominio del dominio oficial, con https.']],
+ todo:'Todo bien. Como siempre, confirma el saldo dentro de la app.'},
+
+{t:'web', lv:1, phish:true, b:'paylama', url:'http://paylama-login.verificar-cuenta.ru/', lock:false,
+ ctx:'Llegaste a esta página desde un enlace en un SMS.',
+ body:`<div class="login"><div class="lg"><span class="av" style="background:${'#00897b'}">PL</span> PayLama</div>
+   <label>Correo</label><div class="in">tu@correo.com</div>
+   <label>Contraseña</label><div class="in">••••••••</div>
+   <div data-f="pin"><label>PIN de 6 dígitos</label><div class="in">••••••</div>
+   <label>Número de tarjeta y CVV</label><div class="in">0000 0000 0000 0000 · 000</div></div>
+   <div class="go" style="--bl:#00897b">Verificar cuenta</div></div>`,
+ flags:[['url','"No seguro" (http) y el dominio real es verificar-cuenta.ru: "paylama-login" es solo un subdominio que ellos inventaron.'],
+        ['pin','Un login nunca te pide PIN, número de tarjeta y CVV todo junto.']],
+ todo:'Cierra la pestaña. Si ya escribiste algo, cambia tu contraseña desde la app oficial y avisa a tu banco.'},
+
+/* ================= NIVEL 2 ================= */
+{t:'email', lv:2, phish:true, b:'altiplano', name:'Mesa de Ayuda TI', addr:'soporte@altiplano-it.com',
+ ctx:'Trabajas en Redes Altiplano SpA. El correo de la empresa es @altiplano.cl.',
+ subj:'Tu contraseña expira hoy', date:'hoy, 08:41',
+ body: P('Hola,',
+   `Tu contraseña de correo corporativo ${F('t','expira hoy a las 18:00')}. Para mantener la actual, ingresa a:`,
+   A('https://correo.altiplano.cl/mantener','https://altiplano-it.com/owa/keep-password.php','l1'),
+   'Gracias,')
+   + SIG('Mesa de Ayuda TI'),
+ flags:[['from','"altiplano-it.com" no es el dominio de la empresa (altiplano.cl).'],
+        ['t','Plazo cortito para apurarte.'],
+        ['l1','El texto dice correo.altiplano.cl, pero si pasas el mouse ves que lleva a altiplano-it.com. Texto y destino no calzan.']],
+ todo:'Reporta el correo a TI por el canal oficial. Nunca "mantengas" una contraseña desde un enlace.'},
+
+{t:'email', lv:2, phish:false, b:'condor', name:'Envíos Cóndor', addr:'notificaciones@envioscondor.cl',
+ ctx:'Compraste unos audífonos el lunes y te dijeron que llegaban esta semana.',
+ subj:'Tu envío CC48213977 está en reparto', date:'hoy, 09:10',
+ body: P('Hola Nicolás,',
+   'Tu envío <b>CC48213977</b> salió a reparto y debería llegar hoy entre 14:00 y 19:00.',
+   `Sigue el estado en ${A('envioscondor.cl/seguimiento','https://www.envioscondor.cl/seguimiento?n=CC48213977','l1')}.`,
+   F('g1','No necesitas pagar nada adicional.'))
+   + SIG('Envíos Cóndor'),
+ flags:[['from','Dominio oficial envioscondor.cl.'],
+        ['l1','Enlace al dominio oficial, con el mismo número de seguimiento.'],
+        ['g1','No te cobra ni te pide datos. Y calza con algo que sí compraste.']],
+ todo:'Espera tu paquete tranquilo.'},
+
+{t:'sms', lv:2, phish:true, b:'person', addr:'+56 9 4410 2287', date:'hoy, 23:58',
+ body:`Banco Cordillera: ${F('c','Se registró una compra por $489.990 en TIENDA-ONLINE.')} Si no la reconoces ${F('tel','llama al +56 2 2940 1187')} o anula en ${A('bit.ly/bcordillera-anular','https://bit.ly/bcordillera-anular','l1')}`,
+ flags:[['from','Llega de un número de celular, no del remitente habitual del banco.'],
+        ['c','Compra grande y falsa para asustarte (y a medianoche).'],
+        ['tel','El número para "anular" es de los estafadores: es vishing. Usa solo el número de tu tarjeta.'],
+        ['l1','Enlace acortado: esconde el destino real.']],
+ todo:'Entra a la app del banco: si la compra no aparece, era falso. Si llamas, que sea al número de la tarjeta.'},
+
+{t:'email', lv:2, phish:false, b:'nubebox', name:'NubeBox', addr:'no-reply@nubebox.com',
+ ctx:'Estás esperando que tu compañera Camila te comparta el informe del laboratorio 3.',
+ subj:'Camila Rojas compartió "Informe_Lab3.pdf" contigo', date:'hoy, 16:22',
+ body: P('Camila Rojas (camila.rojas@iandino.cl) compartió un archivo contigo:',
+   '📄 <b>Informe_Lab3.pdf</b>',
+   BTN('Abrir en NubeBox','https://www.nubebox.com/s/k3Lp9xQ2','l1'),
+   'Si no esperabas este archivo, puedes ignorar este mensaje.'),
+ flags:[['from','Dominio oficial nubebox.com.'],
+        ['subj','Lo esperabas, de alguien que conoces, con un nombre de archivo que tiene sentido.'],
+        ['l1','El botón lleva a nubebox.com, con https. No pide que vuelvas a iniciar sesión en otra página.']],
+ todo:'Ábrelo. Si al abrir te pidiera la contraseña en un dominio que no es nubebox.com, ahí sí desconfía.'},
+
+{t:'email', lv:2, phish:true, b:'streamix', name:'Streamix', addr:'info@streamix-billing.com',
+ subj:'Tu pago fue rechazado', date:'hoy, 06:03',
+ body: P(F('greet','Hola cliente,'),
+   'No pudimos procesar el pago de tu suscripción. Para seguir disfrutando de tus series, actualiza tus datos de pago.',
+   BTN('Actualizar pago','https://streamix-billing.com/actualizar','l1'),
+   F('t','Si no actualizas en 48 horas, tu cuenta será cancelada.'))
+   + SIG('El equipo de Streamix'),
+ flags:[['from','"streamix-billing.com" no es streamix.tv. Agregar palabras con guion es un truco típico.'],
+        ['greet','"Hola cliente": el real te llama por tu nombre.'],
+        ['l1','El botón lleva al dominio falso a pedir tu tarjeta.'],
+        ['t','Amenaza con cancelar la cuenta.']],
+ todo:'Si de verdad hay un problema de pago, lo vas a ver dentro de la app o en streamix.tv.'},
+
+{t:'email', lv:2, phish:true, b:'person', name:'Patricia Soto (Gerenta General)', addr:'patricia.soto.gerencia@gmail.com',
+ ctx:'Trabajas en Redes Altiplano SpA. Patricia Soto es la gerenta general.',
+ subj:'¿Estás disponible?', date:'hoy, 12:31',
+ body: P('Hola, ¿estás en la oficina?',
+   `Necesito un favor rápido: ${F('ask','compra 5 gift cards de $50.000 para un cliente')} y mándame fotos de los códigos.`,
+   `${F('sec','Es confidencial, no lo comentes. No me llames que estoy en reunión')}, solo responde por aquí.`,
+   'Te lo reembolso hoy mismo.')
+   + SIG('Enviado desde mi celular'),
+ flags:[['from','La gerenta no te escribiría desde un Gmail personal.'],
+        ['ask','Gift cards: imposibles de rastrear. Fraude del CEO.'],
+        ['sec','Secreto + no la llames = te aíslan para que no verifiques.']],
+ todo:'Verifica por otro canal (llámala o pregúntale a su asistente) y reporta a TI.'},
+
+{t:'web', lv:2, phish:false, b:'cordillera', url:'https://www.bancocordillera.cl/personas/login', lock:true,
+ ctx:'Escribiste tú mismo la dirección del banco en el navegador.',
+ body:`<div class="login"><div class="lg"><span class="av" style="background:#0b5d3b">BC</span> Banco Cordillera</div>
+   <div data-f="ask"><label>RUT</label><div class="in">12.345.678-9</div>
+   <label>Clave de internet</label><div class="in">••••••••</div></div>
+   <div class="go" style="--bl:#0b5d3b">Ingresar</div>
+   <div class="small">¿Olvidaste tu clave?</div></div>`,
+ flags:[['url','Dominio exacto bancocordillera.cl, con https, y llegaste escribiéndolo tú.'],
+        ['ask','Solo pide RUT y clave para entrar, sin coordenadas ni tarjeta.']],
+ todo:'Puedes ingresar. Guarda la dirección en marcadores para no depender de enlaces.'},
+
+{t:'email', lv:2, phish:true, b:'pehuen', name:'Mercado Pehuén', addr:'pedidos@mercadopehuen-cl.com',
+ ctx:'No has comprado nada en Mercado Pehuén este mes.',
+ subj:'Tu pedido #MP-20931 no pudo procesarse', date:'hoy, 10:47',
+ atts:['Factura_MP-20931.pdf.exe'],
+ body: P('Hola,',
+   `Hubo un problema con tu ${F('o','pedido #MP-20931 por $329.990')}. Revisa la factura adjunta para ver el detalle y confirmar tus datos.`)
+   + SIG('Mercado Pehuén'),
+ flags:[['from','"mercadopehuen-cl.com" imita a mercadopehuen.cl.'],
+        ['o','Un pedido que no hiciste: la idea es que abras el adjunto por curiosidad o miedo.'],
+        ['att0','Doble extensión: parece PDF pero es un ".exe", un programa. Si lo abres, te instala malware.']],
+ todo:'No abras el adjunto. Revisa tus compras entrando a la web oficial y reporta el correo.'},
+
+{t:'sms', lv:2, phish:false, b:'paylama', addr:'PayLama', date:'hoy, 19:30',
+ ctx:'Acabas de iniciar sesión en la app de PayLama en tu celular nuevo.',
+ body:`PayLama: tu código de verificación es 482913. ${F('g1','No lo compartas con nadie, ni siquiera con nosotros.')}`,
+ flags:[['from','Remitente oficial de la marca.'],
+        ['g1','Lo pediste tú hace un momento, no trae enlace y te advierte que no lo compartas.']],
+ todo:'Úsalo en la app. Y si un día te llega un código que NO pediste, alguien está intentando entrar a tu cuenta: no lo compartas y cambia tu contraseña.'},
+
+{t:'sms', lv:2, phish:true, b:'person', addr:'+56 9 6620 1034', date:'hoy, 17:12',
+ body:`${F('m','Hola mamá, se me cayó el celular y este es mi número nuevo')}. ${F('ask','¿Me puedes transferir $250.000? Es urgente, tengo que pagar algo hoy')}. ${F('sec','Después te explico, ahora no puedo hablar')} 🙏`,
+ flags:[['from','Número desconocido.'],
+        ['m','"Cambié de número": el truco para hacerse pasar por un familiar.'],
+        ['ask','Pide plata urgente.'],
+        ['sec','Evita una llamada para que no descubras que no es quien dice.']],
+ todo:'Llama al número de siempre de tu familiar o hazle una pregunta que solo él sepa.'},
+
+{t:'email', lv:2, phish:true, b:'pixelhub', name:'Pixelhub Security', addr:'security@pixelhub-verify.dev',
+ subj:'Actividad inusual detectada en tu repositorio', date:'hoy, 02:19',
+ body: P('Hola,',
+   'Detectamos commits sospechosos en tu repositorio <b>subnet-quest</b>.',
+   `${F('t','Verifica tu cuenta en las próximas 12 horas o será suspendida')}:`,
+   A('https://pixelhub.dev/verify','https://pixelhub.dev.account-verify.io/session','l1'))
+   + SIG('Pixelhub Trust & Safety'),
+ flags:[['from','"pixelhub-verify.dev" no es pixelhub.dev.'],
+        ['t','Amenaza de suspensión con plazo.'],
+        ['l1','El texto dice pixelhub.dev, pero el destino real es account-verify.io (pixelhub.dev es solo un subdominio de ellos).']],
+ todo:'Entra directo a pixelhub.dev y revisa tu actividad de seguridad. Activa 2FA si no lo tienes.'},
+
+{t:'email', lv:2, phish:false, b:'telcosur', name:'TelcoSur', addr:'avisos@telcosur.cl',
+ subj:'Mantención programada en tu sector', date:'mar, 11:00',
+ body: P('Hola Nicolás,',
+   'El <b>domingo 12/10 entre 02:00 y 05:00</b> haremos mantención de la red de fibra en tu sector. Podrías tener cortes breves de internet.',
+   F('g1','No tienes que hacer nada.'),
+   'Si tienes dudas, llama al número de tu boleta o revisa telcosur.cl.')
+   + SIG('TelcoSur · Operaciones de Red'),
+ flags:[['from','Dominio oficial telcosur.cl.'],
+        ['g1','Solo informa: no hay enlaces, ni plazos, ni te pide datos. Y te manda a canales que ya conoces.']],
+ todo:'Nada; tal vez no jugar online el domingo a las 3 AM.'},
+
+/* ================= NIVEL 3 ================= */
+{t:'email', lv:3, phish:true, b:'cordillera', name:'Banco Cordillera', addr:'notificaciones@bancocordiIlera.cl',
+ subj:'Confirma tu nuevo dispositivo', date:'hoy, 14:02',
+ body: P('Hola Nicolás,',
+   'Registramos un intento de inscribir un nuevo dispositivo en tu cuenta. Si fuiste tú, confírmalo para habilitar las transferencias.',
+   BTN('Confirmar dispositivo','https://bancocordiIlera.cl/dispositivos/confirmar','l1'))
+   + SIG('Banco Cordillera'),
+ flags:[['from','Mira bien: "cordiIlera" lleva una I mayúscula en vez de una l. Es un homógrafo: otro dominio que se ve casi igual.'],
+        ['l1','El botón va al mismo dominio falso. Bien escrito, con tu nombre y sin faltas: el phishing bueno se ve así.']],
+ todo:'Para cualquier cosa de dispositivos, entra a la app del banco. Copia y pega el dominio en un texto con letra monoespaciada si dudas.'},
+
+{t:'email', lv:3, phish:false, b:'pixelhub', name:'Pixelhub', addr:'noreply@pixelhub.dev',
+ ctx:'Hace 5 minutos iniciaste sesión en Pixelhub desde el PC del laboratorio.',
+ subj:'Nuevo inicio de sesión en tu cuenta', date:'hoy, 11:36',
+ body: P('Hola nmaldonado,',
+   'Detectamos un inicio de sesión nuevo:<br><span class="mono">Windows · Chrome · Santiago, CL · 11:31</span>',
+   'Si fuiste tú, no tienes que hacer nada.',
+   `${F('g1','Si no fuiste tú, entra directamente a pixelhub.dev → Ajustes → Seguridad')} y cambia tu contraseña: ${A('pixelhub.dev/settings/security','https://pixelhub.dev/settings/security','l1')}`)
+   + SIG('Pixelhub'),
+ flags:[['from','Dominio oficial pixelhub.dev.'],
+        ['subj','Aviso de seguridad que calza con algo que hiciste tú.'],
+        ['g1','No te apura: te dice que si fuiste tú no hagas nada, y te sugiere entrar por tu cuenta.'],
+        ['l1','El enlace va al dominio oficial.']],
+ todo:'Nada que hacer. Un aviso urgente no siempre es phishing: lo que importa es remitente, destino y qué te pide.'},
+
+{t:'web', lv:3, phish:true, b:'nubebox', url:'https://nubebox.com.login-secure.app/signin', lock:true,
+ ctx:'Llegaste aquí desde un correo que decía "te compartieron un archivo".',
+ body:`<div class="login"><div class="lg"><span class="av" style="background:#1565c0">NB</span> NubeBox</div>
+   <label>Correo</label><div class="in">tu@correo.com</div>
+   <label>Contraseña</label><div class="in">••••••••</div>
+   <div class="go" style="--bl:#1565c0">Iniciar sesión para ver el archivo</div>
+   <div class="small">Conexión segura 🔒</div></div>`,
+ flags:[['url','Tiene candado (https), pero el dominio real es login-secure.app. "nubebox.com" es solo un subdominio de ese sitio. El candado no dice quién es el dueño.']],
+ todo:'Cierra y entra a nubebox.com escribiéndolo tú; si el archivo existe, lo verás en "Compartidos conmigo".'},
+
+{t:'email', lv:3, phish:true, b:'andino', name:'Instituto Andino · TI', addr:'ti-soporte@iandino-cl.net',
+ subj:'Obligatorio: activa la nueva autenticación MFA', date:'hoy, 09:55',
+ body: P('Estimado/a estudiante:',
+   `Desde el lunes será obligatorio el doble factor (MFA) en el campus virtual. ${F('qr','Escanea este código QR con tu celular')} e inicia sesión para activarlo.`,
+   `<svg class="qr" data-f="qrimg" viewBox="0 0 21 21" shape-rendering="crispEdges"><path fill="#000" d="M0 0h7v7H0zM14 0h7v7h-7zM0 14h7v7H0z"/><path fill="#fff" d="M1 1h5v5H1zM15 1h5v5h-5zM1 15h5v5H1z"/><path fill="#000" d="M2 2h3v3H2zM16 2h3v3h-3zM2 16h3v3H2zM8 0h1v2H8zM10 1h2v1h-2zM9 3h3v1H9zM8 5h1v3H8zM10 6h2v2h-2zM12 8h3v1h-3zM0 8h2v1H0zM3 9h3v2H3zM8 10h2v1H8zM11 10h1v3h-1zM14 10h3v1h-3zM18 9h3v2h-3zM9 12h1v2H9zM13 12h2v2h-2zM16 12h1v4h-1zM18 13h2v1h-2zM8 15h3v1H8zM12 15h2v3h-2zM9 17h2v4H9zM15 17h3v1h-3zM19 16h2v2h-2zM14 19h2v2h-2zM17 19h1v2h-1zM19 19h2v1h-2z"/></svg>`,
+   F('t','Las cuentas no activadas antes del viernes serán deshabilitadas.'))
+   + SIG('Departamento de TI · Instituto Andino'),
+ flags:[['from','"iandino-cl.net" no es iandino.cl.'],
+        ['qr','Quishing: un QR esconde la URL y te saca del PC (donde quizá tienes protección) para que abras el enlace en el celular.'],
+        ['t','Amenaza con deshabilitar tu cuenta.']],
+ todo:'Activa el MFA solo desde campus.iandino.cl entrando tú. Reporta el correo a TI.'},
+
+{t:'web', lv:3, phish:false, b:'andino', url:'https://campus.iandino.cl/login', lock:true,
+ ctx:'Entraste desde el marcador que guardaste el primer día de clases.',
+ body:`<div class="login"><div class="lg"><span class="av" style="background:#37474f">IA</span> Campus Virtual</div>
+   <label>Usuario institucional</label><div class="in">nombre.apellido</div>
+   <label>Contraseña</label><div class="in">••••••••</div>
+   <div class="go" style="--bl:#37474f">Entrar</div>
+   <div class="small">¿Problemas para entrar? Escribe a mesadeayuda@iandino.cl</div></div>`,
+ flags:[['url','"campus" es un subdominio del dominio real iandino.cl (lo que va justo antes de la primera / termina en iandino.cl). Con https y desde tu marcador.']],
+ todo:'Puedes iniciar sesión.'},
+
+{t:'email', lv:3, phish:true, b:'person', name:'Juan Pérez · Insumos Red', addr:'juan.perez@insumosred-cl.com',
+ ctx:'Insumos Red es proveedor habitual de tu empresa. Sus correos siempre vienen de @insumosred.cl.',
+ subj:'RE: Factura 4471 - cambio de cuenta', date:'hoy, 15:48',
+ body: P('Hola, ¿cómo estás?',
+   `Te escribo por la factura 4471 de los patch cords. ${F('bank','Cambiamos de banco, así que por favor transfiere a la nueva cuenta:')} Banco del Litoral, cta. cte. 0098-221-447.`,
+   `${F('t','Necesitamos el pago hoy para no detener el próximo despacho.')} Cualquier cosa me escribes por aquí.`,
+   '> El 02-10, Compras Altiplano escribió:<br>> Juan, adjunto OC por los patch cords cat6...')
+   + SIG('Juan Pérez<br>Ejecutivo Comercial · Insumos Red'),
+ flags:[['from','Dominio "insumosred-cl.com" en vez de insumosred.cl. Tal vez le hackearon el correo y siguieron la conversación desde otro lado.'],
+        ['bank','Un cambio de cuenta bancaria por correo es la señal número uno de fraude a empresas (BEC).'],
+        ['t','Presión para pagar hoy.']],
+ todo:'Antes de pagar, llama a Juan al número que ya tienes registrado (no al del correo) y confirma el cambio.'},
+
+{t:'email', lv:3, phish:false, b:'pehuen', name:'Mercado Pehuén', addr:'compras@mercadopehuen.cl',
+ ctx:'Ayer compraste un switch de 8 puertos para tu laboratorio en casa.',
+ subj:'Confirmación de compra #MP-77120', date:'ayer, 20:14',
+ body: P('¡Hola Nicolás!',
+   'Recibimos tu compra:<br><b>Switch no administrable 8 puertos Gigabit</b> · $24.990<br>Pagado con tarjeta terminada en 4821.',
+   'Te avisaremos cuando salga a despacho.',
+   `Ver detalle: ${A('mercadopehuen.cl/mis-compras','https://www.mercadopehuen.cl/mis-compras/77120','l1')}`)
+   + SIG('Mercado Pehuén'),
+ flags:[['from','Dominio oficial mercadopehuen.cl.'],
+        ['subj','Calza con algo que compraste, con el producto y monto correctos.'],
+        ['l1','Enlace al dominio oficial. No pide datos.']],
+ todo:'Nada. A armar ese lab 🧑‍💻'},
+
+{t:'sms', lv:3, phish:true, b:'telcosur', addr:'TelcoSur', date:'hoy, 12:00',
+ body:`TelcoSur: ¡Feliz aniversario! ${F('w','Ganaste 50GB gratis')}. ${F('t','Actívalos antes de las 23:59')} en ${A('telcosur.cl-promo.com/activar','https://telcosur.cl-promo.com/activar','l1')}`,
+ flags:[['from','Ojo: el nombre del remitente en SMS se puede falsificar (spoofing), y a veces el mensaje cae en el mismo hilo que los reales.'],
+        ['w','Regalo inesperado.'],
+        ['t','Plazo de horas.'],
+        ['l1','El dominio real es cl-promo.com: "telcosur" es solo un subdominio.']],
+ todo:'Revisa las promociones desde la app Mi TelcoSur.'},
+
+{t:'email', lv:3, phish:true, b:'altiplano', name:'Recursos Humanos', addr:'rrhh@altiplano.cl',
+ ctx:'Trabajas en Redes Altiplano SpA (dominio altiplano.cl).',
+ subj:'Tu liquidación de octubre incluye un bono', date:'hoy, 17:40',
+ body: P('Hola,',
+   'Este mes se incluyó un bono de desempeño en tu liquidación. Revisa el detalle con tu cuenta corporativa:',
+   BTN('Ver mi liquidación','https://altiplano.cl-rrhh.com/portal/login','l1'))
+   + SIG('Recursos Humanos · Redes Altiplano'),
+ flags:[['from','El remitente se ve correcto, pero el campo "De" se puede falsificar (spoofing) si el dominio no tiene SPF/DKIM/DMARC bien configurados. No basta con mirar solo esto.'],
+        ['l1','El destino real es cl-rrhh.com ("altiplano" es un subdominio de ellos) y te pide la cuenta corporativa. Un bono sorpresa es el gancho.']],
+ todo:'Revisa tu liquidación entrando tú al portal interno. Reporta el correo a TI: si el remitente salió falsificado, les sirve saberlo.'},
+
+{t:'email', lv:3, phish:false, b:'paylama', name:'PayLama', addr:'seguridad@paylama.com',
+ ctx:'Cambiaste tu contraseña de PayLama hace 5 minutos.',
+ subj:'Tu contraseña fue cambiada', date:'hoy, 21:03',
+ body: P('Hola Nicolás,',
+   'Te confirmamos que la contraseña de tu cuenta se cambió hoy a las 20:58.',
+   `${F('g1','Si no fuiste tú, abre la app PayLama y elige "No reconozco este cambio"')}, o llama al número que aparece en paylama.com.`)
+   + SIG('Seguridad PayLama'),
+ flags:[['from','Dominio oficial paylama.com.'],
+        ['subj','Coincide con lo que acabas de hacer.'],
+        ['g1','No trae enlaces para iniciar sesión: te manda a la app y a canales oficiales.']],
+ todo:'Nada que hacer. Este tipo de aviso es tu alarma si algún día no fuiste tú.'},
+];
+
+/* ================= MODO FORENSE (encabezados) =================
+  Mismo formato que arriba, más:
+  hdr: encabezados crudos. Un [clave] al inicio de una línea la marca para las señales.
+  Las líneas que parten con espacios son la continuación del encabezado anterior.
+*/
+const D = (d, h) => `${d} Oct 2026 ${h} -0300`;
+const INB = (d) => `Received: from mx1.nimbomail.com (mx1.nimbomail.com [10.20.0.11])
+  by buzon4.nimbomail.com with LMTP; ${d}`;
+
+S.push(
+/* ---------- FORENSE I ---------- */
+{t:'email', lv:4, phish:true, b:'altiplano', name:'Recursos Humanos', addr:'rrhh@altiplano.cl',
+ ctx:'Trabajas en Redes Altiplano SpA. El correo de la empresa es @altiplano.cl y lo recibe el servidor mx.altiplano.cl.',
+ subj:'Confirma tu cuenta para recibir el bono', date:'hoy, 17:40',
+ body: P('Hola,', 'Para pagarte el bono de octubre necesitamos que confirmes tu cuenta corporativa antes de las 20:00.',
+   BTN('Confirmar cuenta','https://altiplano.cl-rrhh.com/login','l1')) + SIG('Recursos Humanos'),
+ hdr:`Return-Path: <rrhh@altiplano.cl>
+Received: from mx.altiplano.cl (mx.altiplano.cl [10.10.0.25])
+  by buzon.altiplano.cl with LMTP; Thu, ${D(8,'17:40:09')}
+[rcv]Received: from vps-77.hostfacil.top (vps-77.hostfacil.top [203.0.113.45])
+  by mx.altiplano.cl with ESMTP id 4Zq81Lk2
+  for <nicolas@altiplano.cl>; Thu, ${D(8,'17:40:07')}
+Authentication-Results: mx.altiplano.cl;
+[spf]  spf=fail (mx.altiplano.cl: domain of rrhh@altiplano.cl does not
+  designate 203.0.113.45 as permitted sender) smtp.mailfrom=rrhh@altiplano.cl;
+[dkim]  dkim=none (message not signed);
+[dmarc]  dmarc=fail (p=NONE dis=NONE) header.from=altiplano.cl
+From: Recursos Humanos <rrhh@altiplano.cl>
+To: nicolas@altiplano.cl
+Subject: Confirma tu cuenta para recibir el bono
+Date: Thu, ${D(8,'17:39:58')}
+Message-ID: <20261008203958.1187@vps-77.hostfacil.top>`,
+ flags:[['spf','SPF falló: la IP 203.0.113.45 no está autorizada para enviar correos de altiplano.cl.'],
+        ['dkim','No viene firmado. Un correo interno de verdad saldría firmado por altiplano.cl.'],
+        ['dmarc','DMARC falló, pero altiplano.cl tiene política p=none (solo monitorear), así que el servidor lo entregó igual. Por eso el "De" falsificado llegó a tu bandeja.'],
+        ['rcv','El primer servidor de la ruta (el Received de más abajo) es un VPS cualquiera, no un servidor de la empresa.'],
+        ['l1','Y el botón lleva a cl-rrhh.com.']],
+ todo:'Repórtalo a TI. Y de pasada sugiere subir DMARC de p=none a p=quarantine o p=reject: con eso este correo no habría llegado.'},
+
+{t:'email', lv:4, phish:false, b:'streamix', name:'Streamix', addr:'no-reply@streamix.tv',
+ subj:'Tu recibo de octubre', date:'1 oct, 09:00',
+ body: P('Hola Nicolás,', 'Cobramos <b>$7.990</b> a tu tarjeta terminada en <b>4821</b> por tu plan Básico.',
+   `Puedes ver tus pagos en ${A('www.streamix.tv/cuenta','https://www.streamix.tv/cuenta','l1')}.`) + SIG('El equipo de Streamix'),
+ hdr:`Return-Path: <bounce@mail.streamix.tv>
+${INB('Thu, ' + D(1,'09:00:05'))}
+[rcv]Received: from out-12.mail.streamix.tv (out-12.mail.streamix.tv [192.0.2.10])
+  by mx1.nimbomail.com with ESMTPS id 9Kd02Aa1
+  for <nicolas@nimbomail.com>; Thu, ${D(1,'09:00:03')}
+Authentication-Results: mx1.nimbomail.com;
+[spf]  spf=pass (nimbomail.com: domain of bounce@mail.streamix.tv designates
+  192.0.2.10 as permitted sender) smtp.mailfrom=bounce@mail.streamix.tv;
+[dkim]  dkim=pass header.d=streamix.tv header.s=sx2026;
+[dmarc]  dmarc=pass (p=REJECT dis=NONE) header.from=streamix.tv
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=streamix.tv; s=sx2026;
+  h=from:to:subject:date:message-id; bh=7Qe2xJmV0a…; b=Kp9sX2wq…
+[hfrom]From: Streamix <no-reply@streamix.tv>
+To: nicolas@nimbomail.com
+Subject: Tu recibo de octubre
+Date: Thu, ${D(1,'09:00:01')}
+Message-ID: <r-20261001-77812@streamix.tv>`,
+ flags:[['dkim','DKIM pasó y quien firmó (d=streamix.tv) es exactamente el dominio del From.'],
+        ['spf','SPF pasó para mail.streamix.tv, un subdominio de la misma empresa.'],
+        ['dmarc','DMARC pasó, y streamix.tv tiene la política más estricta (p=reject): si alguien falsificara este From, lo rechazarían.'],
+        ['rcv','El correo salió de un servidor de streamix.tv directo a tu proveedor.']],
+ todo:'Es un recibo real. Fíjate en este patrón "todo verde y alineado": es tu punto de comparación.'},
+
+{t:'email', lv:4, phish:true, b:'streamix', name:'Streamix', addr:'cuenta@streamix-billing.com',
+ subj:'Tu pago fue rechazado', date:'hoy, 06:03',
+ body: P('Hola,', 'No pudimos procesar el pago de tu suscripción. Actualiza tus datos para seguir viendo tus series.',
+   BTN('Actualizar pago','https://streamix-billing.com/actualizar','l1')) + SIG('El equipo de Streamix'),
+ hdr:`Return-Path: <cuenta@streamix-billing.com>
+${INB('Thu, ' + D(8,'06:03:12'))}
+Received: from mail.streamix-billing.com (mail.streamix-billing.com [198.51.100.61])
+  by mx1.nimbomail.com with ESMTPS id 1Mm73Qp8
+  for <nicolas@nimbomail.com>; Thu, ${D(8,'06:03:10')}
+Authentication-Results: mx1.nimbomail.com;
+[spf]  spf=pass (nimbomail.com: domain of cuenta@streamix-billing.com designates
+  198.51.100.61 as permitted sender) smtp.mailfrom=cuenta@streamix-billing.com;
+  dkim=pass header.d=streamix-billing.com header.s=default;
+[dmarc]  dmarc=pass (p=NONE dis=NONE) header.from=streamix-billing.com
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=streamix-billing.com; s=default;
+  h=from:to:subject:date; bh=c2FsdG8gZW4…; b=Zm9vYmFy…
+[hfrom]From: Streamix <cuenta@streamix-billing.com>
+To: nicolas@nimbomail.com
+Subject: Tu pago fue rechazado
+Date: Thu, ${D(8,'06:03:01')}
+Message-ID: <a81f2c@streamix-billing.com>`,
+ flags:[['dmarc','Todo dice pass… pero mira para quién: header.from=streamix-billing.com. DMARC solo prueba que el correo viene de ese dominio, no que ese dominio sea Streamix.'],
+        ['hfrom','El From usa el nombre "Streamix", pero el dominio no es streamix.tv. Registrar un dominio parecido y configurarle SPF/DKIM cuesta minutos.'],
+        ['spf','SPF pasa porque el atacante es dueño de su propio dominio.'],
+        ['l1','El botón lleva al mismo dominio falso.']],
+ todo:'Revisa tu pago entrando tú a streamix.tv o a la app.'},
+
+{t:'email', lv:4, phish:true, b:'cordillera', name:'Banco Cordillera', addr:'alertas@bancocordillera.cl',
+ ctx:'Este correo estaba en tu carpeta de spam y lo sacaste para revisarlo.',
+ subj:'Bloqueo preventivo de tu tarjeta', date:'hoy, 03:22',
+ body: P('Hola Nicolás,', 'Bloqueamos tu tarjeta por una compra inusual. Para desbloquearla confirma tus datos:',
+   BTN('Desbloquear tarjeta','https://bancocordillera.cl.desbloqueo-seguro.com/','l1')) + SIG('Banco Cordillera'),
+ hdr:`Return-Path: <alertas@bancocordillera.cl>
+${INB('Thu, ' + D(8,'03:22:40'))}
+[rcv]Received: from mail.ofertas-latam.biz (mail.ofertas-latam.biz [198.51.100.23])
+  by mx1.nimbomail.com with ESMTP id 5Rt66Hn0
+  for <nicolas@nimbomail.com>; Thu, ${D(8,'03:22:38')}
+Authentication-Results: mx1.nimbomail.com;
+[spf]  spf=softfail (nimbomail.com: domain of transitioning alertas@bancocordillera.cl
+  does not designate 198.51.100.23 as permitted sender) smtp.mailfrom=alertas@bancocordillera.cl;
+[dkim]  dkim=fail (body hash did not verify) header.d=bancocordillera.cl header.s=bc1;
+[dmarc]  dmarc=fail (p=QUARANTINE dis=QUARANTINE) header.from=bancocordillera.cl
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=bancocordillera.cl; s=bc1;
+  h=from:to:subject:date; bh=Rk9STUVSTE…; b=YmFuY28…
+From: Banco Cordillera <alertas@bancocordillera.cl>
+To: nicolas@nimbomail.com
+Subject: Bloqueo preventivo de tu tarjeta
+Date: Thu, ${D(8,'03:22:30')}
+Message-ID: <77120.993@ofertas-latam.biz>`,
+ flags:[['dkim','DKIM falló: "body hash did not verify" significa que el cuerpo no es el que se firmó. Copiaron la firma de un correo real del banco y le cambiaron el contenido.'],
+        ['spf','SPF softfail: la IP que lo entregó no está autorizada por el banco.'],
+        ['dmarc','DMARC falló y el banco pide cuarentena (p=quarantine): por eso tu proveedor lo mandó a spam. Ese filtro tenía razón.'],
+        ['rcv','El correo nació en ofertas-latam.biz, no en un servidor del banco.'],
+        ['l1','El botón va a desbloqueo-seguro.com.']],
+ todo:'Si el filtro de spam lo mandó ahí por DMARC, déjalo ahí. Revisa tu tarjeta en la app del banco.'},
+
+{t:'email', lv:4, phish:false, b:'andino', name:'Coordinación Académica', addr:'coordinacion@iandino.cl',
+ subj:'Recordatorio: evaluación Redes II este jueves', date:'lun, 15:20',
+ body: P('Hola Nicolás,', 'La Evaluación 2 de Redes II es este <b>jueves a las 10:00</b> en el laboratorio L-204.',
+   `El temario está en ${A('campus.iandino.cl','https://campus.iandino.cl/redes2','l1')}.`) + SIG('Coordinación Académica · Instituto Andino'),
+ hdr:`Return-Path: <coordinacion@iandino.cl>
+${INB('Mon, ' + D(5,'15:20:14'))}
+[rcv]Received: from smtp.iandino.cl (smtp.iandino.cl [192.0.2.80])
+  by mx1.nimbomail.com with ESMTPS id 2Tx40Bc7
+  for <nicolas@nimbomail.com>; Mon, ${D(5,'15:20:12')}
+Received: from [10.5.1.34] (pc-coord-02.iandino.local [10.5.1.34])
+  by smtp.iandino.cl with ESMTPSA id 0a1b2c3d
+  (authenticated user coordinacion); Mon, ${D(5,'15:20:11')}
+Authentication-Results: mx1.nimbomail.com;
+[spf]  spf=pass (nimbomail.com: domain of coordinacion@iandino.cl designates
+  192.0.2.80 as permitted sender) smtp.mailfrom=coordinacion@iandino.cl;
+[dkim]  dkim=pass header.d=iandino.cl header.s=ia2026;
+[dmarc]  dmarc=pass (p=QUARANTINE dis=NONE) header.from=iandino.cl
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=iandino.cl; s=ia2026;
+  h=from:to:subject:date:message-id; bh=SW5zdGl0dXRv…; b=QW5kaW5v…
+From: Coordinación Académica <coordinacion@iandino.cl>
+To: nicolas@nimbomail.com
+Subject: Recordatorio: evaluación Redes II este jueves
+Date: Mon, ${D(5,'15:20:09')}
+Message-ID: <c0ord-55120@iandino.cl>`,
+ flags:[['spf','SPF pasó para iandino.cl, el mismo dominio del From.'],
+        ['dkim','Firmado por iandino.cl.'],
+        ['dmarc','DMARC pasó.'],
+        ['rcv','Ruta coherente: un PC interno del instituto, luego su servidor smtp.iandino.cl (con usuario autenticado) y luego tu proveedor.']],
+ todo:'A estudiar 😉'},
+
+{t:'email', lv:4, phish:false, b:'pixelhub', name:'Pixelhub', addr:'noreply@pixelhub.dev',
+ ctx:'Hace 5 minutos iniciaste sesión en Pixelhub desde el PC del laboratorio.',
+ subj:'Nuevo inicio de sesión en tu cuenta', date:'hoy, 11:36',
+ body: P('Hola nmaldonado,', 'Detectamos un inicio de sesión nuevo:<br><span class="mono">Windows · Chrome · Santiago, CL · 11:31</span>',
+   'Si fuiste tú, no tienes que hacer nada.') + SIG('Pixelhub'),
+ hdr:`Return-Path: <bounces@pixelhub.dev>
+${INB('Thu, ' + D(8,'11:36:08'))}
+[rcv]Received: from out-3.smtp.pixelhub.dev (out-3.smtp.pixelhub.dev [192.0.2.141])
+  by mx1.nimbomail.com with ESMTPS id 8Hh21Kc3
+  for <nicolas@nimbomail.com>; Thu, ${D(8,'11:36:07')}
+Authentication-Results: mx1.nimbomail.com;
+  spf=pass (nimbomail.com: domain of bounces@pixelhub.dev designates
+  192.0.2.141 as permitted sender) smtp.mailfrom=bounces@pixelhub.dev;
+[dkim]  dkim=pass header.d=pixelhub.dev header.s=ph1;
+[dmarc]  dmarc=pass (p=REJECT dis=NONE) header.from=pixelhub.dev
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=pixelhub.dev; s=ph1;
+  h=from:to:subject:date:message-id; bh=UGl4ZWxodWI…; b=c2VndXJv…
+[hfrom]From: Pixelhub <noreply@pixelhub.dev>
+To: nicolas@nimbomail.com
+Subject: Nuevo inicio de sesión en tu cuenta
+Date: Thu, ${D(8,'11:36:05')}
+Message-ID: <login-alert-29a8@pixelhub.dev>`,
+ flags:[['hfrom','Dominio oficial pixelhub.dev.'],
+        ['dkim','Firma DKIM válida de pixelhub.dev, alineada con el From.'],
+        ['dmarc','DMARC pasó con p=reject.'],
+        ['rcv','Salió de un servidor de pixelhub.dev.']],
+ todo:'Nada que hacer: calza con lo que hiciste y los encabezados están limpios.'},
+
+{t:'email', lv:4, phish:true, b:'condor', name:'Envíos Cóndor', addr:'notificaciones@envioscondor.cl',
+ subj:'Tu envío está retenido en aduana', date:'hoy, 10:14',
+ body: P('Hola,', 'Tu envío está retenido. Paga <b>$1.290</b> de arancel para liberarlo:',
+   BTN('Pagar arancel','https://condor-aduana.top/pago','l1')) + SIG('Envíos Cóndor'),
+ hdr:`[rp]Return-Path: <u8812@envios-mailcloud.net>
+${INB('Thu, ' + D(8,'10:14:21'))}
+[rcv]Received: from smtp-44.envios-mailcloud.net (smtp-44.envios-mailcloud.net [203.0.113.120])
+  by mx1.nimbomail.com with ESMTPS id 3Yu55Gg2
+  for <nicolas@nimbomail.com>; Thu, ${D(8,'10:14:19')}
+Authentication-Results: mx1.nimbomail.com;
+[spf]  spf=pass (nimbomail.com: domain of u8812@envios-mailcloud.net designates
+  203.0.113.120 as permitted sender) smtp.mailfrom=u8812@envios-mailcloud.net;
+[dkim]  dkim=pass header.d=envios-mailcloud.net header.s=mc;
+[dmarc]  dmarc=fail (p=NONE dis=NONE) header.from=envioscondor.cl
+[hfrom]From: Envíos Cóndor <notificaciones@envioscondor.cl>
+To: nicolas@nimbomail.com
+Subject: Tu envío está retenido en aduana
+Date: Thu, ${D(8,'10:14:15')}
+Message-ID: <0198273.mc@envios-mailcloud.net>`,
+ flags:[['spf','SPF pasó… pero para envios-mailcloud.net, el dominio del sobre, no para envioscondor.cl.'],
+        ['dkim','DKIM también pasó, pero lo firmó envios-mailcloud.net.'],
+        ['dmarc','DMARC falla porque ninguno de los dos "pass" está alineado con el From (envioscondor.cl). Esa es justo la trampa: pass sin alineación no prueba nada.'],
+        ['rp','El Return-Path es de un servicio de correo masivo que nada tiene que ver con Cóndor.'],
+        ['l1','El pago va a condor-aduana.top.']],
+ todo:'No pagues nada. Revisa el seguimiento en envioscondor.cl escribiendo tú la dirección.'},
+
+{t:'email', lv:4, phish:false, b:'pehuen', name:'Mercado Pehuén', addr:'compras@mercadopehuen.cl',
+ ctx:'Ayer compraste un switch de 8 puertos para tu laboratorio en casa.',
+ subj:'Confirmación de compra #MP-77120', date:'ayer, 20:14',
+ body: P('¡Hola Nicolás!', 'Recibimos tu compra: <b>Switch no administrable 8 puertos Gigabit</b> · $24.990.',
+   `Ver detalle: ${A('mercadopehuen.cl/mis-compras','https://www.mercadopehuen.cl/mis-compras/77120','l1')}`) + SIG('Mercado Pehuén'),
+ hdr:`Return-Path: <compras@mercadopehuen.cl>
+${INB('Wed, ' + D(7,'20:14:33'))}
+[rcv]Received: from mta2.mercadopehuen.cl (mta2.mercadopehuen.cl [198.51.100.9])
+  by mx1.nimbomail.com with ESMTPS id 6Wq18Nn4
+  for <nicolas@nimbomail.com>; Wed, ${D(7,'20:14:31')}
+Authentication-Results: mx1.nimbomail.com;
+[spf]  spf=pass (nimbomail.com: domain of compras@mercadopehuen.cl designates
+  198.51.100.9 as permitted sender) smtp.mailfrom=compras@mercadopehuen.cl;
+[dkim]  dkim=pass header.d=mercadopehuen.cl header.s=mp;
+  dmarc=pass (p=REJECT dis=NONE) header.from=mercadopehuen.cl
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mercadopehuen.cl; s=mp;
+  h=from:to:subject:date:message-id; bh=TWVyY2Fkbw…; b=UGVodWVu…
+From: Mercado Pehuén <compras@mercadopehuen.cl>
+To: nicolas@nimbomail.com
+Subject: Confirmación de compra #MP-77120
+Date: Wed, ${D(7,'20:14:28')}
+Message-ID: <order-77120@mercadopehuen.cl>`,
+ flags:[['spf','SPF pasó para mercadopehuen.cl, igual que el From.'],
+        ['dkim','Firmado por mercadopehuen.cl.'],
+        ['rcv','Viene de un servidor de la tienda, y además calza con tu compra.']],
+ todo:'Nada. A armar ese lab 🧑‍💻'},
+
+{t:'email', lv:4, phish:true, b:'cordillera', name:'Banco Cordillera', addr:'notificaciones@bancocordiIlera.cl',
+ subj:'Confirma tu nuevo dispositivo', date:'hoy, 14:02',
+ body: P('Hola Nicolás,', 'Registramos un intento de inscribir un nuevo dispositivo. Si fuiste tú, confírmalo para habilitar transferencias.',
+   BTN('Confirmar dispositivo','https://bancocordiIlera.cl/dispositivos','l1')) + SIG('Banco Cordillera'),
+ hdr:`Return-Path: <notificaciones@bancocordiilera.cl>
+${INB('Thu, ' + D(8,'14:02:51'))}
+Received: from mail.bancocordiilera.cl (mail.bancocordiilera.cl [203.0.113.200])
+  by mx1.nimbomail.com with ESMTPS id 7Pa90Zz1
+  for <nicolas@nimbomail.com>; Thu, ${D(8,'14:02:49')}
+Authentication-Results: mx1.nimbomail.com;
+  spf=pass (nimbomail.com: domain of notificaciones@bancocordiilera.cl designates
+  203.0.113.200 as permitted sender) smtp.mailfrom=notificaciones@bancocordiilera.cl;
+  dkim=pass header.d=bancocordiilera.cl header.s=s1;
+[dmarc]  dmarc=pass (p=NONE dis=NONE) header.from=bancocordiilera.cl
+[hfrom]From: Banco Cordillera <notificaciones@bancocordiIlera.cl>
+To: nicolas@nimbomail.com
+Subject: Confirma tu nuevo dispositivo
+Date: Thu, ${D(8,'14:02:44')}
+Message-ID: <dev-8812@bancocordiilera.cl>`,
+ flags:[['hfrom','En el From se ve "cordiIlera": esa es una I mayúscula, no una l.'],
+        ['dmarc','Los servidores escriben los dominios en minúscula, y ahí se delata: header.from=bancocordiilera.cl, con dos "i". Es un dominio distinto al del banco que pasa todo porque es del atacante.'],
+        ['l1','El botón va al mismo dominio homógrafo.']],
+ todo:'Copia el dominio y pégalo en minúsculas o en letra monoespaciada: los homógrafos se notan. Para dispositivos, usa la app del banco.'},
+
+/* ---------- FORENSE II ---------- */
+{t:'email', lv:5, phish:false, b:'condor', name:'Envíos Cóndor', addr:'notificaciones@envioscondor.cl',
+ ctx:'Compraste unos audífonos el lunes y te dijeron que llegaban esta semana.',
+ subj:'Tu envío CC48213977 está en reparto', date:'hoy, 09:10',
+ body: P('Hola Nicolás,', 'Tu envío <b>CC48213977</b> salió a reparto y debería llegar hoy entre 14:00 y 19:00.',
+   `Sigue el estado en ${A('envioscondor.cl/seguimiento','https://www.envioscondor.cl/seguimiento?n=CC48213977','l1')}.`) + SIG('Envíos Cóndor'),
+ hdr:`[rp]Return-Path: <bounce+cc48213977@rebotes.mailcanto.net>
+${INB('Thu, ' + D(8,'09:10:06'))}
+[rcv]Received: from out3.mailcanto.net (out3.mailcanto.net [192.0.2.33])
+  by mx1.nimbomail.com with ESMTPS id 4Fg29Lp0
+  for <nicolas@nimbomail.com>; Thu, ${D(8,'09:10:04')}
+Authentication-Results: mx1.nimbomail.com;
+[spf]  spf=pass (nimbomail.com: domain of bounce+cc48213977@rebotes.mailcanto.net
+  designates 192.0.2.33 as permitted sender) smtp.mailfrom=rebotes.mailcanto.net;
+[dkim]  dkim=pass header.d=envioscondor.cl header.s=mc1;
+  dkim=pass header.d=mailcanto.net header.s=mc;
+[dmarc]  dmarc=pass (p=NONE dis=NONE) header.from=envioscondor.cl
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=envioscondor.cl; s=mc1;
+  h=from:to:subject:date:message-id; bh=Q29uZG9y…; b=RW52aW9z…
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mailcanto.net; s=mc;
+  h=from:to:subject:date; bh=Q29uZG9y…; b=TWFpbGNh…
+From: Envíos Cóndor <notificaciones@envioscondor.cl>
+To: nicolas@nimbomail.com
+Subject: Tu envío CC48213977 está en reparto
+Date: Thu, ${D(8,'09:10:01')}
+Message-ID: <cc48213977.reparto@envioscondor.cl>`,
+ flags:[['rp','El Return-Path es de Mailcanto, un servicio de envío masivo. Es normal: muchas empresas mandan sus avisos a través de uno.'],
+        ['spf','SPF pasa para mailcanto.net, que no está alineado con el From…'],
+        ['dkim','…pero hay una firma DKIM de envioscondor.cl. Cóndor le dio a Mailcanto una clave para firmar en su nombre.'],
+        ['dmarc','Con esa firma alineada, DMARC pasa. Compáralo con el falso del nivel anterior: ahí solo firmaba el servicio masivo.'],
+        ['rcv','La ruta (servidor de Mailcanto → tu proveedor) calza con el Return-Path.']],
+ todo:'Espera tu paquete tranquilo. Lección: Return-Path distinto al From no es señal de phishing por sí solo; lo que importa es que DMARC pase alineado.'},
+
+{t:'email', lv:5, phish:false, b:'cordillera', name:'Banco Cordillera', addr:'estados@bancocordillera.cl',
+ ctx:'Tienes configurado que tu correo del instituto (@iandino.cl) se reenvíe automáticamente a tu correo personal.',
+ subj:'Tu estado de cuenta de septiembre', date:'hoy, 08:02',
+ body: P('Hola Nicolás,', 'Tu estado de cuenta de septiembre ya está disponible en la app del banco.',
+   'Por tu seguridad, este correo no trae enlaces ni adjuntos.') + SIG('Banco Cordillera'),
+ hdr:`Return-Path: <estados@bancocordillera.cl>
+${INB('Thu, ' + D(8,'08:02:19'))}
+[fwd]Received: from mx.iandino.cl (mx.iandino.cl [192.0.2.81])
+  by mx1.nimbomail.com with ESMTPS id 0Lz32Wq9
+  for <nicolas@nimbomail.com>; Thu, ${D(8,'08:02:17')}
+Received: from envios.bancocordillera.cl (envios.bancocordillera.cl [198.51.100.140])
+  by mx.iandino.cl with ESMTPS id 7Cc81Bt2
+  for <nicolas.m@iandino.cl>; Thu, ${D(8,'08:02:15')}
+Authentication-Results: mx1.nimbomail.com;
+[spf]  spf=softfail (nimbomail.com: domain of estados@bancocordillera.cl does not
+  designate 192.0.2.81 as permitted sender) smtp.mailfrom=estados@bancocordillera.cl;
+[dkim]  dkim=pass header.d=bancocordillera.cl header.s=bc1;
+[dmarc]  dmarc=pass (p=QUARANTINE dis=NONE) header.from=bancocordillera.cl;
+  arc=pass (i=1 spf=pass dkim=pass dmarc=pass) smtp.remote-ip=192.0.2.81
+[arc]ARC-Authentication-Results: i=1; mx.iandino.cl;
+  spf=pass smtp.mailfrom=bancocordillera.cl;
+  dkim=pass header.d=bancocordillera.cl; dmarc=pass header.from=bancocordillera.cl
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=bancocordillera.cl; s=bc1;
+  h=from:to:subject:date:message-id; bh=RXN0YWRv…; b=Q3VlbnRh…
+From: Banco Cordillera <estados@bancocordillera.cl>
+To: nicolas.m@iandino.cl
+Subject: Tu estado de cuenta de septiembre
+Date: Thu, ${D(8,'08:02:10')}
+Message-ID: <ec-202609-4821@bancocordillera.cl>`,
+ flags:[['spf','SPF da softfail… porque el último salto fue el servidor del instituto (192.0.2.81), y el banco no lo autoriza. Pasa siempre con los reenvíos.'],
+        ['fwd','Lee los Received de abajo hacia arriba: banco → mx.iandino.cl → tu proveedor. Es el reenvío que tú configuraste (fíjate en el To: tu correo del instituto).'],
+        ['dkim','La firma DKIM del banco sobrevive al reenvío porque el mensaje no se modificó.'],
+        ['dmarc','Con DKIM alineado, DMARC pasa aunque SPF falle.'],
+        ['arc','ARC: el instituto dejó constancia de que, cuando le llegó a él, SPF, DKIM y DMARC estaban en pass.']],
+ todo:'Es legítimo. Lección: un SPF fallido no condena un correo reenviado si DKIM y DMARC pasan.'},
+
+{t:'email', lv:5, phish:true, b:'person', name:'Juan Pérez · Insumos Red', addr:'juan.perez@insumosred.cl',
+ ctx:'Insumos Red es proveedor habitual de tu empresa. Sus correos siempre vienen de @insumosred.cl.',
+ subj:'RE: Factura 4471 - cambio de cuenta', date:'hoy, 15:48',
+ body: P('Hola, ¿cómo estás?',
+   `Por la factura 4471 de los patch cords: ${F('bank','cambiamos de banco, así que transfiere a la nueva cuenta')} Banco del Litoral, cta. cte. 0098-221-447. Necesitamos el pago hoy.`,
+   '> El 02-10, Compras Altiplano escribió:<br>> Juan, adjunto OC por los patch cords cat6...') + SIG('Juan Pérez<br>Ejecutivo Comercial · Insumos Red'),
+ hdr:`Return-Path: <juan.perez@insumosred.cl>
+Received: from mx.altiplano.cl (mx.altiplano.cl [10.10.0.25])
+  by buzon.altiplano.cl with LMTP; Thu, ${D(8,'15:48:30')}
+Received: from smtp.insumosred.cl (smtp.insumosred.cl [198.51.100.77])
+  by mx.altiplano.cl with ESMTPS id 1Qa60Vb3
+  for <compras@altiplano.cl>; Thu, ${D(8,'15:48:28')}
+[cli]Received: from [203.0.113.219] (unknown [203.0.113.219])
+  by webmail.insumosred.cl with ESMTPSA id 88fa21
+  (authenticated user juan.perez); Thu, ${D(8,'15:48:26')}
+Authentication-Results: mx.altiplano.cl;
+  spf=pass smtp.mailfrom=juan.perez@insumosred.cl;
+  dkim=pass header.d=insumosred.cl header.s=ir;
+[dmarc]  dmarc=pass (p=QUARANTINE dis=NONE) header.from=insumosred.cl
+From: Juan Pérez <juan.perez@insumosred.cl>
+[rt]Reply-To: Juan Pérez <juan.perez@insumosred-cl.com>
+To: compras@altiplano.cl
+Subject: RE: Factura 4471 - cambio de cuenta
+Date: Thu, ${D(8,'15:48:20')}
+Message-ID: <w3b-4471a@insumosred.cl>`,
+ flags:[['dmarc','Todo pasa: este correo SÍ salió de la cuenta real de Juan. Le robaron la contraseña.'],
+        ['rt','El Reply-To es insumosred-cl.com, otro dominio: si respondes, tu correo le llega al estafador y no a Juan.'],
+        ['cli','El webmail fue usado desde una IP desconocida, con usuario autenticado: así se ve una cuenta comprometida.'],
+        ['bank','Y el contenido es el clásico fraude a empresas (BEC): cambio de cuenta bancaria con apuro.']],
+ todo:'Llama a Juan al número que ya tienes registrado antes de pagar, y avísale que le entraron a la cuenta. Encabezados limpios no significan correo seguro.'},
+
+{t:'email', lv:5, phish:true, b:'telcosur', name:'TelcoSur', addr:'promos@telcosur.cl',
+ subj:'🎁 Ganaste 50GB gratis', date:'hoy, 12:00',
+ body: P('¡Feliz aniversario!', 'Ganaste <b>50GB gratis</b>. Actívalos antes de las 23:59:',
+   BTN('Activar mis 50GB','https://telcosur.cl-promo.com/activar','l1')) + SIG('TelcoSur'),
+ hdr:`Return-Path: <promos@telcosur.cl>
+${INB('Thu, ' + D(8,'12:00:41'))}
+[rcv]Received: from localhost (vps-3381.nubeexpress.top [203.0.113.77])
+  by mx1.nimbomail.com with ESMTP id 9Ab12Cd3
+  for <nicolas@nimbomail.com>; Thu, ${D(8,'12:00:39')}
+Authentication-Results: mx1.nimbomail.com;
+[spf]  spf=softfail (nimbomail.com: domain of transitioning promos@telcosur.cl
+  does not designate 203.0.113.77 as permitted sender) smtp.mailfrom=promos@telcosur.cl;
+  dkim=none (message not signed);
+[dmarc]  dmarc=fail (p=NONE dis=NONE) header.from=telcosur.cl
+From: TelcoSur <promos@telcosur.cl>
+To: nicolas@nimbomail.com
+Subject: =?UTF-8?B?8J+OgSBHYW5hc3RlIDUwR0IgZ3JhdGlz?=
+Date: Thu, ${D(8,'12:00:31')}
+Message-ID: <5f2a9c1e8b@localhost>
+[xm]X-Mailer: PHPMailer 6.8.0 (https://github.com/PHPMailer/PHPMailer)`,
+ flags:[['rcv','El servidor de origen se presentó como "localhost" y en realidad es un VPS (nubeexpress.top). Ningún servidor serio de una telco hace eso.'],
+        ['spf','SPF softfail: esa IP no está autorizada por telcosur.cl.'],
+        ['dmarc','DMARC falla, pero TelcoSur tiene p=none, así que nadie lo bloquea.'],
+        ['xm','X-Mailer: PHPMailer, un script típico de envíos masivos desde un VPS, y el Message-ID termina en @localhost.'],
+        ['l1','El enlace va a cl-promo.com.']],
+ todo:'Ignóralo. Las promos de verdad las ves en la app Mi TelcoSur.'},
+
+{t:'email', lv:5, phish:true, b:'person', name:'Camila Rojas', addr:'camila.rojas@iandino.cl',
+ ctx:'Camila es tu compañera de Redes II. No le habías pedido ningún archivo.',
+ subj:'Documento importante', date:'hoy, 02:47',
+ body: P('Hola,', `${F('gen','Te compartí un documento importante, revísalo lo antes posible.')}`,
+   BTN('Ver documento','https://nubebox.com.docs-share.app/view','l1')),
+ hdr:`Return-Path: <camila.rojas@iandino.cl>
+${INB('Thu, ' + D(8,'02:47:19'))}
+Received: from smtp.iandino.cl (smtp.iandino.cl [192.0.2.80])
+  by mx1.nimbomail.com with ESMTPS id 3Kk70Ff5
+  for <nicolas@nimbomail.com>; Thu, ${D(8,'02:47:17')}
+[cli]Received: from [198.51.100.250] (unknown [198.51.100.250])
+  by smtp.iandino.cl with ESMTPSA id 5d6e7f
+  (authenticated user camila.rojas); Thu, ${D(8,'02:47:15')}
+Authentication-Results: mx1.nimbomail.com;
+  spf=pass smtp.mailfrom=camila.rojas@iandino.cl;
+  dkim=pass header.d=iandino.cl header.s=ia2026;
+[dmarc]  dmarc=pass (p=QUARANTINE dis=NONE) header.from=iandino.cl
+From: Camila Rojas <camila.rojas@iandino.cl>
+[bcc]To: undisclosed-recipients:;
+Subject: Documento importante
+Date: Thu, ${D(8,'02:47:10')}
+Message-ID: <x91-camila-0247@iandino.cl>`,
+ flags:[['dmarc','Todo pasa y la ruta es del instituto: el correo sí salió de la cuenta de Camila.'],
+        ['cli','Pero alguien se autenticó como Camila desde una IP externa desconocida, a las 2:47 AM.'],
+        ['bcc','"undisclosed-recipients": lo mandaron a muchos en copia oculta. Una compañera no te escribe así.'],
+        ['gen','Mensaje genérico, sin tu nombre ni de qué trata el documento.'],
+        ['l1','El enlace lleva a docs-share.app, no a nubebox.com.']],
+ todo:'Avísale a Camila por otro canal (WhatsApp, en persona) que le robaron la cuenta, y reporta el correo a TI del instituto.'},
+
+{t:'email', lv:5, phish:true, b:'cordillera', name:'Banco Cordillera', addr:'seguridad@bancocordillera.cl',
+ ctx:'Este correo estaba en tu carpeta de spam. Abajo dice que pasó todos los controles, ¿será un error del filtro?',
+ subj:'Actualización obligatoria de clave', date:'hoy, 07:15',
+ body: P('Hola Nicolás,', 'Por nueva normativa debes actualizar tu clave de internet hoy.',
+   BTN('Actualizar clave','https://cordillera-clave.top/actualizar','l1')) + SIG('Banco Cordillera'),
+ hdr:`Return-Path: <seguridad@bancocordillera.cl>
+${INB('Thu, ' + D(8,'07:15:50'))}
+Received: from mx.envio-rapido.biz (mx.envio-rapido.biz [203.0.113.31])
+  by mx1.nimbomail.com with ESMTP id 6Nn43Rt8
+  for <nicolas@nimbomail.com>; Thu, ${D(8,'07:15:48')}
+[ar]Authentication-Results: mx1.nimbomail.com;
+  spf=fail (nimbomail.com: domain of seguridad@bancocordillera.cl does not
+  designate 203.0.113.31 as permitted sender) smtp.mailfrom=seguridad@bancocordillera.cl;
+  dkim=none (message not signed);
+  dmarc=fail (p=QUARANTINE dis=QUARANTINE) header.from=bancocordillera.cl
+[fake]Authentication-Results: mx.bancocordillera.cl;
+  spf=pass smtp.mailfrom=bancocordillera.cl;
+  dkim=pass header.d=bancocordillera.cl;
+  dmarc=pass header.from=bancocordillera.cl
+[fakercv]Received: from secure.bancocordillera.cl (secure.bancocordillera.cl [198.51.100.140])
+  by mx.bancocordillera.cl with ESMTPS; Thu, ${D(8,'07:15:40')}
+From: Banco Cordillera <seguridad@bancocordillera.cl>
+To: nicolas@nimbomail.com
+Subject: Actualización obligatoria de clave
+Date: Thu, ${D(8,'07:15:38')}
+Message-ID: <upd-2210@bancocordillera.cl>`,
+ flags:[['ar','El Authentication-Results de tu proveedor (mx1.nimbomail.com, el de más arriba) dice fail en todo. Ese es el único que vale.'],
+        ['fake','Este otro dice pass, pero lo firmó "mx.bancocordillera.cl" y está más abajo: lo escribió el atacante dentro del mensaje. Cualquiera puede agregar encabezados.'],
+        ['fakercv','Este Received también es inventado: está debajo del primer servidor real (mx.envio-rapido.biz), así que nadie confiable lo agregó.'],
+        ['l1','El botón va a cordillera-clave.top.']],
+ todo:'El filtro de spam tenía razón. Regla: confía solo en el Authentication-Results de tu propio proveedor.'},
+
+{t:'email', lv:5, phish:false, b:'paylama', name:'PayLama', addr:'codigos@paylama.com',
+ ctx:'Acabas de pedir un código para entrar a PayLama desde el PC.',
+ subj:'Tu código de verificación', date:'hoy, 19:30',
+ body: P('Hola Nicolás,', 'Tu código es <b class="mono">482913</b>. Vence en 10 minutos.',
+   'No lo compartas con nadie, ni siquiera con nosotros.') + SIG('Seguridad PayLama'),
+ hdr:`[rp]Return-Path: <bounce-82a1@em.paylama.com>
+${INB('Thu, ' + D(8,'19:30:04'))}
+[rcv]Received: from o7.mailcanto.net (o7.mailcanto.net [192.0.2.37])
+  by mx1.nimbomail.com with ESMTPS id 2Rr18Jj6
+  for <nicolas@nimbomail.com>; Thu, ${D(8,'19:30:03')}
+Authentication-Results: mx1.nimbomail.com;
+[spf]  spf=pass (nimbomail.com: domain of bounce-82a1@em.paylama.com designates
+  192.0.2.37 as permitted sender) smtp.mailfrom=em.paylama.com;
+[dkim]  dkim=pass header.d=paylama.com header.s=s1;
+  dkim=pass header.d=mailcanto.net header.s=mc;
+  dmarc=pass (p=REJECT dis=NONE) header.from=paylama.com
+From: PayLama <codigos@paylama.com>
+To: nicolas@nimbomail.com
+Subject: Tu código de verificación
+Date: Thu, ${D(8,'19:30:01')}
+Message-ID: <otp-482913.x7@paylama.com>`,
+ flags:[['rcv','Lo envió Mailcanto, el servicio de envío que usa PayLama.'],
+        ['rp','El Return-Path es em.paylama.com: un subdominio de PayLama que apunta a Mailcanto. Así SPF también queda alineado (alineación relajada: mismo dominio organizacional).'],
+        ['spf','SPF pasa para em.paylama.com.'],
+        ['dkim','Dos firmas: la de paylama.com (la que cuenta para DMARC) y la del servicio de envío. Es normal.']],
+ todo:'Úsalo en la página. Si algún día te llega un código que no pediste, alguien está intentando entrar.'},
+
+{t:'email', lv:5, phish:false, b:'telcosur', name:'TelcoSur', addr:'avisos@telcosur.cl',
+ subj:'Mantención programada en tu sector', date:'mar, 11:00',
+ body: P('Hola Nicolás,', 'El <b>domingo 12/10 entre 02:00 y 05:00</b> haremos mantención de la red de fibra en tu sector.',
+   'No tienes que hacer nada.') + SIG('TelcoSur · Operaciones de Red'),
+ hdr:`Return-Path: <avisos@telcosur.cl>
+${INB('Tue, ' + D(6,'11:00:12'))}
+[rcv]Received: from mta.telcosur.cl (mta.telcosur.cl [198.51.100.12])
+  by mx1.nimbomail.com with ESMTPS id 5Ee90Pp2
+  for <nicolas@nimbomail.com>; Tue, ${D(6,'11:00:10')}
+Authentication-Results: mx1.nimbomail.com;
+[spf]  spf=pass (nimbomail.com: domain of avisos@telcosur.cl designates
+  198.51.100.12 as permitted sender) smtp.mailfrom=avisos@telcosur.cl;
+[dkim]  dkim=pass header.d=telcosur.cl header.s=ts;
+[dmarc]  dmarc=pass (p=NONE dis=NONE) header.from=telcosur.cl
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=telcosur.cl; s=ts;
+  h=from:to:subject:date:message-id; bh=VGVsY29TdXI…; b=bWFudGVu…
+From: TelcoSur <avisos@telcosur.cl>
+To: nicolas@nimbomail.com
+Subject: Mantención programada en tu sector
+Date: Tue, ${D(6,'11:00:05')}
+Message-ID: <mant-1210-sector14@telcosur.cl>`,
+ flags:[['rcv','Viene de mta.telcosur.cl, un servidor de la propia empresa.'],
+        ['spf','SPF pasa para telcosur.cl.'],
+        ['dkim','Firmado por telcosur.cl.'],
+        ['dmarc','DMARC pasa. Su política es p=none (débil), pero eso no importa cuando todo calza: solo significa que un falso no sería bloqueado.']],
+ todo:'Nada que hacer. Compáralo con el falso de TelcoSur: mismo From, pero ruta, SPF y DKIM totalmente distintos.'},
+
+{t:'email', lv:5, phish:false, b:'pehuen', name:'Mercado Pehuén', addr:'mensajes@mercadopehuen.cl',
+ ctx:'Le hiciste una pregunta a un vendedor de Mercado Pehuén sobre un router.',
+ subj:'El vendedor respondió tu pregunta', date:'hoy, 16:05',
+ body: P('Hola Nicolás,', 'TecnoRed respondió: "Sí, el router trae soporte para VLAN y WPA3".',
+   'Puedes responder este correo para seguir la conversación.') + SIG('Mercado Pehuén'),
+ hdr:`[rp]Return-Path: <b-71c2@em.mercadopehuen.cl>
+${INB('Thu, ' + D(8,'16:05:22'))}
+Received: from out1.mail.mercadopehuen.cl (out1.mail.mercadopehuen.cl [198.51.100.10])
+  by mx1.nimbomail.com with ESMTPS id 8Gg31Hh7
+  for <nicolas@nimbomail.com>; Thu, ${D(8,'16:05:20')}
+Authentication-Results: mx1.nimbomail.com;
+  spf=pass smtp.mailfrom=em.mercadopehuen.cl;
+[dkim]  dkim=pass header.d=mail.mercadopehuen.cl header.s=mp2;
+[dmarc]  dmarc=pass (p=REJECT dis=NONE) header.from=mercadopehuen.cl
+From: Mercado Pehuén <mensajes@mercadopehuen.cl>
+[rt]Reply-To: <r-8812a7@mensajes.mercadopehuen.cl>
+To: nicolas@nimbomail.com
+Subject: El vendedor respondió tu pregunta
+Date: Thu, ${D(8,'16:05:17')}
+Message-ID: <q-8812a7@mail.mercadopehuen.cl>`,
+ flags:[['rt','El Reply-To es distinto, pero es un subdominio de mercadopehuen.cl: la tienda usa una dirección única para enganchar tu respuesta a la conversación.'],
+        ['rp','Return-Path en em.mercadopehuen.cl, también de la misma empresa.'],
+        ['dkim','La firma es de mail.mercadopehuen.cl y el From es mercadopehuen.cl. Con alineación relajada basta que compartan el dominio organizacional.'],
+        ['dmarc','DMARC pasa con p=reject.']],
+ todo:'Puedes responder tranquilo. Un Reply-To solo preocupa cuando apunta a un dominio ajeno.'}
+);
+
+/* ---------- niveles ---------- */
+/* mode: 'c' clásico · 'h' forense (encabezados). req: nivel que hay que superar antes. */
+const LEVELS = [
+  {mode:'c', tag:'NIVEL 1', name:'Principiante', desc:'Phishing de manual: faltas, urgencia y dominios evidentes.', time:0, rounds:8, need:6, req:0},
+  {mode:'c', tag:'NIVEL 2', name:'Intermedio', desc:'Enlaces que no calzan, fraude del CEO, adjuntos y SMS.', time:0, rounds:8, need:6, req:1},
+  {mode:'c', tag:'NIVEL 3', name:'Experto', desc:'Homógrafos, subdominios engañosos, QR y fraude a empresas. Con reloj.', time:45, rounds:8, need:6, req:2},
+  {mode:'h', tag:'FORENSE I', name:'Lee la autenticación', desc:'SPF, DKIM y DMARC en Authentication-Results: qué pasó, para qué dominio y con qué política.', time:0, rounds:6, need:4, req:0},
+  {mode:'h', tag:'FORENSE II', name:'Sigue la ruta', desc:'Received, Return-Path, Reply-To, reenvíos, ARC, cuentas robadas y encabezados falsificados.', time:0, rounds:6, need:4, req:4},
+];
+const LIVES = 3;
+
+/* ---------- estado ---------- */
+const KEY = 'phishing-o-no-v2';
+let save = {pass:{}, best:{}};
+try {
+  const s = JSON.parse(localStorage.getItem(KEY));
+  if (s && s.pass) save = s;
+  else { // trae el progreso de la v1 si existe
+    const o = JSON.parse(localStorage.getItem('phishing-o-no-v1'));
+    if (o && o.unlocked) { for (let n = 1; n < o.unlocked; n++) save.pass[n] = true; save.best = o.best || {}; }
+  }
+} catch (e) {}
+const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) {} };
+const isLocked = n => { const r = LEVELS[n - 1].req; return !!r && !save.pass[r]; };
+
+const $ = id => document.getElementById(id);
+const root = document.documentElement;
+try { const t = localStorage.getItem('phishing-o-no-v1-theme'); if (t) root.dataset.theme = t; } catch (e) {}
+$('btnTheme').onclick = () => {
+  const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  root.dataset.theme = dark ? 'light' : 'dark';
+  try { localStorage.setItem('phishing-o-no-v1-theme', root.dataset.theme); } catch (e) {}
+};
+
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+function show(scr) {
+  ['scrMenu', 'scrGame', 'scrResult', 'scrTool'].forEach(s => $(s).classList.toggle('hidden', s !== scr));
+  $('btnMenu').classList.toggle('hidden', scr === 'scrMenu');
+  window.scrollTo(0, 0);
+}
+
+function renderMenu() {
+  const card = (L, i) => {
+    const n = i + 1, locked = isLocked(n), b = save.best[n], R = LEVELS[L.req - 1];
+    return `<button class="level" data-lv="${n}" ${locked ? 'disabled' : ''} type="button">
+      <div class="num">${L.tag}${locked ? ' · 🔒' : ''}</div>
+      <div class="name">${L.name}</div>
+      <div class="desc">${L.desc}</div>
+      <div class="best">${b ? `Mejor: ${b.score} pts · ${b.hits}/${L.rounds} ${'★'.repeat(b.stars)}` : (locked ? `Acierta ${R.need}/${R.rounds} en ${R.tag.toLowerCase()}` : 'Sin jugar')}</div>
+    </button>`;
+  };
+  $('levels').innerHTML = LEVELS.map((L, i) => L.mode === 'c' ? card(L, i) : '').join('');
+  $('levelsH').innerHTML = LEVELS.map((L, i) => L.mode === 'h' ? card(L, i) : '').join('');
+  document.querySelectorAll('#levels .level, #levelsH .level').forEach(b => b.onclick = () => start(Number(b.dataset.lv)));
+  show('scrMenu');
+}
+
+/* ---------- juego ---------- */
+let G = null, timer = null;
+
+function start(lv) {
+  const pool = shuffle(S.filter(s => s.lv === lv));
+  const R = LEVELS[lv - 1].rounds, m = R >= 8 ? 3 : 2;
+  // asegura una mezcla razonable: al menos m de cada tipo de respuesta
+  let deck = pool.slice(0, R);
+  const ph = deck.filter(s => s.phish).length;
+  if (ph < m || ph > R - m) deck = shuffle(pool.filter(s => s.phish).slice(0, R - m).concat(pool.filter(s => !s.phish).slice(0, m)));
+  G = {lv, deck, i:0, score:0, streak:0, lives:LIVES, hits:0, log:[]};
+  show('scrGame');
+  next();
+}
+
+function hud() {
+  $('hudLevel').textContent = LEVELS[G.lv - 1].mode === 'h' ? `Forense ${'I'.repeat(G.lv - 3)}` : `Nivel ${G.lv}`;
+  $('hudRound').textContent = `${G.i + 1}/${G.deck.length}`;
+  $('hudScore').textContent = G.score;
+  $('hudStreak').textContent = G.streak;
+  $('hudLives').textContent = '❤️'.repeat(G.lives) + '🖤'.repeat(LIVES - G.lives);
+}
+
+function renderMsg(s) {
+  const b = B[s.b];
+  const av = `<span class="av" style="background:${b.c}">${b.i}</span>`;
+  if (s.t === 'email') {
+    const atts = (s.atts || []).map((a, k) => `<span class="att" data-f="att${k}">📎 ${esc(a)}</span>`).join('');
+    return `<div class="mail">
+      <div class="mhead">
+        <div class="subj" data-f="subj">${esc(s.subj)}</div>
+        <div class="from">${s.b === 'person' ? `<span class="av" style="background:${b.c}">${esc(s.name[0])}</span>` : av}
+          <div class="who"><span class="name">${esc(s.name)}</span> <span class="addr" data-f="from">&lt;${esc(s.addr)}&gt;</span>
+          <div class="meta">para mí · ${esc(s.date)}</div></div></div>
+        ${atts ? `<div class="atts">${atts}</div>` : ''}
+      </div>
+      <div class="mbody">${s.body}</div>
+      <div class="status" id="status">Pasa el mouse o toca un enlace para ver a dónde lleva.</div>
+    </div>${s.hdr ? renderRaw(s.hdr) : ''}`;
+  }
+  if (s.t === 'sms') {
+    return `<div class="phone">
+      <div class="phead">${s.b === 'person' ? `<span class="av" style="background:${b.c}">#</span>` : av}<span class="num" data-f="from">${esc(s.addr)}</span></div>
+      <div class="pbody"><div class="bubble">${s.body}</div><div class="ptime">${esc(s.date)}</div></div>
+      <div class="status" id="status">Toca un enlace para ver a dónde lleva.</div>
+    </div>`;
+  }
+  return `<div class="browser">
+    <div class="bbar"><span class="dots"><i></i><i></i><i></i></span>
+      <div class="urlbar" data-f="url">${s.lock ? '<span class="lock">🔒</span>' : '<span class="lock ns">⚠ No seguro</span>'}<span>${esc(s.url)}</span></div></div>
+    <div class="page">${s.body}</div>
+  </div>`;
+}
+
+const KIND = {email:'📧 Correo', sms:'💬 SMS', web:'🌐 Página web'};
+
+/* ---------- encabezados ---------- */
+const HINFO = {
+  'return-path':'La dirección del <i>sobre</i> (MAIL FROM): a dónde vuelven los rebotes. <b>SPF</b> revisa este dominio, no el del From. Que sea distinto al From es normal si la empresa usa un servicio de envío masivo.',
+  'received':'Cada servidor que toca el correo agrega uno <b>arriba</b>. Se leen de <b>abajo hacia arriba</b>: el de más abajo es el origen. Solo son confiables los que agregó tu proveedor; los de más abajo los pudo escribir cualquiera.',
+  'authentication-results':'El veredicto de SPF, DKIM y DMARC que calculó el servidor que recibió el correo. La primera palabra es quién lo escribió: confía solo en el de tu proveedor (normalmente el de más arriba).',
+  'arc-authentication-results':'ARC: un intermediario (reenvío, lista de correo) deja anotado cómo venía la autenticación cuando le llegó a él, porque reenviar suele romper SPF.',
+  'dkim-signature':'La firma DKIM. <b>d=</b> es el dominio que firma, <b>s=</b> el selector (la clave pública está en DNS, en s._domainkey.d), <b>h=</b> los encabezados firmados, <b>bh=</b> el hash del cuerpo y <b>b=</b> la firma.',
+  'from':'El remitente que ves. Se puede escribir cualquier cosa aquí; DMARC es lo que comprueba que este dominio calce con SPF o DKIM.',
+  'reply-to':'A quién se responde. Si apunta a otro dominio que el From, tu respuesta se va a otra parte: típico de fraude a empresas.',
+  'to':'El destinatario. "undisclosed-recipients" significa que todos iban en copia oculta (envío masivo).',
+  'subject':'El asunto. Si trae emojis o tildes se codifica así: =?UTF-8?B?…?= (Base64).',
+  'date':'La fecha que puso el programa que escribió el correo. La pone el remitente, así que se puede falsear.',
+  'message-id':'Identificador único del mensaje. El dominio después de @ suele ser el del sistema que lo creó; si dice @localhost o un dominio ajeno, ojo.',
+  'x-mailer':'El programa que generó el correo. Es opcional y falsificable, pero a veces delata scripts masivos como PHPMailer.',
+};
+const colorize = t => t.replace(/\b(spf|dkim|dmarc|arc)=(pass|fail|softfail|neutral|none|temperror|permerror)\b/gi,
+  (m, a, r) => `<span class="${/^pass$/i.test(r) ? 'tk-pass' : /fail|permerror/i.test(r) ? 'tk-fail' : 'tk-mid'}">${m}</span>`);
+const stripKeys = h => h.replace(/^\[\w+\]/gm, '');
+
+function renderRaw(h) {
+  const rows = h.split('\n').map(line => {
+    const m = line.match(/^\[(\w+)\]/), key = m ? m[1] : '';
+    const rest = m ? line.slice(m[0].length) : line;
+    const df = key ? ` data-f="${key}"` : '';
+    if (/^\s/.test(rest)) return `<div class="hl"${df}>${colorize(esc(rest))}</div>`;
+    const c = rest.indexOf(':');
+    const name = rest.slice(0, c);
+    return `<div class="hl"${df}><button class="hk" type="button" data-h="${esc(name.toLowerCase())}">${esc(name)}:</button>${colorize(esc(rest.slice(c + 1)))}</div>`;
+  }).join('');
+  return `<div class="raw"><div class="rawbar"><b>🧾 Original del mensaje</b><span class="muted">Toca el nombre de un encabezado para saber qué es</span></div>
+    <div class="rawbody">${rows}</div>
+    <p class="hinfo" id="hinfo">💡 Empieza por <b>Authentication-Results</b> y luego lee los <b>Received</b> de abajo hacia arriba.</p></div>`;
+}
+
+function wireRaw(scope) {
+  scope.querySelectorAll('.hk').forEach(b => b.onclick = () => {
+    scope.querySelectorAll('.hk.on').forEach(x => x.classList.remove('on'));
+    b.classList.add('on');
+    const info = HINFO[b.dataset.h] || 'Encabezado opcional: no suele importar para decidir si es phishing.';
+    const box = scope.querySelector('#hinfo'); if (box) box.innerHTML = `<b>${esc(b.textContent)}</b> ${info}`;
+  });
+}
+
+function next() {
+  clearInterval(timer);
+  if (G.i >= G.deck.length || G.lives <= 0) return finish();
+  const s = G.deck[G.i];
+  G.cur = s; G.answered = false;
+  hud();
+  $('kind').textContent = s.hdr ? '🧾 Correo + encabezados' : KIND[s.t];
+  $('ctx').classList.toggle('hidden', !s.ctx);
+  $('ctx').innerHTML = s.ctx ? `<b>Contexto:</b> ${esc(s.ctx)}` : '';
+  const stage = $('stage');
+  stage.className = '';
+  stage.innerHTML = renderMsg(s);
+  wireRaw(stage);
+  stage.querySelectorAll('.lnk,.btnlink').forEach(a => {
+    const showUrl = e => { e.preventDefault(); const st = $('status'); if (st) st.innerHTML = `🔗 Destino real: <b>${esc(a.dataset.url)}</b>`; };
+    a.addEventListener('mouseenter', showUrl);
+    a.addEventListener('focus', showUrl);
+    a.addEventListener('click', showUrl);
+  });
+  $('answer').classList.remove('hidden');
+  $('btnPhish').disabled = $('btnLegit').disabled = false;
+  ['feedback', 'explain', 'btnNext'].forEach(id => $(id).classList.add('hidden'));
+  $('gameCard').classList.remove('pop', 'shake'); void $('gameCard').offsetWidth; $('gameCard').classList.add('pop');
+
+  const T = LEVELS[G.lv - 1].time;
+  $('timerWrap').classList.toggle('hidden', !T);
+  $('hudTime').classList.toggle('hidden', !T);
+  if (T) {
+    G.left = T;
+    const tick = () => {
+      $('timerBar').style.width = (G.left / T * 100) + '%';
+      $('hudTime').textContent = `⏱ ${Math.ceil(G.left)}s`;
+    };
+    tick();
+    timer = setInterval(() => { G.left -= .25; if (G.left <= 0) { G.left = 0; tick(); answer(null); } else tick(); }, 250);
+  }
+}
+
+function answer(saysPhish) {
+  if (G.answered) return;
+  G.answered = true;
+  clearInterval(timer);
+  const s = G.cur, ok = saysPhish === s.phish;
+  let gained = 0;
+  if (ok) {
+    G.streak++; G.hits++;
+    gained = 100 + Math.min(50, (G.streak - 1) * 10);
+    const T = LEVELS[G.lv - 1].time;
+    if (T) gained += Math.round(G.left / T * 50);
+    G.score += gained;
+  } else {
+    G.streak = 0; G.lives--;
+    $('gameCard').classList.remove('pop'); void $('gameCard').offsetWidth; $('gameCard').classList.add('shake');
+  }
+  G.log.push({s, ok, timeout: saysPhish === null});
+  hud();
+
+  // marca las señales sobre el mensaje
+  const stage = $('stage');
+  stage.className = s.phish ? 'isphish' : 'islegit';
+  s.flags.forEach(([k], n) => { const el = stage.querySelector(`[data-f="${k}"]`); if (el) el.dataset.n = n + 1; });
+
+  const verdict = s.phish ? 'phishing 🎣' : 'legítimo ✅';
+  const fb = $('feedback');
+  fb.className = 'feedback ' + (ok ? 'ok' : 'bad');
+  fb.textContent = saysPhish === null
+    ? `⏱ Se acabó el tiempo. Era ${verdict}.`
+    : ok ? `¡Bien! Era ${verdict}. +${gained} pts` : `Ups, era ${verdict}. Pierdes una vida.`;
+  $('explain').innerHTML = `<h3>${s.phish ? 'Señales de alerta' : 'Por qué es confiable'}</h3>
+    <ol class="flags ${s.phish ? 'bad' : 'good'}">${s.flags.map(([, t], n) => `<li><span class="n">${n + 1}</span><span>${t}</span></li>`).join('')}</ol>
+    <div class="todo"><b>Qué hacer:</b> ${s.todo}</div>
+    ${s.hdr ? `<details style="margin-top:12px"><summary>🔬 Ver lo que diría el analizador</summary>${analyze(stripKeys(s.hdr))}</details>` : ''}`;
+  $('answer').classList.add('hidden');
+  ['feedback', 'explain', 'btnNext'].forEach(id => $(id).classList.remove('hidden'));
+  const last = G.i + 1 >= G.deck.length || G.lives <= 0;
+  $('btnNext').textContent = last ? 'Ver resultado →' : 'Siguiente →';
+  $('btnNext').focus({preventScroll:true});
+}
+
+function finish() {
+  clearInterval(timer);
+  const {lv, score, hits} = G;
+  const L = LEVELS[lv - 1], R = L.rounds;
+  const out = G.lives <= 0;
+  const stars = hits >= R ? 3 : hits >= R - 1 ? 2 : hits >= L.need ? 1 : 0;
+  const passed = !out && hits >= L.need;
+  const b = save.best[lv];
+  if (!b || score > b.score) save.best[lv] = {score, hits, stars};
+  const nextIdx = LEVELS.findIndex(x => x.req === lv);
+  let unlockMsg = '';
+  if (passed && nextIdx >= 0 && !save.pass[lv]) unlockMsg = `🔓 Desbloqueaste ${LEVELS[nextIdx].tag.toLowerCase()}: ${LEVELS[nextIdx].name}`;
+  else if (passed && lv === 3) unlockMsg = '🛡️ Terminaste el nivel Experto. Ya tienes ojo de analista SOC.';
+  else if (passed && lv === 5) unlockMsg = '🧾 Terminaste el modo forense: ya lees encabezados como en un SOC. Prueba el analizador con un correo tuyo.';
+  else if (passed) unlockMsg = '¡Bien leído!';
+  else unlockMsg = `Necesitas ${L.need}/${R} aciertos sin quedarte sin vidas para avanzar.`;
+  if (passed) save.pass[lv] = true;
+  persist();
+
+  $('resTitle').textContent = out ? 'Te quedaste sin vidas' : passed ? '¡Nivel superado!' : 'Casi…';
+  $('resStars').textContent = stars ? '★'.repeat(stars) + '☆'.repeat(3 - stars) : '☆☆☆';
+  $('resScore').textContent = `${score} pts`;
+  $('resDetail').textContent = `${hits} de ${G.log.length} aciertos en ${L.tag.toLowerCase()} (${L.name}).`;
+  $('resUnlock').textContent = unlockMsg;
+  $('review').innerHTML = G.log.map(({s, ok, timeout}) => {
+    const label = s.t === 'email' ? s.subj : s.t === 'sms' ? `SMS de ${s.addr}` : s.url;
+    return `<li><span class="m ${ok ? 'ok' : 'bad'}">${ok ? '✓' : '✗'}</span>
+      <span><b>${esc(label)}</b><br><span class="muted">${s.phish ? 'Phishing' : 'Legítimo'}${timeout ? ' · sin respuesta' : ''} · ${esc(s.flags[0][1])}</span></span></li>`;
+  }).join('');
+  show('scrResult');
+}
+
+/* ---------- analizador de encabezados ---------- */
+const SLD = ['com', 'co', 'org', 'net', 'gob', 'gov', 'edu', 'ac', 'mil', 'nom'];
+// dominio organizacional aproximado (sin la Public Suffix List completa)
+const orgDom = d => {
+  const p = String(d || '').toLowerCase().replace(/\.$/, '').split('.');
+  if (p.length <= 2) return p.join('.');
+  return (p[p.length - 1].length === 2 && SLD.includes(p[p.length - 2]) ? p.slice(-3) : p.slice(-2)).join('.');
+};
+const addrOf = v => { const m = String(v || '').match(/<([^>]*)>/) || String(v || '').match(/([^\s<>"]+@[^\s<>"]+)/); return m ? m[1].trim() : ''; };
+const domOf = a => { const i = a.lastIndexOf('@'); return i >= 0 ? a.slice(i + 1).replace(/[>;\s]+$/, '') : a; };
+
+function parseHeaders(raw) {
+  const out = [];
+  for (const line of raw.replace(/\r/g, '').split('\n')) {
+    if (!line.trim()) { if (out.length) break; else continue; } // la línea en blanco separa encabezados del cuerpo
+    if (/^[ \t]/.test(line) && out.length) { out[out.length - 1].v += ' ' + line.trim(); continue; }
+    const m = line.match(/^([!-9;-~]+):\s?(.*)$/);
+    if (m) out.push({n:m[1], k:m[1].toLowerCase(), v:m[2]});
+  }
+  return out;
+}
+
+function parseAR(v) {
+  const parts = v.split(';');
+  const r = {by:parts[0].trim(), spf:[], dkim:[], dmarc:[], arc:[]};
+  parts.slice(1).forEach(p => {
+    const m = p.match(/^\s*(spf|dkim|dmarc|arc)=(\w+)/i);
+    if (!m) return;
+    const o = {res:m[2].toLowerCase(), txt:p.trim()};
+    const g = (k) => { const x = p.match(new RegExp(k.replace('.', '\\.') + '=([^\\s;()]+)', 'i')); return x ? x[1] : ''; };
+    o.mailfrom = domOf(g('smtp.mailfrom')); o.d = g('header.d') || domOf(g('header.i')); o.from = g('header.from');
+    const pol = p.match(/\bp=(\w+)/i); o.p = pol ? pol[1].toLowerCase() : '';
+    r[m[1].toLowerCase()].push(o);
+  });
+  return r;
+}
+
+function analyze(raw) {
+  const H = parseHeaders(raw);
+  if (!H.length) return '<p class="muted" style="margin-top:12px">No encontré encabezados. Pega desde la primera línea del original (normalmente Delivered-To, Return-Path o Received).</p>';
+  const get = k => H.filter(h => h.k === k);
+  const one = k => (get(k)[0] || {}).v || '';
+  const fromV = one('from'), from = addrOf(fromV), fromD = domOf(from).toLowerCase(), fromO = orgDom(fromD);
+  const disp = fromV.replace(/<[^>]*>/, '').replace(/"/g, '').trim();
+  const rp = addrOf(one('return-path')), rt = addrOf(one('reply-to')), sender = addrOf(one('sender'));
+  const ars = get('authentication-results').map(h => parseAR(h.v));
+  const ar = ars[0];
+  const sigs = get('dkim-signature').map(h => { const m = h.v.match(/\bd=([^;\s]+)/); return m ? m[1] : ''; }).filter(Boolean);
+  const mid = addrOf(one('message-id'));
+  const A = []; // [nivel, texto]
+  const al = d => d && fromO && orgDom(d) === fromO;
+
+  // resumen
+  const chip = (name, list) => {
+    if (!ar) return `<span class="chip">${name}: ?</span>`;
+    if (!list.length) return `<span class="chip">${name}: sin dato</span>`;
+    const best = list.find(x => x.res === 'pass') || list[0];
+    const cls = best.res === 'pass' ? 'ok' : /fail|permerror/.test(best.res) ? 'bad' : 'mid';
+    return `<span class="chip ${cls}">${name}: ${esc(best.res)}</span>`;
+  };
+  let html = `<h3>Resumen ${ar ? `<span class="muted" style="font-weight:400">según ${esc(ar.by)}</span>` : ''}</h3>
+    <div class="chips">${chip('SPF', ar ? ar.spf : [])}${chip('DKIM', ar ? ar.dkim : [])}${chip('DMARC', ar ? ar.dmarc : [])}</div>`;
+
+  // alertas
+  if (!ar) A.push(['mid', 'No hay <code>Authentication-Results</code>. Sin él no se puede saber si SPF, DKIM o DMARC pasaron. ¿Copiaste el original completo?']);
+  else {
+    if (ars.length > 1) A.push(['mid', `Hay ${ars.length} encabezados Authentication-Results. Confía solo en el de tu proveedor (el de más arriba: <code>${esc(ar.by)}</code>). Los de más abajo los puede haber escrito el remitente.`]);
+    const dm = ar.dmarc[0];
+    if (dm) {
+      if (dm.res === 'pass') A.push(['ok', `DMARC pasó para <code>${esc(dm.from || fromD)}</code>. Eso prueba que el correo es de ese dominio, no que ese dominio sea quien dice ser.`]);
+      else A.push(['bad', `DMARC: <b>${esc(dm.res)}</b>${dm.p ? ` (política del dominio: p=${esc(dm.p)})` : ''}. El From <code>${esc(fromD)}</code> no está respaldado por SPF ni DKIM alineados.`]);
+      if (dm.p === 'none') A.push(['info', 'La política del dominio es <code>p=none</code>: si alguien falsifica su From, los servidores igual lo entregan.']);
+    } else A.push(['mid', 'No hay resultado DMARC.']);
+    ar.spf.forEach(x => {
+      if (x.res === 'pass' && x.mailfrom && !al(x.mailfrom)) A.push(['info', `SPF pasó para <code>${esc(x.mailfrom)}</code>, que no está alineado con el From. No cuenta para DMARC.`]);
+      if (/fail/.test(x.res)) A.push(['mid', `SPF ${esc(x.res)}: la IP que entregó el correo no está autorizada${x.mailfrom ? ` por <code>${esc(x.mailfrom)}</code>` : ''}. Pasa en reenvíos legítimos, así que mira DKIM.`]);
+    });
+    ar.dkim.forEach(x => {
+      if (x.res === 'pass' && x.d) A.push([al(x.d) ? 'ok' : 'info', `DKIM pasó con la firma de <code>${esc(x.d)}</code>${al(x.d) ? ', alineada con el From.' : ', que no es el dominio del From.'}`]);
+      if (x.res === 'fail') A.push(['bad', `DKIM falló${x.d ? ` para <code>${esc(x.d)}</code>` : ''}: el mensaje cambió después de firmado o la firma es inválida.`]);
+    });
+    if (ar.arc.length && ar.arc[0].res === 'pass') A.push(['info', 'ARC pasó: un intermediario (reenvío o lista) dejó registro de cómo venía la autenticación antes de pasar por él.']);
+  }
+  if (/[A-Z]/.test(domOf(from)) || /xn--/i.test(fromD)) A.push(['bad', `El dominio del From (<code>${esc(domOf(from))}</code>) tiene mayúsculas o punycode. Revisa si es un homógrafo (I por l, letras de otro alfabeto).`]);
+  const dd = disp.match(/[\w-]+(\.[\w-]+)+/);
+  if (dd && dd[0].includes('.') && orgDom(dd[0]) !== fromO && /@|\.(com|cl|net|org|tv|dev|io)\b/i.test(disp)) A.push(['bad', `El nombre visible ("${esc(disp)}") menciona otro dominio que la dirección real.`]);
+  if (rt && orgDom(domOf(rt)) !== fromO) A.push(['bad', `Reply-To apunta a <code>${esc(domOf(rt))}</code>, otro dominio que el From: si respondes, tu correo se va para allá.`]);
+  else if (rt) A.push(['ok', 'El Reply-To es del mismo dominio que el From.']);
+  if (rp && orgDom(domOf(rp)) !== fromO) A.push(['info', `El Return-Path (<code>${esc(domOf(rp))}</code>) es de otro dominio. Es normal con servicios de envío masivo si DKIM está alineado; si no, es sospechoso.`]);
+  if (/localhost/i.test(mid)) A.push(['mid', 'El Message-ID termina en @localhost: típico de scripts de envío.']);
+  const xm = one('x-mailer'); if (/phpmailer|swiftmailer|sendblaster|python/i.test(xm)) A.push(['mid', `X-Mailer: <code>${esc(xm)}</code>, un programa de envío por script.`]);
+  if (/undisclosed/i.test(one('to'))) A.push(['info', 'Destinatarios ocultos ("undisclosed-recipients"): envío masivo.']);
+
+  // identidades
+  const row = (k, v, d) => v ? `<tr><td>${k}</td><td>${esc(v)}</td><td>${d ? (al(d) ? '✅ mismo dominio' : '⚠️ ' + esc(orgDom(d))) : ''}</td></tr>` : '';
+  html += `<h3>Identidades</h3><table class="idt"><tr><th>Campo</th><th>Valor</th><th>vs From</th></tr>
+    ${row('From', fromV, '')}${row('Return-Path', rp, domOf(rp))}${row('Reply-To', rt, domOf(rt))}${row('Sender', sender, domOf(sender))}
+    ${sigs.map(d => row('DKIM d=', d, d)).join('')}${row('Message-ID', mid, domOf(mid))}</table>`;
+
+  // ruta
+  const rc = get('received').map(h => {
+    const v = h.v, fm = v.match(/from\s+(\S+)(?:\s+\(([^)]*)\))?/i), by = v.match(/\bby\s+(\S+)/i);
+    const ip = (fm && fm[2] || '').match(/\[?(\d{1,3}(?:\.\d{1,3}){3})\]?/) || v.match(/\[(\d{1,3}(?:\.\d{1,3}){3})\]/);
+    const dt = v.includes(';') ? new Date(v.slice(v.lastIndexOf(';') + 1).trim()) : null;
+    return {from:fm ? fm[1] : '?', by:by ? by[1] : '?', ip:ip ? ip[1] : '', dt:dt && !isNaN(dt) ? dt : null};
+  }).reverse();
+  if (rc.length) {
+    html += `<h3>Ruta (del origen a ti)</h3><ol class="hops">${rc.map((r, i) => {
+      const prev = i ? rc[i - 1].dt : null, gap = prev && r.dt ? Math.round((r.dt - prev) / 1000) : null;
+      const priv = /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|127\.)/.test(r.ip);
+      return `<li><code>${esc(r.from)}</code>${r.ip ? ` <span class="muted">[${esc(r.ip)}${priv ? ', IP privada' : ''}]</span>` : ''} → <code>${esc(r.by)}</code>
+        ${r.dt ? `<br><span class="muted">${r.dt.toLocaleString('es-CL')}${gap !== null ? ` · ${gap >= 0 ? '+' : ''}${gap}s` : ''}</span>` : ''}</li>`;
+    }).join('')}</ol>`;
+    if (rc.some(r => /^localhost$/i.test(r.from))) A.push(['mid', 'Un servidor de la ruta se presentó como "localhost": los servidores de una empresa seria se identifican con su nombre real.']);
+    if (rc.some((r, i) => i && r.dt && rc[i - 1].dt && r.dt < rc[i - 1].dt - 60000)) A.push(['mid', 'Las horas de los Received retroceden: algún salto tiene la hora mal o fue inventado.']);
+  }
+  const lvl = {bad:'🚩', mid:'⚠️', ok:'✅', info:'ℹ️'};
+  const order = {bad:0, mid:1, info:2, ok:3};
+  html += `<h3>Observaciones</h3><ul class="alerts">${A.sort((a, b) => order[a[0]] - order[b[0]]).map(([l, t]) => `<li class="${l}">${lvl[l]} ${t}</li>`).join('')}</ul>
+    <p class="muted" style="font-size:13px;margin-top:10px">El analizador ayuda, pero no decide por ti: una cuenta robada pasa todos los controles. Mira también el contenido.</p>`;
+  return html;
+}
+
+$('btnTool').onclick = () => { show('scrTool'); $('raw').focus({preventScroll:true}); };
+$('btnAnal').onclick = () => { $('anal').innerHTML = analyze($('raw').value); };
+$('btnClear').onclick = () => { $('raw').value = ''; $('anal').innerHTML = ''; };
+$('btnSample').onclick = () => {
+  const list = S.filter(s => s.hdr), s = list[Math.floor(Math.random() * list.length)];
+  $('raw').value = stripKeys(s.hdr).replace(/^ {2}/gm, '\t');
+  $('anal').innerHTML = analyze($('raw').value);
+};
+
+$('btnPhish').onclick = () => answer(true);
+$('btnLegit').onclick = () => answer(false);
+$('btnNext').onclick = () => { G.i++; next(); };
+$('btnRetry').onclick = () => start(G.lv);
+$('btnBack').onclick = renderMenu;
+$('btnMenu').onclick = () => { clearInterval(timer); renderMenu(); };
+
+document.addEventListener('keydown', e => {
+  if ($('scrGame').classList.contains('hidden') || !G || e.metaKey || e.ctrlKey || e.altKey) return;
+  const k = e.key.toLowerCase();
+  if (!G.answered && k === 'p') answer(true);
+  else if (!G.answered && k === 'l') answer(false);
+  else if (G.answered && k === 'enter') { e.preventDefault(); G.i++; next(); }
+});
+
+renderMenu();
+})();
+</script>
+</body>
+</html>

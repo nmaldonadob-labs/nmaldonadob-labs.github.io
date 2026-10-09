@@ -1,0 +1,868 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phishing o No</title>
+<meta name="description" content="Juego para entrenar el ojo contra el phishing: correos, SMS y páginas de login de marcas inventadas. ¿Phishing o legítimo?">
+<style>
+:root{
+  --bg:#f4f6fb; --panel:#ffffff; --panel2:#eef1f8; --text:#141a2a; --muted:#5b6478;
+  --line:#d7dce8; --accent:#0a7cff; --accent-ink:#ffffff; --ok:#11885a; --ok-bg:#e3f6ed;
+  --bad:#c8323c; --bad-bg:#fbe6e7; --warn:#b26a00; --warn-bg:#fff3dc;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --shadow:0 1px 2px rgba(20,26,42,.06),0 6px 20px rgba(20,26,42,.06);
+  --bubble:#e9edf5;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0b0f17; --panel:#131a26; --panel2:#1a2333; --text:#e6ebf5; --muted:#93a0b8;
+    --line:#26324a; --accent:#3ddc97; --accent-ink:#06120c; --ok:#3ddc97; --ok-bg:#0f2a20;
+    --bad:#ff6b74; --bad-bg:#2c1418; --warn:#ffb547; --warn-bg:#2b2010;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+    --bubble:#222d40;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0b0f17; --panel:#131a26; --panel2:#1a2333; --text:#e6ebf5; --muted:#93a0b8;
+  --line:#26324a; --accent:#3ddc97; --accent-ink:#06120c; --ok:#3ddc97; --ok-bg:#0f2a20;
+  --bad:#ff6b74; --bad-bg:#2c1418; --warn:#ffb547; --warn-bg:#2b2010;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+  --bubble:#222d40;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+.wrap{max-width:820px;margin:0 auto;padding:20px 16px 48px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:20px;letter-spacing:-.01em}
+.brand .logo{font-family:var(--mono);background:var(--accent);color:var(--accent-ink);border-radius:8px;padding:2px 8px;font-size:15px}
+.iconbtn{background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:6px 10px;cursor:pointer;font:inherit;font-size:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:var(--shadow);margin-bottom:16px}
+h1{font-size:26px;margin:0 0 6px;letter-spacing:-.02em}
+h2{font-size:18px;margin:0 0 12px}
+h3{font-size:15px;margin:0 0 8px}
+p{margin:0 0 10px}
+.muted{color:var(--muted)}
+.mono{font-family:var(--mono)}
+.levels{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:16px}
+.level{text-align:left;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px;cursor:pointer;color:var(--text);font:inherit;transition:transform .1s,border-color .1s}
+.level:hover:not(:disabled){border-color:var(--accent);transform:translateY(-1px)}
+.level:disabled{opacity:.5;cursor:not-allowed}
+.level .num{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.level .name{font-weight:700;margin:2px 0 4px}
+.level .desc{font-size:14px;color:var(--muted)}
+.level .best{font-size:13px;margin-top:8px;font-family:var(--mono)}
+.hud{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.pill{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:14px;font-family:var(--mono)}
+.pill b{font-weight:700}
+.timer-bar{height:6px;background:var(--panel2);border-radius:99px;overflow:hidden;margin:-4px 0 14px}
+.timer-bar div{height:100%;background:var(--accent);width:100%;transition:width .25s linear}
+.ctx{font-size:14px;padding:8px 12px;border-left:3px solid var(--accent);background:var(--panel2);border-radius:6px;margin-bottom:12px}
+.kind{font-size:13px;color:var(--muted);margin-bottom:8px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em}
+
+/* ----- correo ----- */
+.mail{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--bg)}
+.mhead{padding:14px 16px;border-bottom:1px solid var(--line);background:var(--panel)}
+.subj{font-weight:700;font-size:18px;margin-bottom:10px;display:inline-block}
+.from{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.av{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;font-size:14px;flex:none}
+.from .who{min-width:0}
+.from .name{font-weight:600}
+.addr{font-family:var(--mono);font-size:13px;color:var(--muted);word-break:break-all}
+.meta{font-size:13px;color:var(--muted)}
+.atts{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.att{font-family:var(--mono);font-size:13px;border:1px solid var(--line);background:var(--panel2);border-radius:8px;padding:6px 10px}
+.mbody{padding:16px;font-size:15px;line-height:1.6;word-break:break-word}
+.mbody p{margin:0 0 10px}
+.mbody .btnlink{display:inline-block;background:var(--bl,#0a7cff);color:#fff;text-decoration:none;font-weight:600;padding:8px 16px;border-radius:8px;margin:4px 0 10px}
+.mbody .sig{color:var(--muted);font-size:13px;margin-top:14px}
+.lnk{color:var(--accent);text-decoration:underline;cursor:pointer}
+.status{font-family:var(--mono);font-size:12px;padding:6px 12px;border-top:1px solid var(--line);background:var(--panel2);color:var(--muted);min-height:30px;word-break:break-all}
+.status b{color:var(--text)}
+.qr{display:block;margin:6px 0 10px;width:120px;height:120px;border-radius:6px;background:#fff;padding:6px}
+
+/* ----- SMS ----- */
+.phone{max-width:380px;margin:0 auto;border:1px solid var(--line);border-radius:22px;background:var(--bg);overflow:hidden}
+.phead{text-align:center;padding:12px;border-bottom:1px solid var(--line);background:var(--panel)}
+.phead .av{margin:0 auto 4px}
+.phead .num{font-family:var(--mono);font-size:14px;font-weight:600;display:inline-block}
+.pbody{padding:16px;min-height:150px}
+.bubble{background:var(--bubble);border-radius:16px 16px 16px 4px;padding:10px 14px;font-size:15px;max-width:90%;word-break:break-word}
+.ptime{font-size:12px;color:var(--muted);margin-top:4px}
+
+/* ----- web ----- */
+.browser{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--bg)}
+.bbar{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--panel2);border-bottom:1px solid var(--line)}
+.dots{display:flex;gap:5px;flex:none}.dots i{width:10px;height:10px;border-radius:50%;background:var(--line);display:block}
+.urlbar{flex:1;min-width:0;display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-family:var(--mono);font-size:13px;word-break:break-all}
+.urlbar .lock{flex:none;font-family:system-ui,sans-serif;font-size:12px}
+.urlbar .lock.ns{color:var(--bad);font-weight:600}
+.page{padding:24px 16px;display:flex;justify-content:center}
+.login{width:100%;max-width:330px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px}
+.login .lg{display:flex;align-items:center;gap:8px;font-weight:700;margin-bottom:12px}
+.login .lg .av{width:30px;height:30px;font-size:12px;border-radius:8px}
+.login label{display:block;font-size:13px;color:var(--muted);margin:8px 0 3px}
+.login .in{border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:14px;color:var(--muted);background:var(--bg)}
+.login .go{margin-top:14px;text-align:center;color:#fff;font-weight:600;border-radius:8px;padding:9px;background:var(--bl,#0a7cff)}
+.login .small{font-size:12px;color:var(--muted);margin-top:10px}
+
+/* ----- señales ----- */
+[data-n]{position:relative;border-radius:4px;outline:2px solid var(--fc);outline-offset:1px;background:color-mix(in srgb,var(--fc) 14%,transparent)}
+[data-n]::after{content:attr(data-n);position:absolute;top:-10px;right:-10px;background:var(--fc);color:#fff;font:700 11px/18px var(--mono);width:18px;height:18px;border-radius:50%;text-align:center;z-index:2}
+.isphish [data-n]{--fc:var(--bad)}
+.islegit [data-n]{--fc:var(--ok)}
+.flags{list-style:none;padding:0;margin:8px 0 0}
+.flags li{display:flex;gap:10px;margin-bottom:8px;font-size:15px}
+.flags .n{flex:none;width:22px;height:22px;border-radius:50%;color:#fff;font:700 12px/22px var(--mono);text-align:center;background:var(--fc)}
+.flags.bad{--fc:var(--bad)} .flags.good{--fc:var(--ok)}
+
+.answer{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
+.btn{font:inherit;font-weight:600;border-radius:10px;padding:10px 18px;cursor:pointer;border:1px solid var(--line);background:var(--panel2);color:var(--text)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.big-bad,.btn.big-ok{padding:14px;font-size:17px}
+.btn.big-bad{border-color:var(--bad);color:var(--bad);background:var(--bad-bg)}
+.btn.big-ok{border-color:var(--ok);color:var(--ok);background:var(--ok-bg)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.actions{display:flex;flex-wrap:wrap;gap:10px}
+.feedback{margin-top:16px;padding:12px 14px;border-radius:10px;font-weight:600}
+.feedback.ok{background:var(--ok-bg);color:var(--ok)}
+.feedback.bad{background:var(--bad-bg);color:var(--bad)}
+.explain{margin-top:16px;border-top:1px dashed var(--line);padding-top:14px}
+.todo{margin-top:10px;padding:10px 14px;border-left:3px solid var(--warn);background:var(--panel2);border-radius:6px;font-size:15px}
+.tip{font-size:13px;text-align:center}
+code{font-family:var(--mono);background:var(--panel2);padding:1px 5px;border-radius:5px;font-size:.92em}
+.big{font-size:44px;font-weight:800;font-family:var(--mono);letter-spacing:-.02em;margin:8px 0}
+.stars{font-size:32px;letter-spacing:4px}
+.review{list-style:none;padding:0;margin:14px 0 0;text-align:left}
+.review li{display:flex;gap:10px;align-items:baseline;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
+.review li:last-child{border-bottom:0}
+.review .m{flex:none;font-weight:700;width:18px}
+.review .ok{color:var(--ok)} .review .bad{color:var(--bad)}
+details{margin-top:6px}
+summary{cursor:pointer;font-weight:600}
+.checklist{margin:8px 0 0;padding-left:20px;font-size:15px}
+.checklist li{margin-bottom:5px}
+.hidden{display:none!important}
+.pop{animation:pop .35s ease}
+@keyframes pop{0%{transform:scale(.97);opacity:.6}100%{transform:scale(1);opacity:1}}
+.shake{animation:shake .35s ease}
+@keyframes shake{25%{transform:translateX(-5px)}50%{transform:translateX(5px)}75%{transform:translateX(-3px)}}
+footer{text-align:center;font-size:13px;color:var(--muted);margin-top:24px}
+@media (max-width:480px){.answer{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a href="../../index.html" style="display:inline-block;margin:0 0 10px;font-size:14px;color:var(--muted);text-decoration:none">&larr; Volver al portafolio</a>
+  <header>
+    <div class="brand"><span class="logo">@?</span> Phishing o No</div>
+    <div style="display:flex;gap:8px">
+      <button class="iconbtn hidden" id="btnMenu" type="button">Menú</button>
+      <button class="iconbtn" id="btnTheme" type="button" aria-label="Cambiar tema">Tema</button>
+    </div>
+  </header>
+
+  <!-- MENÚ -->
+  <section id="scrMenu">
+    <div class="card">
+      <h1>¿Es phishing o no?</h1>
+      <p class="muted">Te muestro correos, SMS y páginas de login de marcas inventadas. Tú decides si son <b>phishing</b> o <b>legítimos</b>. Revisa remitentes, pasa el mouse (o toca) los enlaces para ver a dónde llevan de verdad y desconfía de la urgencia. Cada nivel tiene 8 mensajes y 3 vidas; acierta al menos 6 para desbloquear el siguiente.</p>
+      <div class="levels" id="levels"></div>
+    </div>
+    <div class="card">
+      <h2>Chuleta anti-phishing</h2>
+      <details>
+        <summary>Señales de alerta</summary>
+        <ol class="checklist">
+          <li><b>Remitente raro:</b> el nombre dice una marca, pero el dominio del correo es otro (Gmail, guiones extra, letras cambiadas como <code>I</code> por <code>l</code>).</li>
+          <li><b>Enlace que no calza:</b> el texto muestra una URL y el destino real es otra. El dominio real es lo que está justo antes de la primera <code>/</code>: en <code>banco.cl.verifica.com/login</code> manda <code>verifica.com</code>.</li>
+          <li><b>Urgencia o amenaza:</b> "24 horas", "será bloqueada", "último aviso".</li>
+          <li><b>Te piden lo que nunca piden:</b> contraseña, PIN, coordenadas, códigos de verificación o datos completos de tarjeta.</li>
+          <li><b>Premios y regalos</b> que no pediste, o pagos chicos para "liberar" algo.</li>
+          <li><b>Adjuntos peligrosos:</b> doble extensión (<code>.pdf.exe</code>), <code>.zip</code>, macros.</li>
+          <li><b>Cambios de cuenta bancaria</b> o pedidos de pago "confidenciales" de un jefe o proveedor.</li>
+          <li><b>Saludo genérico</b> ("Estimado cliente") y errores de ortografía.</li>
+        </ol>
+      </details>
+      <details>
+        <summary>Qué hacer si dudas</summary>
+        <ol class="checklist">
+          <li>No hagas clic: entra escribiendo tú la dirección oficial o desde la app.</li>
+          <li>Verifica por otro canal: llama al número de la tarjeta o de la web oficial, no al del mensaje.</li>
+          <li>El candado (HTTPS) solo dice que la conexión va cifrada, no que el sitio sea quien dice ser.</li>
+          <li>Reporta el mensaje a TI o al área de seguridad y bórralo.</li>
+        </ol>
+      </details>
+    </div>
+  </section>
+
+  <!-- JUEGO -->
+  <section id="scrGame" class="hidden">
+    <div class="hud">
+      <span class="pill" id="hudLevel"></span>
+      <span class="pill">Mensaje <b id="hudRound"></b></span>
+      <span class="pill">Puntos <b id="hudScore">0</b></span>
+      <span class="pill">Racha <b id="hudStreak">0</b></span>
+      <span class="pill" id="hudLives"></span>
+      <span class="pill" id="hudTime"></span>
+    </div>
+    <div class="timer-bar" id="timerWrap"><div id="timerBar"></div></div>
+    <div class="card" id="gameCard">
+      <div class="kind" id="kind"></div>
+      <div class="ctx hidden" id="ctx"></div>
+      <div id="stage"></div>
+      <div class="answer" id="answer">
+        <button class="btn big-bad" id="btnPhish" type="button">🎣 Es phishing</button>
+        <button class="btn big-ok" id="btnLegit" type="button">✅ Es legítimo</button>
+      </div>
+      <div id="feedback" class="feedback hidden"></div>
+      <div id="explain" class="explain hidden"></div>
+      <div class="actions" style="margin-top:14px">
+        <button class="btn primary hidden" id="btnNext" type="button">Siguiente →</button>
+      </div>
+    </div>
+    <p class="muted tip">Teclas: <code>P</code> phishing · <code>L</code> legítimo · <code>Enter</code> siguiente</p>
+  </section>
+
+  <!-- RESULTADO -->
+  <section id="scrResult" class="hidden">
+    <div class="card" style="text-align:center">
+      <h1 id="resTitle"></h1>
+      <div class="stars" id="resStars"></div>
+      <div class="big" id="resScore"></div>
+      <p class="muted" id="resDetail"></p>
+      <p id="resUnlock" style="font-weight:600"></p>
+      <div class="actions" style="justify-content:center;margin-top:14px">
+        <button class="btn" id="btnRetry" type="button">Reintentar nivel</button>
+        <button class="btn primary" id="btnBack" type="button">Volver al menú</button>
+      </div>
+      <ul class="review" id="review"></ul>
+    </div>
+  </section>
+
+  <footer>Todas las marcas, personas y dominios de este juego son inventados. Hecho con HTML, CSS y JS, sin dependencias.</footer>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+/* ---------- marcas inventadas ---------- */
+const B = {
+  cordillera: {n:'Banco Cordillera', c:'#0b5d3b', i:'BC'},
+  streamix:   {n:'Streamix',         c:'#c2185b', i:'SX'},
+  condor:     {n:'Envíos Cóndor',    c:'#e65100', i:'EC'},
+  pehuen:     {n:'Mercado Pehuén',   c:'#6a1b9a', i:'MP'},
+  telcosur:   {n:'TelcoSur',         c:'#0277bd', i:'TS'},
+  nubebox:    {n:'NubeBox',          c:'#1565c0', i:'NB'},
+  andino:     {n:'Instituto Andino', c:'#37474f', i:'IA'},
+  paylama:    {n:'PayLama',          c:'#00897b', i:'PL'},
+  pixelhub:   {n:'Pixelhub',         c:'#24292f', i:'PH'},
+  altiplano:  {n:'Redes Altiplano',  c:'#5d4037', i:'RA'},
+  person:     {n:'',                 c:'#78909c', i:'?'},
+};
+
+/* helpers para escribir los mensajes */
+const A = (text, url, f) => `<a class="lnk" href="#" data-url="${url}"${f ? ` data-f="${f}"` : ''}>${text}</a>`;
+const BTN = (text, url, f) => `<a class="btnlink" href="#" data-url="${url}"${f ? ` data-f="${f}"` : ''}>${text}</a>`;
+const F = (f, text) => `<span data-f="${f}">${text}</span>`;
+const P = (...ps) => ps.map(p => `<p>${p}</p>`).join('');
+const SIG = t => `<div class="sig">${t}</div>`;
+
+/*
+  Cada mensaje:
+  t: 'email' | 'sms' | 'web'   lv: nivel   phish: true/false
+  b: marca   name/addr: remitente   subj, date, atts, body (HTML)
+  url, lock: para 'web'          ctx: contexto opcional
+  flags: [[clave, explicación]]  (clave = data-f del elemento: from, subj, url, att0… o una del cuerpo)
+  todo: qué hacer
+*/
+const S = [
+/* ================= NIVEL 1 ================= */
+{t:'email', lv:1, phish:true, b:'cordillera', name:'Banco Cordilera', addr:'seguridad@bancocordilera-alertas.com',
+ subj:'URGENTE!!! Su cuenta sera bloqueada', date:'hoy, 03:12',
+ body: P(F('greet','Estimado cliente:'),
+   `Detectamos actividad sospechosa en su cuenta. ${F('threat','Si no valida sus datos en las próximas 24 horas su cuenta sera bloqueada permanentemente.')}`,
+   `Para validar ingrese ${A('aqui','http://bancocordilera-alertas.com/validar.php','l1')} y ${F('ask','complete su RUT, clave de internet y tarjeta de coordenadas completa')}.`)
+   + SIG('Departamento de Seguridad<br>Banco Cordilera'),
+ flags:[['from','El dominio no es bancocordillera.cl: está mal escrito ("Cordilera", con una sola l) y le agregaron "-alertas.com".'],
+        ['subj','Asunto en mayúsculas, con signos de exclamación y faltas de ortografía ("sera").'],
+        ['greet','Saludo genérico: tu banco sabe tu nombre.'],
+        ['threat','Amenaza con plazo para que actúes sin pensar.'],
+        ['l1','El enlace lleva a un dominio falso y usa http (sin cifrar).'],
+        ['ask','Ningún banco te pide la tarjeta de coordenadas completa ni tu clave por correo.']],
+ todo:'Bórralo y, si te quedó la duda, entra a la app del banco o llama al número que sale en tu tarjeta.'},
+
+{t:'email', lv:1, phish:false, b:'streamix', name:'Streamix', addr:'no-reply@streamix.tv',
+ subj:'Tu recibo de octubre', date:'1 oct, 09:00',
+ body: P(F('g1','Hola Nicolás,'),
+   'Gracias por seguir con nosotros. Cobramos <b>$7.990</b> a tu tarjeta terminada en <b>4821</b> por tu plan Básico.',
+   `Puedes ver tus pagos en ${A('www.streamix.tv/cuenta','https://www.streamix.tv/cuenta','l1')}.`,
+   F('g2','Recuerda: Streamix nunca te pedirá tu contraseña ni datos de tarjeta por correo.'))
+   + SIG('El equipo de Streamix'),
+ flags:[['from','Viene del dominio oficial streamix.tv.'],
+        ['g1','Te saluda por tu nombre.'],
+        ['l1','El enlace lleva al dominio oficial, por https, y coincide con lo que muestra.'],
+        ['g2','No te pide nada ni te mete apuro; solo informa.']],
+ todo:'Es un recibo normal. Igual, si no reconoces el cobro, revísalo entrando tú mismo a la web o la app.'},
+
+{t:'sms', lv:1, phish:true, b:'person', addr:'+56 9 7731 4402', date:'hoy, 11:47',
+ body:`${F('n','ENVIOS CONDOR')}: Su paquete esta ${F('u','retenido')}. ${F('pay','Pague $1.290 de arancel')} para liberarlo aqui: ${A('http://condor-envio.top/pago','http://condor-envio.top/pago','l1')}`,
+ flags:[['from','Llega desde un número celular cualquiera, no desde un remitente identificado de la empresa.'],
+        ['u','Te dice que hay un problema para generar urgencia.'],
+        ['pay','Cobro chico para "liberar" un paquete: la trampa clásica para robarte los datos de la tarjeta.'],
+        ['l1','Dominio .top que no tiene nada que ver con envioscondor.cl.']],
+ todo:'No pagues nada desde un SMS. Si esperas un paquete, revisa el seguimiento en la web oficial escribiendo tú la dirección.'},
+
+{t:'email', lv:1, phish:true, b:'pehuen', name:'Mercado Pehuén Premios', addr:'promo@mercadopehuen-premios.net',
+ subj:'🎉 ¡¡FELICIDADES!! Ganaste un iPhone 17', date:'ayer, 22:15',
+ body: P(F('win','¡Eres nuestro visitante número 1.000.000 y ganaste un iPhone 17 Pro!'),
+   `Solo debes ${F('pay','pagar $3.500 de envío')}. ${F('t','Tienes 15 minutos para reclamarlo')} antes que pase al siguiente ganador.`,
+   BTN('RECLAMAR MI PREMIO','https://mercadopehuen-premios.net/reclamar?id=88213','l1')),
+ flags:[['from','"mercadopehuen-premios.net" no es mercadopehuen.cl.'],
+        ['win','Premio que no pediste por algo que no hiciste: si suena demasiado bueno, es falso.'],
+        ['pay','Te piden pagar para recibir un premio: el objetivo es tu tarjeta.'],
+        ['t','Cuenta regresiva para que no pienses.'],
+        ['l1','El botón lleva al mismo dominio falso.']],
+ todo:'Ignóralo y márcalo como spam.'},
+
+{t:'sms', lv:1, phish:false, b:'telcosur', addr:'TelcoSur', date:'hoy, 10:02',
+ body:`TelcoSur: tu boleta de octubre por $18.990 ya está disponible en la app Mi TelcoSur. ${F('g1','No respondas este mensaje.')}`,
+ flags:[['from','Remitente con nombre de la empresa (código corto oficial), no un número cualquiera.'],
+        ['g1','No trae enlaces ni te pide datos: te manda a la app que ya tienes.']],
+ todo:'Nada que hacer: revisa la boleta desde la app si quieres.'},
+
+{t:'email', lv:1, phish:true, b:'nubebox', name:'NubeBox Soporte', addr:'nubebox.support@gmail.com',
+ subj:'Su almacenamiento esta lleno - sus fotos seran ELIMINADAS', date:'hoy, 07:30',
+ body: P('Hola usuario,',
+   `${F('t','Su espacio esta al 100%. En 48 hrs eliminaremos sus fotos y archivos')}.`,
+   `Para evitarlo actualice gratis su plan ${A('aqui','http://nubebox-storage.xyz/upgrade','l1')} con su correo y contraseña.`),
+ flags:[['from','Una empresa no te escribe desde una cuenta de Gmail.'],
+        ['subj','Asunto alarmista y con faltas.'],
+        ['t','Amenaza de borrar tus archivos con plazo.'],
+        ['l1','El enlace va a "nubebox-storage.xyz", no a nubebox.com, y por http.']],
+ todo:'Revisa tu espacio entrando a la app o a nubebox.com directamente. Reporta el correo como phishing.'},
+
+{t:'email', lv:1, phish:false, b:'andino', name:'Coordinación Académica', addr:'coordinacion@iandino.cl',
+ subj:'Recordatorio: evaluación Redes II este jueves', date:'lun, 15:20',
+ body: P('Hola Nicolás,',
+   'Te recordamos que la Evaluación 2 de Redes II es este <b>jueves a las 10:00</b> en el laboratorio L-204. Trae tu credencial.',
+   `El temario está publicado en ${A('campus.iandino.cl','https://campus.iandino.cl/redes2','l1')}.`)
+   + SIG('Coordinación Académica · Instituto Andino'),
+ flags:[['from','Dominio oficial del instituto: iandino.cl.'],
+        ['l1','El enlace va a un subdominio del dominio oficial (campus.iandino.cl), con https.'],
+        ['subj','Información concreta y esperable, sin pedirte nada.']],
+ todo:'A estudiar 😉'},
+
+{t:'email', lv:1, phish:true, b:'person', name:'Abogado Richard M.', addr:'richard.m.law@outlook-mail.com',
+ subj:'Herencia pendiente a su nombre', date:'dom, 04:51',
+ body: P('Saludos cordiales,',
+   `Soy el abogado del difunto Sr. Esteban Maldonado, ${F('m','quien dejo una herencia de USD 4.500.000 sin herederos')}. Usted comparte su apellido y puede reclamarla.`,
+   `${F('ask','Envíe su nombre completo, RUT, foto de su carnet y número de cuenta')}, y ${F('pay','pague USD 250 por gastos notariales')}.`,
+   F('sec','Mantenga esto en estricta confidencialidad.')),
+ flags:[['from','Correo genérico de un dominio que imita a Outlook.'],
+        ['m','Millones de un desconocido: la estafa del "pago por adelantado".'],
+        ['ask','Pide datos personales y documentos con los que te pueden suplantar.'],
+        ['pay','Te pide pagar primero.'],
+        ['sec','Te pide secreto para que no le preguntes a nadie.']],
+ todo:'No respondas. Bloquea y borra.'},
+
+{t:'email', lv:1, phish:false, b:'paylama', name:'PayLama', addr:'avisos@paylama.com',
+ subj:'Recibiste $15.000 de Camila Rojas', date:'hoy, 13:05',
+ ctx:'Le prestaste plata a tu compañera Camila y quedó en devolvértela hoy.',
+ body: P('Hola Nicolás,',
+   'Camila Rojas te envió <b>$15.000</b> con el mensaje "gracias por el almuerzo 🙌".',
+   `Revisa tus movimientos en ${A('app.paylama.com/movimientos','https://app.paylama.com/movimientos','l1')}.`)
+   + SIG('PayLama · No respondas este correo'),
+ flags:[['from','Dominio oficial paylama.com.'],
+        ['subj','Calza con lo que esperabas (contexto).'],
+        ['l1','Subdominio del dominio oficial, con https.']],
+ todo:'Todo bien. Como siempre, confirma el saldo dentro de la app.'},
+
+{t:'web', lv:1, phish:true, b:'paylama', url:'http://paylama-login.verificar-cuenta.ru/', lock:false,
+ ctx:'Llegaste a esta página desde un enlace en un SMS.',
+ body:`<div class="login"><div class="lg"><span class="av" style="background:${'#00897b'}">PL</span> PayLama</div>
+   <label>Correo</label><div class="in">tu@correo.com</div>
+   <label>Contraseña</label><div class="in">••••••••</div>
+   <div data-f="pin"><label>PIN de 6 dígitos</label><div class="in">••••••</div>
+   <label>Número de tarjeta y CVV</label><div class="in">0000 0000 0000 0000 · 000</div></div>
+   <div class="go" style="--bl:#00897b">Verificar cuenta</div></div>`,
+ flags:[['url','"No seguro" (http) y el dominio real es verificar-cuenta.ru: "paylama-login" es solo un subdominio que ellos inventaron.'],
+        ['pin','Un login nunca te pide PIN, número de tarjeta y CVV todo junto.']],
+ todo:'Cierra la pestaña. Si ya escribiste algo, cambia tu contraseña desde la app oficial y avisa a tu banco.'},
+
+/* ================= NIVEL 2 ================= */
+{t:'email', lv:2, phish:true, b:'altiplano', name:'Mesa de Ayuda TI', addr:'soporte@altiplano-it.com',
+ ctx:'Trabajas en Redes Altiplano SpA. El correo de la empresa es @altiplano.cl.',
+ subj:'Tu contraseña expira hoy', date:'hoy, 08:41',
+ body: P('Hola,',
+   `Tu contraseña de correo corporativo ${F('t','expira hoy a las 18:00')}. Para mantener la actual, ingresa a:`,
+   A('https://correo.altiplano.cl/mantener','https://altiplano-it.com/owa/keep-password.php','l1'),
+   'Gracias,')
+   + SIG('Mesa de Ayuda TI'),
+ flags:[['from','"altiplano-it.com" no es el dominio de la empresa (altiplano.cl).'],
+        ['t','Plazo cortito para apurarte.'],
+        ['l1','El texto dice correo.altiplano.cl, pero si pasas el mouse ves que lleva a altiplano-it.com. Texto y destino no calzan.']],
+ todo:'Reporta el correo a TI por el canal oficial. Nunca "mantengas" una contraseña desde un enlace.'},
+
+{t:'email', lv:2, phish:false, b:'condor', name:'Envíos Cóndor', addr:'notificaciones@envioscondor.cl',
+ ctx:'Compraste unos audífonos el lunes y te dijeron que llegaban esta semana.',
+ subj:'Tu envío CC48213977 está en reparto', date:'hoy, 09:10',
+ body: P('Hola Nicolás,',
+   'Tu envío <b>CC48213977</b> salió a reparto y debería llegar hoy entre 14:00 y 19:00.',
+   `Sigue el estado en ${A('envioscondor.cl/seguimiento','https://www.envioscondor.cl/seguimiento?n=CC48213977','l1')}.`,
+   F('g1','No necesitas pagar nada adicional.'))
+   + SIG('Envíos Cóndor'),
+ flags:[['from','Dominio oficial envioscondor.cl.'],
+        ['l1','Enlace al dominio oficial, con el mismo número de seguimiento.'],
+        ['g1','No te cobra ni te pide datos. Y calza con algo que sí compraste.']],
+ todo:'Espera tu paquete tranquilo.'},
+
+{t:'sms', lv:2, phish:true, b:'person', addr:'+56 9 4410 2287', date:'hoy, 23:58',
+ body:`Banco Cordillera: ${F('c','Se registró una compra por $489.990 en TIENDA-ONLINE.')} Si no la reconoces ${F('tel','llama al +56 2 2940 1187')} o anula en ${A('bit.ly/bcordillera-anular','https://bit.ly/bcordillera-anular','l1')}`,
+ flags:[['from','Llega de un número de celular, no del remitente habitual del banco.'],
+        ['c','Compra grande y falsa para asustarte (y a medianoche).'],
+        ['tel','El número para "anular" es de los estafadores: es vishing. Usa solo el número de tu tarjeta.'],
+        ['l1','Enlace acortado: esconde el destino real.']],
+ todo:'Entra a la app del banco: si la compra no aparece, era falso. Si llamas, que sea al número de la tarjeta.'},
+
+{t:'email', lv:2, phish:false, b:'nubebox', name:'NubeBox', addr:'no-reply@nubebox.com',
+ ctx:'Estás esperando que tu compañera Camila te comparta el informe del laboratorio 3.',
+ subj:'Camila Rojas compartió "Informe_Lab3.pdf" contigo', date:'hoy, 16:22',
+ body: P('Camila Rojas (camila.rojas@iandino.cl) compartió un archivo contigo:',
+   '📄 <b>Informe_Lab3.pdf</b>',
+   BTN('Abrir en NubeBox','https://www.nubebox.com/s/k3Lp9xQ2','l1'),
+   'Si no esperabas este archivo, puedes ignorar este mensaje.'),
+ flags:[['from','Dominio oficial nubebox.com.'],
+        ['subj','Lo esperabas, de alguien que conoces, con un nombre de archivo que tiene sentido.'],
+        ['l1','El botón lleva a nubebox.com, con https. No pide que vuelvas a iniciar sesión en otra página.']],
+ todo:'Ábrelo. Si al abrir te pidiera la contraseña en un dominio que no es nubebox.com, ahí sí desconfía.'},
+
+{t:'email', lv:2, phish:true, b:'streamix', name:'Streamix', addr:'info@streamix-billing.com',
+ subj:'Tu pago fue rechazado', date:'hoy, 06:03',
+ body: P(F('greet','Hola cliente,'),
+   'No pudimos procesar el pago de tu suscripción. Para seguir disfrutando de tus series, actualiza tus datos de pago.',
+   BTN('Actualizar pago','https://streamix-billing.com/actualizar','l1'),
+   F('t','Si no actualizas en 48 horas, tu cuenta será cancelada.'))
+   + SIG('El equipo de Streamix'),
+ flags:[['from','"streamix-billing.com" no es streamix.tv. Agregar palabras con guion es un truco típico.'],
+        ['greet','"Hola cliente": el real te llama por tu nombre.'],
+        ['l1','El botón lleva al dominio falso a pedir tu tarjeta.'],
+        ['t','Amenaza con cancelar la cuenta.']],
+ todo:'Si de verdad hay un problema de pago, lo vas a ver dentro de la app o en streamix.tv.'},
+
+{t:'email', lv:2, phish:true, b:'person', name:'Patricia Soto (Gerenta General)', addr:'patricia.soto.gerencia@gmail.com',
+ ctx:'Trabajas en Redes Altiplano SpA. Patricia Soto es la gerenta general.',
+ subj:'¿Estás disponible?', date:'hoy, 12:31',
+ body: P('Hola, ¿estás en la oficina?',
+   `Necesito un favor rápido: ${F('ask','compra 5 gift cards de $50.000 para un cliente')} y mándame fotos de los códigos.`,
+   `${F('sec','Es confidencial, no lo comentes. No me llames que estoy en reunión')}, solo responde por aquí.`,
+   'Te lo reembolso hoy mismo.')
+   + SIG('Enviado desde mi celular'),
+ flags:[['from','La gerenta no te escribiría desde un Gmail personal.'],
+        ['ask','Gift cards: imposibles de rastrear. Fraude del CEO.'],
+        ['sec','Secreto + no la llames = te aíslan para que no verifiques.']],
+ todo:'Verifica por otro canal (llámala o pregúntale a su asistente) y reporta a TI.'},
+
+{t:'web', lv:2, phish:false, b:'cordillera', url:'https://www.bancocordillera.cl/personas/login', lock:true,
+ ctx:'Escribiste tú mismo la dirección del banco en el navegador.',
+ body:`<div class="login"><div class="lg"><span class="av" style="background:#0b5d3b">BC</span> Banco Cordillera</div>
+   <div data-f="ask"><label>RUT</label><div class="in">12.345.678-9</div>
+   <label>Clave de internet</label><div class="in">••••••••</div></div>
+   <div class="go" style="--bl:#0b5d3b">Ingresar</div>
+   <div class="small">¿Olvidaste tu clave?</div></div>`,
+ flags:[['url','Dominio exacto bancocordillera.cl, con https, y llegaste escribiéndolo tú.'],
+        ['ask','Solo pide RUT y clave para entrar, sin coordenadas ni tarjeta.']],
+ todo:'Puedes ingresar. Guarda la dirección en marcadores para no depender de enlaces.'},
+
+{t:'email', lv:2, phish:true, b:'pehuen', name:'Mercado Pehuén', addr:'pedidos@mercadopehuen-cl.com',
+ ctx:'No has comprado nada en Mercado Pehuén este mes.',
+ subj:'Tu pedido #MP-20931 no pudo procesarse', date:'hoy, 10:47',
+ atts:['Factura_MP-20931.pdf.exe'],
+ body: P('Hola,',
+   `Hubo un problema con tu ${F('o','pedido #MP-20931 por $329.990')}. Revisa la factura adjunta para ver el detalle y confirmar tus datos.`)
+   + SIG('Mercado Pehuén'),
+ flags:[['from','"mercadopehuen-cl.com" imita a mercadopehuen.cl.'],
+        ['o','Un pedido que no hiciste: la idea es que abras el adjunto por curiosidad o miedo.'],
+        ['att0','Doble extensión: parece PDF pero es un ".exe", un programa. Si lo abres, te instala malware.']],
+ todo:'No abras el adjunto. Revisa tus compras entrando a la web oficial y reporta el correo.'},
+
+{t:'sms', lv:2, phish:false, b:'paylama', addr:'PayLama', date:'hoy, 19:30',
+ ctx:'Acabas de iniciar sesión en la app de PayLama en tu celular nuevo.',
+ body:`PayLama: tu código de verificación es 482913. ${F('g1','No lo compartas con nadie, ni siquiera con nosotros.')}`,
+ flags:[['from','Remitente oficial de la marca.'],
+        ['g1','Lo pediste tú hace un momento, no trae enlace y te advierte que no lo compartas.']],
+ todo:'Úsalo en la app. Y si un día te llega un código que NO pediste, alguien está intentando entrar a tu cuenta: no lo compartas y cambia tu contraseña.'},
+
+{t:'sms', lv:2, phish:true, b:'person', addr:'+56 9 6620 1034', date:'hoy, 17:12',
+ body:`${F('m','Hola mamá, se me cayó el celular y este es mi número nuevo')}. ${F('ask','¿Me puedes transferir $250.000? Es urgente, tengo que pagar algo hoy')}. ${F('sec','Después te explico, ahora no puedo hablar')} 🙏`,
+ flags:[['from','Número desconocido.'],
+        ['m','"Cambié de número": el truco para hacerse pasar por un familiar.'],
+        ['ask','Pide plata urgente.'],
+        ['sec','Evita una llamada para que no descubras que no es quien dice.']],
+ todo:'Llama al número de siempre de tu familiar o hazle una pregunta que solo él sepa.'},
+
+{t:'email', lv:2, phish:true, b:'pixelhub', name:'Pixelhub Security', addr:'security@pixelhub-verify.dev',
+ subj:'Actividad inusual detectada en tu repositorio', date:'hoy, 02:19',
+ body: P('Hola,',
+   'Detectamos commits sospechosos en tu repositorio <b>subnet-quest</b>.',
+   `${F('t','Verifica tu cuenta en las próximas 12 horas o será suspendida')}:`,
+   A('https://pixelhub.dev/verify','https://pixelhub.dev.account-verify.io/session','l1'))
+   + SIG('Pixelhub Trust & Safety'),
+ flags:[['from','"pixelhub-verify.dev" no es pixelhub.dev.'],
+        ['t','Amenaza de suspensión con plazo.'],
+        ['l1','El texto dice pixelhub.dev, pero el destino real es account-verify.io (pixelhub.dev es solo un subdominio de ellos).']],
+ todo:'Entra directo a pixelhub.dev y revisa tu actividad de seguridad. Activa 2FA si no lo tienes.'},
+
+{t:'email', lv:2, phish:false, b:'telcosur', name:'TelcoSur', addr:'avisos@telcosur.cl',
+ subj:'Mantención programada en tu sector', date:'mar, 11:00',
+ body: P('Hola Nicolás,',
+   'El <b>domingo 12/10 entre 02:00 y 05:00</b> haremos mantención de la red de fibra en tu sector. Podrías tener cortes breves de internet.',
+   F('g1','No tienes que hacer nada.'),
+   'Si tienes dudas, llama al número de tu boleta o revisa telcosur.cl.')
+   + SIG('TelcoSur · Operaciones de Red'),
+ flags:[['from','Dominio oficial telcosur.cl.'],
+        ['g1','Solo informa: no hay enlaces, ni plazos, ni te pide datos. Y te manda a canales que ya conoces.']],
+ todo:'Nada; tal vez no jugar online el domingo a las 3 AM.'},
+
+/* ================= NIVEL 3 ================= */
+{t:'email', lv:3, phish:true, b:'cordillera', name:'Banco Cordillera', addr:'notificaciones@bancocordiIlera.cl',
+ subj:'Confirma tu nuevo dispositivo', date:'hoy, 14:02',
+ body: P('Hola Nicolás,',
+   'Registramos un intento de inscribir un nuevo dispositivo en tu cuenta. Si fuiste tú, confírmalo para habilitar las transferencias.',
+   BTN('Confirmar dispositivo','https://bancocordiIlera.cl/dispositivos/confirmar','l1'))
+   + SIG('Banco Cordillera'),
+ flags:[['from','Mira bien: "cordiIlera" lleva una I mayúscula en vez de una l. Es un homógrafo: otro dominio que se ve casi igual.'],
+        ['l1','El botón va al mismo dominio falso. Bien escrito, con tu nombre y sin faltas: el phishing bueno se ve así.']],
+ todo:'Para cualquier cosa de dispositivos, entra a la app del banco. Copia y pega el dominio en un texto con letra monoespaciada si dudas.'},
+
+{t:'email', lv:3, phish:false, b:'pixelhub', name:'Pixelhub', addr:'noreply@pixelhub.dev',
+ ctx:'Hace 5 minutos iniciaste sesión en Pixelhub desde el PC del laboratorio.',
+ subj:'Nuevo inicio de sesión en tu cuenta', date:'hoy, 11:36',
+ body: P('Hola nmaldonado,',
+   'Detectamos un inicio de sesión nuevo:<br><span class="mono">Windows · Chrome · Santiago, CL · 11:31</span>',
+   'Si fuiste tú, no tienes que hacer nada.',
+   `${F('g1','Si no fuiste tú, entra directamente a pixelhub.dev → Ajustes → Seguridad')} y cambia tu contraseña: ${A('pixelhub.dev/settings/security','https://pixelhub.dev/settings/security','l1')}`)
+   + SIG('Pixelhub'),
+ flags:[['from','Dominio oficial pixelhub.dev.'],
+        ['subj','Aviso de seguridad que calza con algo que hiciste tú.'],
+        ['g1','No te apura: te dice que si fuiste tú no hagas nada, y te sugiere entrar por tu cuenta.'],
+        ['l1','El enlace va al dominio oficial.']],
+ todo:'Nada que hacer. Un aviso urgente no siempre es phishing: lo que importa es remitente, destino y qué te pide.'},
+
+{t:'web', lv:3, phish:true, b:'nubebox', url:'https://nubebox.com.login-secure.app/signin', lock:true,
+ ctx:'Llegaste aquí desde un correo que decía "te compartieron un archivo".',
+ body:`<div class="login"><div class="lg"><span class="av" style="background:#1565c0">NB</span> NubeBox</div>
+   <label>Correo</label><div class="in">tu@correo.com</div>
+   <label>Contraseña</label><div class="in">••••••••</div>
+   <div class="go" style="--bl:#1565c0">Iniciar sesión para ver el archivo</div>
+   <div class="small">Conexión segura 🔒</div></div>`,
+ flags:[['url','Tiene candado (https), pero el dominio real es login-secure.app. "nubebox.com" es solo un subdominio de ese sitio. El candado no dice quién es el dueño.']],
+ todo:'Cierra y entra a nubebox.com escribiéndolo tú; si el archivo existe, lo verás en "Compartidos conmigo".'},
+
+{t:'email', lv:3, phish:true, b:'andino', name:'Instituto Andino · TI', addr:'ti-soporte@iandino-cl.net',
+ subj:'Obligatorio: activa la nueva autenticación MFA', date:'hoy, 09:55',
+ body: P('Estimado/a estudiante:',
+   `Desde el lunes será obligatorio el doble factor (MFA) en el campus virtual. ${F('qr','Escanea este código QR con tu celular')} e inicia sesión para activarlo.`,
+   `<svg class="qr" data-f="qrimg" viewBox="0 0 21 21" shape-rendering="crispEdges"><path fill="#000" d="M0 0h7v7H0zM14 0h7v7h-7zM0 14h7v7H0z"/><path fill="#fff" d="M1 1h5v5H1zM15 1h5v5h-5zM1 15h5v5H1z"/><path fill="#000" d="M2 2h3v3H2zM16 2h3v3h-3zM2 16h3v3H2zM8 0h1v2H8zM10 1h2v1h-2zM9 3h3v1H9zM8 5h1v3H8zM10 6h2v2h-2zM12 8h3v1h-3zM0 8h2v1H0zM3 9h3v2H3zM8 10h2v1H8zM11 10h1v3h-1zM14 10h3v1h-3zM18 9h3v2h-3zM9 12h1v2H9zM13 12h2v2h-2zM16 12h1v4h-1zM18 13h2v1h-2zM8 15h3v1H8zM12 15h2v3h-2zM9 17h2v4H9zM15 17h3v1h-3zM19 16h2v2h-2zM14 19h2v2h-2zM17 19h1v2h-1zM19 19h2v1h-2z"/></svg>`,
+   F('t','Las cuentas no activadas antes del viernes serán deshabilitadas.'))
+   + SIG('Departamento de TI · Instituto Andino'),
+ flags:[['from','"iandino-cl.net" no es iandino.cl.'],
+        ['qr','Quishing: un QR esconde la URL y te saca del PC (donde quizá tienes protección) para que abras el enlace en el celular.'],
+        ['t','Amenaza con deshabilitar tu cuenta.']],
+ todo:'Activa el MFA solo desde campus.iandino.cl entrando tú. Reporta el correo a TI.'},
+
+{t:'web', lv:3, phish:false, b:'andino', url:'https://campus.iandino.cl/login', lock:true,
+ ctx:'Entraste desde el marcador que guardaste el primer día de clases.',
+ body:`<div class="login"><div class="lg"><span class="av" style="background:#37474f">IA</span> Campus Virtual</div>
+   <label>Usuario institucional</label><div class="in">nombre.apellido</div>
+   <label>Contraseña</label><div class="in">••••••••</div>
+   <div class="go" style="--bl:#37474f">Entrar</div>
+   <div class="small">¿Problemas para entrar? Escribe a mesadeayuda@iandino.cl</div></div>`,
+ flags:[['url','"campus" es un subdominio del dominio real iandino.cl (lo que va justo antes de la primera / termina en iandino.cl). Con https y desde tu marcador.']],
+ todo:'Puedes iniciar sesión.'},
+
+{t:'email', lv:3, phish:true, b:'person', name:'Juan Pérez · Insumos Red', addr:'juan.perez@insumosred-cl.com',
+ ctx:'Insumos Red es proveedor habitual de tu empresa. Sus correos siempre vienen de @insumosred.cl.',
+ subj:'RE: Factura 4471 - cambio de cuenta', date:'hoy, 15:48',
+ body: P('Hola, ¿cómo estás?',
+   `Te escribo por la factura 4471 de los patch cords. ${F('bank','Cambiamos de banco, así que por favor transfiere a la nueva cuenta:')} Banco del Litoral, cta. cte. 0098-221-447.`,
+   `${F('t','Necesitamos el pago hoy para no detener el próximo despacho.')} Cualquier cosa me escribes por aquí.`,
+   '> El 02-10, Compras Altiplano escribió:<br>> Juan, adjunto OC por los patch cords cat6...')
+   + SIG('Juan Pérez<br>Ejecutivo Comercial · Insumos Red'),
+ flags:[['from','Dominio "insumosred-cl.com" en vez de insumosred.cl. Tal vez le hackearon el correo y siguieron la conversación desde otro lado.'],
+        ['bank','Un cambio de cuenta bancaria por correo es la señal número uno de fraude a empresas (BEC).'],
+        ['t','Presión para pagar hoy.']],
+ todo:'Antes de pagar, llama a Juan al número que ya tienes registrado (no al del correo) y confirma el cambio.'},
+
+{t:'email', lv:3, phish:false, b:'pehuen', name:'Mercado Pehuén', addr:'compras@mercadopehuen.cl',
+ ctx:'Ayer compraste un switch de 8 puertos para tu laboratorio en casa.',
+ subj:'Confirmación de compra #MP-77120', date:'ayer, 20:14',
+ body: P('¡Hola Nicolás!',
+   'Recibimos tu compra:<br><b>Switch no administrable 8 puertos Gigabit</b> · $24.990<br>Pagado con tarjeta terminada en 4821.',
+   'Te avisaremos cuando salga a despacho.',
+   `Ver detalle: ${A('mercadopehuen.cl/mis-compras','https://www.mercadopehuen.cl/mis-compras/77120','l1')}`)
+   + SIG('Mercado Pehuén'),
+ flags:[['from','Dominio oficial mercadopehuen.cl.'],
+        ['subj','Calza con algo que compraste, con el producto y monto correctos.'],
+        ['l1','Enlace al dominio oficial. No pide datos.']],
+ todo:'Nada. A armar ese lab 🧑‍💻'},
+
+{t:'sms', lv:3, phish:true, b:'telcosur', addr:'TelcoSur', date:'hoy, 12:00',
+ body:`TelcoSur: ¡Feliz aniversario! ${F('w','Ganaste 50GB gratis')}. ${F('t','Actívalos antes de las 23:59')} en ${A('telcosur.cl-promo.com/activar','https://telcosur.cl-promo.com/activar','l1')}`,
+ flags:[['from','Ojo: el nombre del remitente en SMS se puede falsificar (spoofing), y a veces el mensaje cae en el mismo hilo que los reales.'],
+        ['w','Regalo inesperado.'],
+        ['t','Plazo de horas.'],
+        ['l1','El dominio real es cl-promo.com: "telcosur" es solo un subdominio.']],
+ todo:'Revisa las promociones desde la app Mi TelcoSur.'},
+
+{t:'email', lv:3, phish:true, b:'altiplano', name:'Recursos Humanos', addr:'rrhh@altiplano.cl',
+ ctx:'Trabajas en Redes Altiplano SpA (dominio altiplano.cl).',
+ subj:'Tu liquidación de octubre incluye un bono', date:'hoy, 17:40',
+ body: P('Hola,',
+   'Este mes se incluyó un bono de desempeño en tu liquidación. Revisa el detalle con tu cuenta corporativa:',
+   BTN('Ver mi liquidación','https://altiplano.cl-rrhh.com/portal/login','l1'))
+   + SIG('Recursos Humanos · Redes Altiplano'),
+ flags:[['from','El remitente se ve correcto, pero el campo "De" se puede falsificar (spoofing) si el dominio no tiene SPF/DKIM/DMARC bien configurados. No basta con mirar solo esto.'],
+        ['l1','El destino real es cl-rrhh.com ("altiplano" es un subdominio de ellos) y te pide la cuenta corporativa. Un bono sorpresa es el gancho.']],
+ todo:'Revisa tu liquidación entrando tú al portal interno. Reporta el correo a TI: si el remitente salió falsificado, les sirve saberlo.'},
+
+{t:'email', lv:3, phish:false, b:'paylama', name:'PayLama', addr:'seguridad@paylama.com',
+ ctx:'Cambiaste tu contraseña de PayLama hace 5 minutos.',
+ subj:'Tu contraseña fue cambiada', date:'hoy, 21:03',
+ body: P('Hola Nicolás,',
+   'Te confirmamos que la contraseña de tu cuenta se cambió hoy a las 20:58.',
+   `${F('g1','Si no fuiste tú, abre la app PayLama y elige "No reconozco este cambio"')}, o llama al número que aparece en paylama.com.`)
+   + SIG('Seguridad PayLama'),
+ flags:[['from','Dominio oficial paylama.com.'],
+        ['subj','Coincide con lo que acabas de hacer.'],
+        ['g1','No trae enlaces para iniciar sesión: te manda a la app y a canales oficiales.']],
+ todo:'Nada que hacer. Este tipo de aviso es tu alarma si algún día no fuiste tú.'},
+];
+
+/* ---------- niveles ---------- */
+const LEVELS = [
+  {name:'Principiante', desc:'Phishing de manual: faltas, urgencia y dominios evidentes.', time:0},
+  {name:'Intermedio', desc:'Enlaces que no calzan, fraude del CEO, adjuntos y SMS.', time:0},
+  {name:'Experto', desc:'Homógrafos, subdominios engañosos, QR y fraude a empresas. Con reloj.', time:45},
+];
+const ROUNDS = 8, LIVES = 3, NEED = 6;
+
+/* ---------- estado ---------- */
+const KEY = 'phishing-o-no-v1';
+let save = {unlocked:1, best:{}};
+try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.unlocked) save = s; } catch (e) {}
+const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) {} };
+
+const $ = id => document.getElementById(id);
+const root = document.documentElement;
+try { const t = localStorage.getItem(KEY + '-theme'); if (t) root.dataset.theme = t; } catch (e) {}
+$('btnTheme').onclick = () => {
+  const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  root.dataset.theme = dark ? 'light' : 'dark';
+  try { localStorage.setItem(KEY + '-theme', root.dataset.theme); } catch (e) {}
+};
+
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+function show(scr) {
+  ['scrMenu', 'scrGame', 'scrResult'].forEach(s => $(s).classList.toggle('hidden', s !== scr));
+  $('btnMenu').classList.toggle('hidden', scr === 'scrMenu');
+  window.scrollTo(0, 0);
+}
+
+function renderMenu() {
+  $('levels').innerHTML = LEVELS.map((L, i) => {
+    const n = i + 1, locked = n > save.unlocked, b = save.best[n];
+    return `<button class="level" data-lv="${n}" ${locked ? 'disabled' : ''} type="button">
+      <div class="num">NIVEL ${n}${locked ? ' · 🔒' : ''}</div>
+      <div class="name">${L.name}</div>
+      <div class="desc">${L.desc}</div>
+      <div class="best">${b ? `Mejor: ${b.score} pts · ${b.hits}/${ROUNDS} ${'★'.repeat(b.stars)}` : (locked ? `Acierta ${NEED}/${ROUNDS} en el nivel ${n - 1}` : 'Sin jugar')}</div>
+    </button>`;
+  }).join('');
+  $('levels').querySelectorAll('.level').forEach(b => b.onclick = () => start(Number(b.dataset.lv)));
+  show('scrMenu');
+}
+
+/* ---------- juego ---------- */
+let G = null, timer = null;
+
+function start(lv) {
+  const pool = shuffle(S.filter(s => s.lv === lv));
+  // asegura una mezcla razonable: al menos 3 de cada tipo de respuesta
+  let deck = pool.slice(0, ROUNDS);
+  const ph = deck.filter(s => s.phish).length;
+  if (ph < 3 || ph > ROUNDS - 3) deck = shuffle(pool.filter(s => s.phish).slice(0, 5).concat(pool.filter(s => !s.phish).slice(0, 3)));
+  G = {lv, deck, i:0, score:0, streak:0, lives:LIVES, hits:0, log:[]};
+  show('scrGame');
+  next();
+}
+
+function hud() {
+  $('hudLevel').textContent = `Nivel ${G.lv}`;
+  $('hudRound').textContent = `${G.i + 1}/${G.deck.length}`;
+  $('hudScore').textContent = G.score;
+  $('hudStreak').textContent = G.streak;
+  $('hudLives').textContent = '❤️'.repeat(G.lives) + '🖤'.repeat(LIVES - G.lives);
+}
+
+function renderMsg(s) {
+  const b = B[s.b];
+  const av = `<span class="av" style="background:${b.c}">${b.i}</span>`;
+  if (s.t === 'email') {
+    const atts = (s.atts || []).map((a, k) => `<span class="att" data-f="att${k}">📎 ${esc(a)}</span>`).join('');
+    return `<div class="mail">
+      <div class="mhead">
+        <div class="subj" data-f="subj">${esc(s.subj)}</div>
+        <div class="from">${s.b === 'person' ? `<span class="av" style="background:${b.c}">${esc(s.name[0])}</span>` : av}
+          <div class="who"><span class="name">${esc(s.name)}</span> <span class="addr" data-f="from">&lt;${esc(s.addr)}&gt;</span>
+          <div class="meta">para mí · ${esc(s.date)}</div></div></div>
+        ${atts ? `<div class="atts">${atts}</div>` : ''}
+      </div>
+      <div class="mbody">${s.body}</div>
+      <div class="status" id="status">Pasa el mouse o toca un enlace para ver a dónde lleva.</div>
+    </div>`;
+  }
+  if (s.t === 'sms') {
+    return `<div class="phone">
+      <div class="phead">${s.b === 'person' ? `<span class="av" style="background:${b.c}">#</span>` : av}<span class="num" data-f="from">${esc(s.addr)}</span></div>
+      <div class="pbody"><div class="bubble">${s.body}</div><div class="ptime">${esc(s.date)}</div></div>
+      <div class="status" id="status">Toca un enlace para ver a dónde lleva.</div>
+    </div>`;
+  }
+  return `<div class="browser">
+    <div class="bbar"><span class="dots"><i></i><i></i><i></i></span>
+      <div class="urlbar" data-f="url">${s.lock ? '<span class="lock">🔒</span>' : '<span class="lock ns">⚠ No seguro</span>'}<span>${esc(s.url)}</span></div></div>
+    <div class="page">${s.body}</div>
+  </div>`;
+}
+
+const KIND = {email:'📧 Correo', sms:'💬 SMS', web:'🌐 Página web'};
+
+function next() {
+  clearInterval(timer);
+  if (G.i >= G.deck.length || G.lives <= 0) return finish();
+  const s = G.deck[G.i];
+  G.cur = s; G.answered = false;
+  hud();
+  $('kind').textContent = KIND[s.t];
+  $('ctx').classList.toggle('hidden', !s.ctx);
+  $('ctx').innerHTML = s.ctx ? `<b>Contexto:</b> ${esc(s.ctx)}` : '';
+  const stage = $('stage');
+  stage.className = '';
+  stage.innerHTML = renderMsg(s);
+  stage.querySelectorAll('.lnk,.btnlink').forEach(a => {
+    const showUrl = e => { e.preventDefault(); const st = $('status'); if (st) st.innerHTML = `🔗 Destino real: <b>${esc(a.dataset.url)}</b>`; };
+    a.addEventListener('mouseenter', showUrl);
+    a.addEventListener('focus', showUrl);
+    a.addEventListener('click', showUrl);
+  });
+  $('answer').classList.remove('hidden');
+  $('btnPhish').disabled = $('btnLegit').disabled = false;
+  ['feedback', 'explain', 'btnNext'].forEach(id => $(id).classList.add('hidden'));
+  $('gameCard').classList.remove('pop', 'shake'); void $('gameCard').offsetWidth; $('gameCard').classList.add('pop');
+
+  const T = LEVELS[G.lv - 1].time;
+  $('timerWrap').classList.toggle('hidden', !T);
+  $('hudTime').classList.toggle('hidden', !T);
+  if (T) {
+    G.left = T;
+    const tick = () => {
+      $('timerBar').style.width = (G.left / T * 100) + '%';
+      $('hudTime').textContent = `⏱ ${Math.ceil(G.left)}s`;
+    };
+    tick();
+    timer = setInterval(() => { G.left -= .25; if (G.left <= 0) { G.left = 0; tick(); answer(null); } else tick(); }, 250);
+  }
+}
+
+function answer(saysPhish) {
+  if (G.answered) return;
+  G.answered = true;
+  clearInterval(timer);
+  const s = G.cur, ok = saysPhish === s.phish;
+  let gained = 0;
+  if (ok) {
+    G.streak++; G.hits++;
+    gained = 100 + Math.min(50, (G.streak - 1) * 10);
+    const T = LEVELS[G.lv - 1].time;
+    if (T) gained += Math.round(G.left / T * 50);
+    G.score += gained;
+  } else {
+    G.streak = 0; G.lives--;
+    $('gameCard').classList.remove('pop'); void $('gameCard').offsetWidth; $('gameCard').classList.add('shake');
+  }
+  G.log.push({s, ok, timeout: saysPhish === null});
+  hud();
+
+  // marca las señales sobre el mensaje
+  const stage = $('stage');
+  stage.className = s.phish ? 'isphish' : 'islegit';
+  s.flags.forEach(([k], n) => { const el = stage.querySelector(`[data-f="${k}"]`); if (el) el.dataset.n = n + 1; });
+
+  const verdict = s.phish ? 'phishing 🎣' : 'legítimo ✅';
+  const fb = $('feedback');
+  fb.className = 'feedback ' + (ok ? 'ok' : 'bad');
+  fb.textContent = saysPhish === null
+    ? `⏱ Se acabó el tiempo. Era ${verdict}.`
+    : ok ? `¡Bien! Era ${verdict}. +${gained} pts` : `Ups, era ${verdict}. Pierdes una vida.`;
+  $('explain').innerHTML = `<h3>${s.phish ? 'Señales de alerta' : 'Por qué es confiable'}</h3>
+    <ol class="flags ${s.phish ? 'bad' : 'good'}">${s.flags.map(([, t], n) => `<li><span class="n">${n + 1}</span><span>${t}</span></li>`).join('')}</ol>
+    <div class="todo"><b>Qué hacer:</b> ${s.todo}</div>`;
+  $('answer').classList.add('hidden');
+  ['feedback', 'explain', 'btnNext'].forEach(id => $(id).classList.remove('hidden'));
+  const last = G.i + 1 >= G.deck.length || G.lives <= 0;
+  $('btnNext').textContent = last ? 'Ver resultado →' : 'Siguiente →';
+  $('btnNext').focus({preventScroll:true});
+}
+
+function finish() {
+  clearInterval(timer);
+  const {lv, score, hits} = G;
+  const out = G.lives <= 0;
+  const stars = hits >= 8 ? 3 : hits >= 7 ? 2 : hits >= NEED ? 1 : 0;
+  const passed = !out && hits >= NEED;
+  const b = save.best[lv];
+  if (!b || score > b.score) save.best[lv] = {score, hits, stars};
+  let unlockMsg = '';
+  if (passed && lv < LEVELS.length && save.unlocked <= lv) { save.unlocked = lv + 1; unlockMsg = `🔓 Desbloqueaste el nivel ${lv + 1}: ${LEVELS[lv].name}`; }
+  else if (passed && lv === LEVELS.length) unlockMsg = '🛡️ Terminaste el nivel Experto. Ya tienes ojo de analista SOC.';
+  else if (!passed) unlockMsg = `Necesitas ${NEED}/${ROUNDS} aciertos sin quedarte sin vidas para avanzar.`;
+  persist();
+
+  $('resTitle').textContent = out ? 'Te quedaste sin vidas' : passed ? '¡Nivel superado!' : 'Casi…';
+  $('resStars').textContent = stars ? '★'.repeat(stars) + '☆'.repeat(3 - stars) : '☆☆☆';
+  $('resScore').textContent = `${score} pts`;
+  $('resDetail').textContent = `${hits} de ${G.log.length} aciertos en el nivel ${lv} (${LEVELS[lv - 1].name}).`;
+  $('resUnlock').textContent = unlockMsg;
+  $('review').innerHTML = G.log.map(({s, ok, timeout}) => {
+    const label = s.t === 'email' ? s.subj : s.t === 'sms' ? `SMS de ${s.addr}` : s.url;
+    return `<li><span class="m ${ok ? 'ok' : 'bad'}">${ok ? '✓' : '✗'}</span>
+      <span><b>${esc(label)}</b><br><span class="muted">${s.phish ? 'Phishing' : 'Legítimo'}${timeout ? ' · sin respuesta' : ''} · ${esc(s.flags[0][1])}</span></span></li>`;
+  }).join('');
+  show('scrResult');
+}
+
+$('btnPhish').onclick = () => answer(true);
+$('btnLegit').onclick = () => answer(false);
+$('btnNext').onclick = () => { G.i++; next(); };
+$('btnRetry').onclick = () => start(G.lv);
+$('btnBack').onclick = renderMenu;
+$('btnMenu').onclick = () => { clearInterval(timer); renderMenu(); };
+
+document.addEventListener('keydown', e => {
+  if ($('scrGame').classList.contains('hidden') || !G || e.metaKey || e.ctrlKey || e.altKey) return;
+  const k = e.key.toLowerCase();
+  if (!G.answered && k === 'p') answer(true);
+  else if (!G.answered && k === 'l') answer(false);
+  else if (G.answered && k === 'enter') { e.preventDefault(); G.i++; next(); }
+});
+
+renderMenu();
+})();
+</script>
+</body>
+</html>

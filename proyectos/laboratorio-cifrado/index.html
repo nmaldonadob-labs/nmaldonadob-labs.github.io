@@ -1,0 +1,1132 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Laboratorio de Cifrado</title>
+<meta name="description" content="Laboratorio interactivo para entender el cifrado César, AES y RSA paso a paso, todo en tu navegador.">
+<style>
+:root{
+  --bg:#f4f6fb; --panel:#ffffff; --panel2:#eef1f8; --text:#141a2a; --muted:#5b6478;
+  --line:#d7dce8; --accent:#0a7cff; --accent-ink:#ffffff; --ok:#11885a; --ok-bg:#e3f6ed;
+  --bad:#c8323c; --bad-bg:#fbe6e7; --warn:#b26a00; --key:#7a3cff; --hl:#fff3c4;
+  --t0:#dbeaff; --t1:#e3f6ed; --t2:#fde8d7; --t3:#efe3ff;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --shadow:0 1px 2px rgba(20,26,42,.06),0 6px 20px rgba(20,26,42,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0b0f17; --panel:#131a26; --panel2:#1a2333; --text:#e6ebf5; --muted:#93a0b8;
+    --line:#26324a; --accent:#3ddc97; --accent-ink:#06120c; --ok:#3ddc97; --ok-bg:#0f2a20;
+    --bad:#ff6b74; --bad-bg:#2c1418; --warn:#ffb547; --key:#b79bff; --hl:#3a3216;
+    --t0:#16304f; --t1:#123527; --t2:#3d2616; --t3:#2c1f47;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0b0f17; --panel:#131a26; --panel2:#1a2333; --text:#e6ebf5; --muted:#93a0b8;
+  --line:#26324a; --accent:#3ddc97; --accent-ink:#06120c; --ok:#3ddc97; --ok-bg:#0f2a20;
+  --bad:#ff6b74; --bad-bg:#2c1418; --warn:#ffb547; --key:#b79bff; --hl:#3a3216;
+  --t0:#16304f; --t1:#123527; --t2:#3d2616; --t3:#2c1f47;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+.wrap{max-width:920px;margin:0 auto;padding:20px 16px 48px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:20px;letter-spacing:-.01em}
+.brand .logo{font-family:var(--mono);background:var(--accent);color:var(--accent-ink);border-radius:8px;padding:2px 8px;font-size:15px}
+.iconbtn{background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:6px 10px;cursor:pointer;font:inherit;font-size:14px}
+.tabs{display:flex;gap:4px;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:4px;margin-bottom:16px}
+.tab{flex:1;font:inherit;font-weight:600;font-size:15px;border:0;border-radius:9px;padding:8px 6px;background:transparent;color:var(--muted);cursor:pointer}
+.tab[aria-selected="true"]{background:var(--panel);color:var(--text);box-shadow:var(--shadow)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:var(--shadow);margin-bottom:16px;min-width:0}
+h1{font-size:26px;margin:0 0 6px;letter-spacing:-.02em}
+h2{font-size:18px;margin:0 0 12px}
+h3{font-size:15px;margin:14px 0 8px}
+p{margin:0 0 10px}
+.muted{color:var(--muted)}
+.small{font-size:14px}
+.tag{display:inline-block;font-size:12px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--accent);margin-bottom:4px}
+.actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.btn{font:inherit;font-weight:600;border-radius:10px;padding:10px 18px;cursor:pointer;border:1px solid var(--line);background:var(--panel2);color:var(--text)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.sm{padding:6px 12px;font-size:14px}
+.btn.on{border-color:var(--accent);color:var(--accent)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.feedback{margin-top:14px;padding:12px 14px;border-radius:10px;font-weight:600}
+.feedback.ok{background:var(--ok-bg);color:var(--ok)}
+.feedback.bad{background:var(--bad-bg);color:var(--bad)}
+.feedback.info{background:var(--panel2);color:var(--text);font-weight:400}
+.hint{margin-top:12px;padding:10px 14px;border-left:3px solid var(--warn);background:var(--panel2);border-radius:6px;font-size:15px}
+code,pre{font-family:var(--mono)}
+code{background:var(--panel2);padding:1px 5px;border-radius:5px;font-size:.92em;overflow-wrap:anywhere}
+label{font-weight:600;font-size:14px;display:block;margin-bottom:4px}
+input[type=text],input[type=number],textarea,select{font:inherit;font-family:var(--mono);font-size:15px;width:100%;padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--text)}
+textarea{resize:vertical;min-height:70px}
+input:focus,textarea:focus,select:focus{outline:2px solid var(--accent);outline-offset:1px}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.row3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media (max-width:640px){.row,.row3{grid-template-columns:1fr}}
+.out{font-family:var(--mono);background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-height:44px;white-space:pre-wrap;overflow-wrap:anywhere}
+.formula{font-family:var(--mono);background:var(--panel2);border-radius:10px;padding:10px 14px;margin:8px 0;overflow-x:auto;white-space:nowrap}
+.k{color:var(--key);font-weight:700}
+.acc{color:var(--accent);font-weight:700}
+.okc{color:var(--ok);font-weight:700}
+.badc{color:var(--bad);font-weight:700}
+details{margin-top:10px}
+summary{cursor:pointer;font-weight:600}
+.hidden{display:none!important}
+.pop{animation:pop .35s ease}
+@keyframes pop{0%{transform:scale(.97);opacity:.6}100%{transform:scale(1);opacity:1}}
+.shake{animation:shake .35s ease}
+@keyframes shake{25%{transform:translateX(-5px)}50%{transform:translateX(5px)}75%{transform:translateX(-3px)}}
+footer{text-align:center;font-size:13px;color:var(--muted);margin-top:24px}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table.t{border-collapse:collapse;width:100%;font-size:14px}
+table.t th,table.t td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;white-space:nowrap}
+table.t th{font-size:12px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted)}
+table.t td.m{font-family:var(--mono)}
+table.t tr.best td{background:var(--ok-bg)}
+table.t tr.sel td{background:var(--hl)}
+table.t tr.click{cursor:pointer}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-top:6px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+
+/* César */
+.strip{display:grid;grid-template-columns:auto repeat(26,minmax(0,1fr));gap:2px;font-family:var(--mono);font-size:13px;text-align:center;margin-top:12px}
+.strip .lab{font-family:system-ui,sans-serif;font-size:11px;color:var(--muted);text-align:right;padding-right:6px;align-self:center}
+.strip .c{background:var(--panel2);border-radius:4px;padding:4px 0;transition:background .15s}
+.strip .c.top{border-bottom:2px solid var(--line)}
+.strip .c.on{background:var(--accent);color:var(--accent-ink);font-weight:700}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.chip{font-family:var(--mono);font-size:14px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:3px 8px;cursor:pointer;color:var(--text)}
+.chip.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.chip.done{opacity:.65}
+.freq{display:grid;grid-template-columns:repeat(26,minmax(0,1fr));gap:2px;align-items:end;height:140px;margin-top:10px}
+.freq .col{display:flex;gap:1px;align-items:end;height:100%}
+.freq .b{flex:1;border-radius:2px 2px 0 0;min-height:1px}
+.freq .b.a{background:var(--accent)}
+.freq .b.e{background:var(--muted);opacity:.45}
+.freqlab{display:grid;grid-template-columns:repeat(26,minmax(0,1fr));gap:2px;font-family:var(--mono);font-size:11px;text-align:center;color:var(--muted)}
+
+/* AES */
+.mats{display:flex;flex-wrap:wrap;gap:18px;align-items:center;margin-top:10px}
+.matbox{text-align:center}
+.matbox .cap{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px}
+.mat{display:grid;grid-template-columns:repeat(4,44px);gap:3px;font-family:var(--mono);font-size:14px}
+.mat .b{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:7px 0;text-align:center;transition:background .2s}
+.mat .b.ch{border-color:var(--accent)}
+.mat .b.ex{outline:2px solid var(--warn);outline-offset:-1px}
+.mat .b.t0{background:var(--t0)} .mat .b.t1{background:var(--t1)} .mat .b.t2{background:var(--t2)} .mat .b.t3{background:var(--t3)}
+.mat.key .b{color:var(--key)}
+.op{font-size:22px;color:var(--muted);font-weight:700}
+@media (max-width:520px){.mat{grid-template-columns:repeat(4,36px);font-size:12px}.mat .b{padding:5px 0}}
+.rounds{display:flex;flex-wrap:wrap;gap:4px;margin:10px 0}
+.rounds button{font:inherit;font-family:var(--mono);font-size:13px;min-width:34px;padding:4px 8px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text);cursor:pointer}
+.rounds button.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.ops{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.ops span{font-size:13px;padding:3px 10px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.ops span.on{border-color:var(--accent);color:var(--accent);font-weight:700}
+.ops span.skip{text-decoration:line-through;opacity:.5}
+.flow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px;margin:8px 0}
+.flow span{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:3px 8px}
+.flow b{color:var(--muted)}
+.sbox{display:grid;grid-template-columns:auto repeat(16,minmax(0,1fr));gap:1px;font-family:var(--mono);font-size:11px;text-align:center;min-width:560px}
+.sbox div{padding:2px 0;background:var(--panel2)}
+.sbox .h{background:transparent;color:var(--muted);font-weight:700}
+.sbox .on{background:var(--warn);color:#000;font-weight:700}
+.sbox .rc{background:var(--hl)}
+.bits{display:grid;grid-template-columns:repeat(32,minmax(0,1fr));gap:2px;margin-top:6px;max-width:640px}
+.bits i{display:block;aspect-ratio:1;border-radius:2px;background:var(--panel2);border:1px solid var(--line)}
+.bits i.on{background:var(--text);border-color:var(--text)}
+.bits i.d{background:var(--bad);border-color:var(--bad)}
+.bits.click i{cursor:pointer}
+.bits i.flip{outline:2px solid var(--warn);outline-offset:0}
+.imgs{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px}
+.imgs figure{margin:0;text-align:center}
+.imgs canvas{width:100%;image-rendering:pixelated;border-radius:10px;border:1px solid var(--line);display:block}
+.imgs figcaption{font-size:13px;font-weight:600;margin-top:6px}
+@media (max-width:520px){.imgs{gap:6px}.imgs figcaption{font-size:12px}}
+
+/* RSA */
+.keys{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px}
+@media (max-width:520px){.keys{grid-template-columns:1fr}}
+.keybox{border-radius:12px;padding:12px 14px;border:1px solid var(--line);background:var(--panel2)}
+.keybox .kt{font-weight:700;font-size:14px;margin-bottom:4px}
+.keybox .kv{font-family:var(--mono);overflow-wrap:anywhere}
+.keybox.pub{border-left:4px solid var(--accent)}
+.keybox.priv{border-left:4px solid var(--key)}
+.ebtns{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.calc{font-family:var(--mono);font-size:14px;line-height:1.8}
+.calc div{overflow-wrap:anywhere}
+.progress{height:8px;background:var(--panel2);border-radius:99px;overflow:hidden;margin-top:10px}
+.progress div{height:100%;background:var(--accent);width:0;transition:width .1s}
+
+/* Retos */
+.hud{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.pill{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:14px;font-family:var(--mono)}
+.opts{display:grid;gap:8px;margin-top:12px}
+.opt{text-align:left;font:inherit;padding:11px 14px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--text);cursor:pointer}
+.opt:hover:not(:disabled){border-color:var(--accent)}
+.opt.ok{background:var(--ok-bg);border-color:var(--ok);color:var(--ok);font-weight:600}
+.opt.bad{background:var(--bad-bg);border-color:var(--bad);color:var(--bad)}
+.opt:disabled{cursor:default}
+.big{font-size:44px;font-weight:800;font-family:var(--mono);letter-spacing:-.02em;margin:8px 0}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:8px 16px;border-radius:999px;font-size:14px;font-weight:600;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.on{opacity:1}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a href="../../index.html" style="display:inline-block;margin:0 0 10px;font-size:14px;color:var(--muted);text-decoration:none">&larr; Volver al portafolio</a>
+  <header>
+    <div class="brand"><span class="logo">E(k)</span> Laboratorio de Cifrado</div>
+    <button class="iconbtn" id="btnTheme" type="button" aria-label="Cambiar tema">Tema</button>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab" role="tab" data-tab="cesar" aria-selected="true" type="button">César</button>
+    <button class="tab" role="tab" data-tab="aes" aria-selected="false" type="button">AES</button>
+    <button class="tab" role="tab" data-tab="rsa" aria-selected="false" type="button">RSA</button>
+    <button class="tab" role="tab" data-tab="retos" aria-selected="false" type="button">Retos</button>
+  </nav>
+
+  <!-- ================= CÉSAR ================= -->
+  <section id="tab-cesar">
+    <div class="card">
+      <span class="tag">Cifrado clásico · simétrico</span>
+      <h1>El cifrado César</h1>
+      <p>Julio César movía cada letra del mensaje un número fijo de posiciones en el alfabeto. Ese número es la <b>llave</b>. Para descifrar, mueves las letras de vuelta.</p>
+      <div class="formula">Cifrar: C = (P + <span class="k">k</span>) mod 26 &nbsp;&nbsp;·&nbsp;&nbsp; Descifrar: P = (C − <span class="k">k</span>) mod 26</div>
+      <p class="small muted">P es la posición de la letra original (A=0, B=1 … Z=25) y C la de la letra cifrada. El <code>mod 26</code> hace que después de la Z vuelvas a la A. Las tildes, la ñ, los números y los espacios quedan igual, porque el César clásico usa las 26 letras del alfabeto latino.</p>
+    </div>
+
+    <div class="card">
+      <span class="tag">Paso 1</span>
+      <h2>Pruébalo</h2>
+      <label for="cIn">Tu mensaje</label>
+      <textarea id="cIn" rows="2">Ataquen al amanecer por el puerto 443</textarea>
+      <div class="row" style="margin-top:12px">
+        <div>
+          <label for="cK">Llave <span class="k" id="cKv">3</span></label>
+          <input type="range" id="cK" min="0" max="25" value="3">
+        </div>
+        <div>
+          <label>Modo</label>
+          <div class="actions">
+            <button class="btn sm on" id="cEnc" type="button">Cifrar</button>
+            <button class="btn sm" id="cDec" type="button">Descifrar</button>
+          </div>
+        </div>
+      </div>
+      <label style="margin-top:12px">Resultado</label>
+      <div class="out" id="cOut"></div>
+      <div class="actions" style="margin-top:10px">
+        <button class="btn sm" id="cCopy" type="button">Copiar resultado</button>
+        <button class="btn sm" id="cToBreak" type="button">Mandarlo al rompedor ↓</button>
+      </div>
+      <div class="strip" id="cStrip" aria-label="Tabla de sustitución"></div>
+    </div>
+
+    <div class="card">
+      <span class="tag">Paso 2</span>
+      <h2>Letra por letra</h2>
+      <p class="muted small">Toca una letra o usa los botones para ver la cuenta exacta. La tabla de arriba marca el par que se está usando.</p>
+      <div class="formula" id="cStep"></div>
+      <div class="actions">
+        <button class="btn sm" id="cPrev" type="button">← Anterior</button>
+        <button class="btn sm primary" id="cNext" type="button">Siguiente →</button>
+        <button class="btn sm" id="cPlay" type="button">▶ Reproducir</button>
+      </div>
+      <div class="chips" id="cChips"></div>
+    </div>
+
+    <div class="card">
+      <span class="tag">Paso 3</span>
+      <h2>Rómpelo sin saber la llave</h2>
+      <p>Solo hay 25 llaves útiles, así que un atacante puede probarlas todas (<b>fuerza bruta</b>). Para saber cuál es la buena sin leerlas una por una, compara la frecuencia de las letras con la del español: la E y la A son las más comunes.</p>
+      <label for="bIn">Texto cifrado</label>
+      <textarea id="bIn" rows="2">Ls zlycpkvy kl jvyylv yljpipv bu tluzhql zvzwljovzv. Ls mpyldhss uv sv isvxblv wvyxbl cluph kl buh kpyljjpvu jvuvjpkh.</textarea>
+      <h3>Frecuencia de letras</h3>
+      <div class="freq" id="bFreq"></div>
+      <div class="freqlab" id="bFreqLab"></div>
+      <div class="legend"><span><i style="background:var(--accent)"></i>Tu texto</span><span><i style="background:var(--muted);opacity:.45"></i>Español típico</span></div>
+      <p class="small muted" id="bPeak" style="margin-top:8px"></p>
+      <h3>Las 26 llaves, ordenadas por parecido al español</h3>
+      <div class="scroll" style="max-height:360px;overflow-y:auto">
+        <table class="t"><thead><tr><th>Llave</th><th>Puntaje χ²</th><th>Texto</th></tr></thead><tbody id="bTable"></tbody></table>
+      </div>
+      <p class="small muted" style="margin-top:8px">El puntaje χ² (chi cuadrado) mide qué tan lejos está el reparto de letras del español. Mientras más bajo, más se parece. Con textos muy cortos puede fallar.</p>
+      <div class="hint"><b>Moraleja:</b> un cifrado con pocas llaves posibles se rompe en milisegundos. Por eso AES usa llaves de 128 bits o más: 2<sup>128</sup> combinaciones.</div>
+    </div>
+  </section>
+
+  <!-- ================= AES ================= -->
+  <section id="tab-aes" class="hidden">
+    <div class="card">
+      <span class="tag">Cifrado moderno · simétrico</span>
+      <h1>AES por dentro</h1>
+      <p>AES es el estándar que protege tu Wi‑Fi (WPA2/WPA3), HTTPS y las VPN. Cifra bloques de <b>16 bytes</b> (128 bits) acomodados en una matriz de 4×4 llamada <b>estado</b>. Con una llave de 128 bits hace <b>10 rondas</b>, y cada ronda mezcla el estado con cuatro operaciones:</p>
+      <div class="flow"><span>AddRoundKey</span><b>→</b><span>SubBytes</span><b>→</b><span>ShiftRows</span><b>→</b><span>MixColumns</span><b>→</b><span>AddRoundKey</span><b>↺ ×9</b><b>→</b><span>SubBytes</span><b>→</b><span>ShiftRows</span><b>→</b><span>AddRoundKey</span></div>
+      <p class="small muted">Aquí corre un AES‑128 real escrito en JavaScript, paso a paso, y al final lo comparamos con el AES de tu navegador para comprobar que da lo mismo.</p>
+    </div>
+
+    <div class="card">
+      <span class="tag">Paso 1</span>
+      <h2>Mensaje y llave</h2>
+      <div class="row3">
+        <div>
+          <label for="aFmt">Formato</label>
+          <select id="aFmt"><option value="txt">Texto (16 caracteres)</option><option value="hex">Hexadecimal (32 dígitos)</option></select>
+        </div>
+        <div><label for="aPt">Mensaje</label><input type="text" id="aPt" value="Hola, red segura" spellcheck="false" autocomplete="off"></div>
+        <div><label for="aKey">Llave</label><input type="text" id="aKey" value="llave-secreta-01" spellcheck="false" autocomplete="off"></div>
+      </div>
+      <div class="actions" style="margin-top:12px">
+        <button class="btn sm" id="aFips" type="button">Usar el ejemplo oficial (FIPS‑197)</button>
+        <button class="btn sm" id="aRandKey" type="button">Llave aleatoria</button>
+      </div>
+      <p class="small muted" id="aNote" style="margin-top:10px"></p>
+      <div class="mats">
+        <div class="matbox"><div class="cap">Estado inicial (mensaje)</div><div class="mat" id="aMatPt"></div></div>
+        <div class="matbox"><div class="cap">Llave</div><div class="mat key" id="aMatKey"></div></div>
+      </div>
+      <p class="small muted" style="margin-top:10px">Los bytes se acomodan por columnas: los 4 primeros van en la columna 0, los siguientes 4 en la columna 1, y así.</p>
+    </div>
+
+    <div class="card">
+      <span class="tag">Paso 2</span>
+      <h2>Expansión de la llave</h2>
+      <p>Cada ronda usa una llave distinta. AES las deriva de tu llave: 11 llaves de ronda de 16 bytes. Cada palabra nueva de 4 bytes es un XOR de la palabra de 4 posiciones atrás con la anterior, y a la primera de cada ronda se le aplica antes <code>RotWord</code>, <code>SubWord</code> y la constante <code>Rcon</code>.</p>
+      <details>
+        <summary>Ver las 11 llaves de ronda</summary>
+        <div class="scroll" style="margin-top:8px"><table class="t"><thead><tr><th>Ronda</th><th>Rcon</th><th>Llave de ronda</th></tr></thead><tbody id="aKeys"></tbody></table></div>
+      </details>
+    </div>
+
+    <div class="card">
+      <span class="tag">Paso 3</span>
+      <h2>Ronda por ronda</h2>
+      <div class="rounds" id="aRounds"></div>
+      <div class="ops" id="aOps"></div>
+      <h3 id="aStepTitle" style="margin-top:4px"></h3>
+      <p id="aStepText"></p>
+      <div class="mats" id="aStepMats"></div>
+      <div class="formula" id="aStepEx"></div>
+      <div class="actions">
+        <button class="btn sm" id="aPrev" type="button">← Anterior</button>
+        <button class="btn sm primary" id="aNext" type="button">Siguiente →</button>
+        <span class="small muted" id="aPos"></span>
+      </div>
+      <details id="aSboxWrap">
+        <summary>Ver la S-box completa</summary>
+        <p class="small muted" style="margin-top:8px">Fila = primer dígito hex, columna = segundo dígito. Se marca la búsqueda del ejemplo.</p>
+        <div class="scroll"><div class="sbox" id="aSbox"></div></div>
+      </details>
+    </div>
+
+    <div class="card">
+      <span class="tag">Paso 4</span>
+      <h2>Resultado</h2>
+      <div class="row">
+        <div><label>Texto cifrado (hex)</label><div class="out" id="aCt"></div></div>
+        <div><label>Texto cifrado (Base64)</label><div class="out" id="aCt64"></div></div>
+      </div>
+      <div class="feedback info" id="aVerify">Comprobando…</div>
+      <div class="feedback info" id="aDec"></div>
+    </div>
+
+    <div class="card">
+      <span class="tag">Paso 5</span>
+      <h2>Efecto avalancha</h2>
+      <p>Un buen cifrado hace que cambiar <b>un solo bit</b> del mensaje cambie más o menos la mitad de los bits del resultado. Toca cualquier bit del mensaje para darlo vuelta.</p>
+      <label>Mensaje (128 bits) <span class="muted small">· el bit marcado es el que cambiaste</span></label>
+      <div class="bits click" id="avPt"></div>
+      <label style="margin-top:12px">Cifrado original</label>
+      <div class="bits" id="avC1"></div>
+      <label style="margin-top:12px">Cifrado con el bit cambiado <span class="muted small">· en rojo los bits distintos</span></label>
+      <div class="bits" id="avC2"></div>
+      <div class="feedback info" id="avStat"></div>
+    </div>
+
+    <div class="card">
+      <span class="tag">Paso 6</span>
+      <h2>¿Por qué no basta con AES? Los modos</h2>
+      <p>Si un archivo es más largo que 16 bytes, se corta en bloques. En modo <b>ECB</b> cada bloque se cifra por separado, así que bloques iguales dan cifrados iguales y se notan los patrones. En modo <b>CBC</b> cada bloque se mezcla con el cifrado del anterior (y el primero con un IV aleatorio), y el patrón desaparece.</p>
+      <div class="imgs">
+        <figure><canvas id="imgOrig" width="96" height="96"></canvas><figcaption>Imagen original</figcaption></figure>
+        <figure><canvas id="imgEcb" width="96" height="96"></canvas><figcaption>AES‑ECB</figcaption></figure>
+        <figure><canvas id="imgCbc" width="96" height="96"></canvas><figcaption>AES‑CBC</figcaption></figure>
+      </div>
+      <div class="actions" style="margin-top:12px"><button class="btn sm" id="imgRe" type="button">Cifrar con otra llave</button></div>
+      <div class="hint">Cada píxel son 3 bytes (rojo, verde, azul) y los bytes cifrados se pintan tal cual como colores. Hoy se recomienda <b>AES‑GCM</b>, que además detecta si alguien modificó el mensaje.</div>
+    </div>
+  </section>
+
+  <!-- ================= RSA ================= -->
+  <section id="tab-rsa" class="hidden">
+    <div class="card">
+      <span class="tag">Cifrado asimétrico · llave pública</span>
+      <h1>RSA con números pequeños</h1>
+      <p>En AES las dos partes comparten la misma llave. RSA usa <b>dos llaves</b>: una <span class="acc">pública</span> que puedes regalar y una <span class="k">privada</span> que nunca sale de tu equipo. Lo que se cifra con la pública solo se abre con la privada. Es lo que usa HTTPS para acordar llaves y lo que respalda muchas firmas digitales.</p>
+      <p class="small muted">Su seguridad se basa en que multiplicar dos primos es fácil, pero separar el resultado en sus primos es muy difícil cuando son enormes. Aquí usamos primos chicos para que veas cada cuenta.</p>
+    </div>
+
+    <div class="card">
+      <span class="tag">Paso 1</span>
+      <h2>Elige dos primos</h2>
+      <div class="row">
+        <div><label for="rP">p</label><input type="number" id="rP" value="61" min="2"></div>
+        <div><label for="rQ">q</label><input type="number" id="rQ" value="53" min="2"></div>
+      </div>
+      <div class="actions" style="margin-top:10px">
+        <span class="small muted">Primos aleatorios de</span>
+        <button class="btn sm" data-dig="2" type="button">2 dígitos</button>
+        <button class="btn sm" data-dig="3" type="button">3 dígitos</button>
+        <button class="btn sm" data-dig="4" type="button">4 dígitos</button>
+        <button class="btn sm" data-dig="6" type="button">6 dígitos</button>
+      </div>
+      <div id="rPqMsg"></div>
+    </div>
+
+    <div id="rBody">
+    <div class="card">
+      <span class="tag">Paso 2</span>
+      <h2>Calcula n y φ(n)</h2>
+      <div class="calc" id="rN"></div>
+      <p class="small muted" style="margin-top:8px"><b>n</b> va en las dos llaves y define el tamaño de la llave. <b>φ(n)</b> (phi de Euler) cuenta cuántos números menores que n no comparten factores con él, y es secreto: si lo sabes, puedes sacar la llave privada.</p>
+    </div>
+
+    <div class="card">
+      <span class="tag">Paso 3</span>
+      <h2>Elige el exponente público e</h2>
+      <p>e tiene que ser mayor que 1, menor que φ(n) y no compartir factores con φ(n), o sea <code>mcd(e, φ) = 1</code>. En la vida real casi siempre es 65537.</p>
+      <div class="ebtns" id="rEbtns"></div>
+      <div class="calc" id="rEcheck" style="margin-top:8px"></div>
+    </div>
+
+    <div class="card">
+      <span class="tag">Paso 4</span>
+      <h2>Calcula la llave privada d</h2>
+      <p>d es el inverso de e módulo φ(n): el número que cumple <code>e · d mod φ(n) = 1</code>. Se encuentra con el <b>algoritmo de Euclides extendido</b>: divides una y otra vez hasta llegar a resto 1, llevando la cuenta en la columna t.</p>
+      <div class="scroll"><table class="t"><thead><tr><th>r (resto)</th><th>q (cociente)</th><th>t</th><th>Cuenta</th></tr></thead><tbody id="rEuclid"></tbody></table></div>
+      <div class="calc" id="rD" style="margin-top:8px"></div>
+      <div class="keys">
+        <div class="keybox pub"><div class="kt">🔓 Llave pública (e, n)</div><div class="kv" id="rPub"></div></div>
+        <div class="keybox priv"><div class="kt">🔑 Llave privada (d, n)</div><div class="kv" id="rPriv"></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <span class="tag">Paso 5</span>
+      <h2>Cifra y descifra</h2>
+      <p>Cada letra se convierte en su número (código Unicode) <b>m</b>, que debe ser menor que n. Se cifra con la pública y se descifra con la privada:</p>
+      <div class="formula">c = m<sup class="acc">e</sup> mod n &nbsp;&nbsp;·&nbsp;&nbsp; m = c<sup class="k">d</sup> mod n</div>
+      <label for="rMsg">Mensaje</label>
+      <input type="text" id="rMsg" value="Hola redes" spellcheck="false">
+      <div id="rMsgWarn"></div>
+      <div class="scroll" style="margin-top:10px"><table class="t"><thead><tr><th>Letra</th><th>m</th><th>c = mᵉ mod n</th><th>cᵈ mod n</th><th>Vuelve a</th></tr></thead><tbody id="rTable"></tbody></table></div>
+      <div class="row" style="margin-top:12px">
+        <div><label>Cifrado (lo que viaja por la red)</label><div class="out" id="rCt"></div></div>
+        <div><label>Descifrado con d</label><div class="out" id="rPt"></div></div>
+      </div>
+      <div class="hint" id="rRepeat"></div>
+      <h3>¿Cómo se calcula una potencia tan grande? <span class="muted small">(toca una fila de la tabla)</span></h3>
+      <p class="small">Con <b>elevar al cuadrado y multiplicar</b>: recorres e en binario. Por cada bit elevas al cuadrado, y si el bit es 1 además multiplicas por m. Siempre reduces mod n para que los números no crezcan.</p>
+      <div class="scroll"><table class="t"><thead><tr><th>Bit de e</th><th>Al cuadrado</th><th>× m (si bit = 1)</th><th>Resultado</th></tr></thead><tbody id="rSqm"></tbody></table></div>
+    </div>
+
+    <div class="card">
+      <span class="tag">Paso 6</span>
+      <h2>Firma digital</h2>
+      <p>Al revés también funciona: si <b>firmas</b> con tu llave privada, cualquiera puede comprobar con tu llave pública que fuiste tú y que el mensaje no cambió.</p>
+      <div class="row">
+        <div><label for="sMsg">Mensaje a firmar</label><input type="text" id="sMsg" value="Transferir $10.000 a Ana" spellcheck="false"></div>
+        <div><label>Huella del mensaje (h)</label><div class="out" id="sHash"></div></div>
+      </div>
+      <div class="actions" style="margin-top:10px"><button class="btn sm primary" id="sSign" type="button">Firmar con la llave privada</button></div>
+      <div class="calc" id="sSigCalc" style="margin-top:10px"></div>
+      <div id="sVerify"></div>
+      <p class="small muted" style="margin-top:10px">Después de firmar, cambia el mensaje (por ejemplo el monto) y mira cómo la verificación falla. La huella aquí es un hash simple de juguete; en la realidad se usa SHA‑256.</p>
+    </div>
+
+    <div class="card">
+      <span class="tag">Paso 7</span>
+      <h2>Rómpelo: factoriza n</h2>
+      <p>Un atacante ve la llave pública (e, n). Si logra separar n en p × q, calcula φ(n) y luego d, igual que tú. Prueba dividir n por todos los números hasta √n:</p>
+      <div class="actions"><button class="btn sm primary" id="fGo" type="button">Factorizar n</button><span class="small muted" id="fInfo"></span></div>
+      <div class="progress"><div id="fBar"></div></div>
+      <div id="fOut"></div>
+      <div class="hint">Las llaves RSA reales tienen n de 2048 bits, unos <b>617 dígitos</b>. El récord público de factorización es RSA‑250 (250 dígitos, 829 bits), que en 2020 tomó el equivalente a unos 2700 años de un núcleo de CPU. Por eso RSA‑2048 se considera seguro hoy, aunque un computador cuántico grande podría romperlo, y ya existen alternativas post‑cuánticas.</div>
+    </div>
+    </div>
+  </section>
+
+  <!-- ================= RETOS ================= -->
+  <section id="tab-retos" class="hidden">
+    <div class="card" id="qStart">
+      <span class="tag">Pon a prueba lo aprendido</span>
+      <h1>Retos de cifrado</h1>
+      <p>10 preguntas mezcladas: descifrar César, sacar cuentas de RSA y conceptos de AES. Algunas cambian cada vez que juegas, así que puedes usar las otras pestañas como calculadora.</p>
+      <p class="muted small" id="qBest"></p>
+      <div class="actions"><button class="btn primary" id="qGo" type="button">Empezar</button></div>
+    </div>
+    <div class="hidden" id="qPlay">
+      <div class="hud"><span class="pill">Pregunta <b id="qN">1</b>/10</span><span class="pill">Puntos <b id="qScore">0</b></span><span class="pill">Racha <b id="qStreak">0</b></span></div>
+      <div class="card" id="qCard">
+        <span class="tag" id="qTag"></span>
+        <h2 id="qQ"></h2>
+        <div id="qBody"></div>
+        <div id="qFb"></div>
+        <div class="actions" style="margin-top:14px"><button class="btn primary hidden" id="qNext" type="button">Siguiente</button></div>
+      </div>
+    </div>
+    <div class="card hidden" id="qEnd" style="text-align:center">
+      <span class="tag">Resultado</span>
+      <div class="big" id="qFinal"></div>
+      <p id="qMsg"></p>
+      <div class="actions" style="justify-content:center"><button class="btn primary" id="qAgain" type="button">Jugar otra vez</button></div>
+    </div>
+  </section>
+
+  <footer>Hecho para estudiar redes y ciberseguridad · los ejemplos son didácticos, no los uses para proteger datos reales · todo corre en tu navegador</footer>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+const shuffle = arr => { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const fmt = n => n.toLocaleString('es-CL');
+const hx = b => b.toString(16).padStart(2, '0');
+const toHex = arr => Array.from(arr, hx).join('');
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let toastT;
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), 1600); }
+function anim(el, cls) { if (reduced) return; el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
+
+/* ---------- progreso guardado ---------- */
+const KEY = 'laboratorio-cifrado-v1';
+let save = { best: 0, tab: 'cesar' };
+try { const s = JSON.parse(localStorage.getItem(KEY)); if (s) save = Object.assign(save, s); } catch (e) {}
+const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) {} };
+
+/* ---------- tema ---------- */
+const root = document.documentElement;
+try { const t = localStorage.getItem(KEY + '-theme'); if (t) root.dataset.theme = t; } catch (e) {}
+$('btnTheme').onclick = () => {
+  const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  root.dataset.theme = dark ? 'light' : 'dark';
+  try { localStorage.setItem(KEY + '-theme', root.dataset.theme); } catch (e) {}
+};
+
+/* ---------- pestañas ---------- */
+const tabs = document.querySelectorAll('.tab');
+function showTab(name) {
+  tabs.forEach(t => t.setAttribute('aria-selected', t.dataset.tab === name ? 'true' : 'false'));
+  ['cesar', 'aes', 'rsa', 'retos'].forEach(n => $('tab-' + n).classList.toggle('hidden', n !== name));
+  save.tab = name; persist();
+  if (name === 'aes') drawImages(false);
+}
+tabs.forEach(t => t.onclick = () => showTab(t.dataset.tab));
+
+async function copy(text) {
+  try { await navigator.clipboard.writeText(text); toast('Copiado'); }
+  catch (e) { toast('No se pudo copiar'); }
+}
+
+/* =====================================================================
+   CÉSAR
+   ===================================================================== */
+const ABC = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const mod = (a, m) => ((a % m) + m) % m;
+function caesar(str, k) {
+  k = mod(k, 26);
+  return str.replace(/[A-Za-z]/g, ch => {
+    const base = ch <= 'Z' ? 65 : 97;
+    return String.fromCharCode((ch.charCodeAt(0) - base + k) % 26 + base);
+  });
+}
+const C = { mode: 'enc', idx: 0, timer: null };
+function cShift() { const k = +$('cK').value; return C.mode === 'enc' ? k : -k; }
+function cLetters() {
+  const out = [];
+  const s = $('cIn').value;
+  for (let i = 0; i < s.length && out.length < 80; i++) if (/[A-Za-z]/.test(s[i])) out.push(s[i]);
+  return out;
+}
+function renderCaesar() {
+  const k = +$('cK').value;
+  $('cKv').textContent = k;
+  $('cOut').textContent = caesar($('cIn').value, cShift());
+  const sh = cShift();
+  let h = '<div class="lab">Entrada</div>';
+  for (let i = 0; i < 26; i++) h += `<div class="c top" data-i="${i}">${ABC[i]}</div>`;
+  h += '<div class="lab">Salida</div>';
+  for (let i = 0; i < 26; i++) h += `<div class="c" data-i="${i}">${ABC[mod(i + sh, 26)]}</div>`;
+  $('cStrip').innerHTML = h;
+  const L = cLetters();
+  if (C.idx >= L.length) C.idx = Math.max(0, L.length - 1);
+  $('cChips').innerHTML = L.map((ch, i) => `<button type="button" class="chip${i === C.idx ? ' on' : i < C.idx ? ' done' : ''}" data-i="${i}">${esc(ch)}→${esc(caesar(ch, sh))}</button>`).join('');
+  renderCStep();
+}
+function renderCStep() {
+  const L = cLetters();
+  const sh = cShift(), k = +$('cK').value;
+  $('cChips').querySelectorAll('.chip').forEach((c, i) => { c.classList.toggle('on', i === C.idx); c.classList.toggle('done', i < C.idx); });
+  $('cStrip').querySelectorAll('.c').forEach(c => c.classList.remove('on'));
+  if (!L.length) { $('cStep').textContent = 'Escribe un mensaje con letras para ver el paso a paso.'; return; }
+  const ch = L[C.idx], p = ABC.indexOf(ch.toUpperCase()), r = mod(p + sh, 26);
+  const sign = C.mode === 'enc' ? '+' : '−';
+  $('cStep').innerHTML = `<b>${esc(ch.toUpperCase())}</b> está en la posición ${p} &nbsp;→&nbsp; (${p} ${sign} <span class="k">${k}</span>) mod 26 = <b>${r}</b> &nbsp;→&nbsp; la posición ${r} es <b class="acc">${ABC[r]}</b>`;
+  const cells = $('cStrip').querySelectorAll('.c');
+  cells[p].classList.add('on'); cells[26 + p].classList.add('on');
+}
+function cStop() { clearInterval(C.timer); C.timer = null; $('cPlay').textContent = '▶ Reproducir'; }
+$('cIn').oninput = () => { C.idx = 0; renderCaesar(); };
+$('cK').oninput = renderCaesar;
+$('cEnc').onclick = () => { C.mode = 'enc'; $('cEnc').classList.add('on'); $('cDec').classList.remove('on'); renderCaesar(); };
+$('cDec').onclick = () => { C.mode = 'dec'; $('cDec').classList.add('on'); $('cEnc').classList.remove('on'); renderCaesar(); };
+$('cPrev').onclick = () => { cStop(); if (C.idx > 0) C.idx--; renderCStep(); };
+$('cNext').onclick = () => { cStop(); if (C.idx < cLetters().length - 1) C.idx++; renderCStep(); };
+$('cPlay').onclick = () => {
+  if (C.timer) return cStop();
+  const n = cLetters().length; if (!n) return;
+  if (C.idx >= n - 1) C.idx = 0;
+  renderCStep();
+  $('cPlay').textContent = '❚❚ Pausa';
+  C.timer = setInterval(() => { if (C.idx >= cLetters().length - 1) return cStop(); C.idx++; renderCStep(); }, 700);
+};
+$('cChips').onclick = e => { const b = e.target.closest('.chip'); if (!b) return; cStop(); C.idx = +b.dataset.i; renderCStep(); };
+$('cCopy').onclick = () => copy($('cOut').textContent);
+$('cToBreak').onclick = () => { $('bIn').value = $('cOut').textContent; renderBreak(); $('bIn').scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'center' }); };
+
+/* frecuencia del español (letras A-Z, sin ñ, en %) */
+const ES = { A: 12.53, B: 1.42, C: 4.68, D: 5.86, E: 13.68, F: .69, G: 1.01, H: .70, I: 6.25, J: .44, K: .02, L: 4.97, M: 3.15, N: 6.71, O: 8.68, P: 2.51, Q: .88, R: 6.87, S: 7.98, T: 4.63, U: 3.93, V: .90, W: .01, X: .22, Y: .90, Z: .52 };
+const ESsum = Object.values(ES).reduce((a, b) => a + b, 0);
+const norm = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
+function counts(s) { const c = new Array(26).fill(0); for (const ch of norm(s)) { const i = ABC.indexOf(ch); if (i >= 0) c[i]++; } return c; }
+function chi2(s) {
+  const c = counts(s), n = c.reduce((a, b) => a + b, 0);
+  if (!n) return Infinity;
+  let x = 0;
+  for (let i = 0; i < 26; i++) { const e = ES[ABC[i]] / ESsum * n; x += (c[i] - e) ** 2 / e; }
+  return x;
+}
+function renderBreak() {
+  const s = $('bIn').value;
+  const c = counts(s), n = c.reduce((a, b) => a + b, 0) || 1;
+  const max = Math.max(14, ...c.map(v => v / n * 100));
+  $('bFreq').innerHTML = c.map((v, i) => `<div class="col" title="${ABC[i]}: ${(v / n * 100).toFixed(1)}%"><div class="b a" style="height:${v / n * 100 / max * 100}%"></div><div class="b e" style="height:${ES[ABC[i]] / max * 100}%"></div></div>`).join('');
+  $('bFreqLab').innerHTML = ABC.split('').map(l => `<span>${l}</span>`).join('');
+  const top = c.indexOf(Math.max(...c));
+  $('bPeak').innerHTML = c[top] ? `La letra más repetida en tu texto es <b>${ABC[top]}</b>. Si fuera la E original, la llave sería ${ABC[top]} − E = <b>${mod(top - 4, 26)}</b>. Si fuera la A, sería <b>${top}</b>.` : '';
+  const rows = [];
+  for (let k = 0; k < 26; k++) { const t = caesar(s, -k); rows.push({ k, t, x: chi2(t) }); }
+  rows.sort((a, b) => a.x - b.x);
+  $('bTable').innerHTML = rows.map((r, i) => `<tr class="${i === 0 && isFinite(r.x) ? 'best' : ''}"><td class="m">${r.k}${i === 0 && isFinite(r.x) ? ' ✓' : ''}</td><td class="m">${isFinite(r.x) ? r.x.toFixed(1) : '–'}</td><td class="m" style="white-space:normal;min-width:240px">${esc(r.t.length > 120 ? r.t.slice(0, 120) + '…' : r.t)}</td></tr>`).join('');
+}
+$('bIn').oninput = renderBreak;
+
+/* =====================================================================
+   AES-128 (FIPS-197), implementado a mano para poder mostrar cada paso
+   ===================================================================== */
+const SBOX = new Uint8Array(256), ISBOX = new Uint8Array(256);
+(() => {
+  const rotl = (x, s) => ((x << s) | (x >> (8 - s))) & 255;
+  let p = 1, q = 1;
+  do {
+    p = (p ^ (p << 1) ^ (p & 128 ? 0x1b : 0)) & 255;
+    q ^= q << 1; q ^= q << 2; q ^= q << 4; q &= 255;
+    if (q & 128) q ^= 0x09;
+    SBOX[p] = (q ^ rotl(q, 1) ^ rotl(q, 2) ^ rotl(q, 3) ^ rotl(q, 4) ^ 0x63) & 255;
+  } while (p !== 1);
+  SBOX[0] = 0x63;
+  for (let i = 0; i < 256; i++) ISBOX[SBOX[i]] = i;
+})();
+const xt = a => ((a << 1) ^ (a & 128 ? 0x1b : 0)) & 255;
+function gmul(a, b) { let r = 0; while (b) { if (b & 1) r ^= a; a = xt(a); b >>= 1; } return r; }
+function expandKey(k) {
+  const w = new Uint8Array(176), rcon = [0];
+  w.set(k);
+  let rc = 1;
+  for (let i = 16; i < 176; i += 4) {
+    let t = [w[i - 4], w[i - 3], w[i - 2], w[i - 1]];
+    if (i % 16 === 0) { t = [SBOX[t[1]] ^ rc, SBOX[t[2]], SBOX[t[3]], SBOX[t[0]]]; rcon.push(rc); rc = xt(rc); }
+    for (let j = 0; j < 4; j++) w[i + j] = w[i - 16 + j] ^ t[j];
+  }
+  return { w, rcon };
+}
+const rk = (w, r) => w.subarray(16 * r, 16 * r + 16);
+// el estado se guarda por columnas: s[fila + 4*columna]
+const subBytes = s => s.map(b => SBOX[b]);
+const invSubBytes = s => s.map(b => ISBOX[b]);
+function shiftRows(s) { const o = new Uint8Array(16); for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) o[r + 4 * c] = s[r + 4 * ((c + r) % 4)]; return o; }
+function invShiftRows(s) { const o = new Uint8Array(16); for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) o[r + 4 * ((c + r) % 4)] = s[r + 4 * c]; return o; }
+function mixCol(s, m) {
+  const o = new Uint8Array(16);
+  for (let c = 0; c < 4; c++) {
+    const a = s.subarray(4 * c, 4 * c + 4);
+    for (let r = 0; r < 4; r++) o[4 * c + r] = gmul(a[0], m[(4 - r) % 4]) ^ gmul(a[1], m[(5 - r) % 4]) ^ gmul(a[2], m[(6 - r) % 4]) ^ gmul(a[3], m[(7 - r) % 4]);
+  }
+  return o;
+}
+const mixColumns = s => mixCol(s, [2, 3, 1, 1]);
+const invMixColumns = s => mixCol(s, [14, 11, 13, 9]);
+const addRoundKey = (s, k) => s.map((b, i) => b ^ k[i]);
+
+function aesTrace(pt, key) {
+  const { w, rcon } = expandKey(key);
+  const steps = [];
+  let s = Uint8Array.from(pt);
+  const push = (round, op, f, extra) => { const before = s; s = f(s); steps.push(Object.assign({ round, op, before, after: s }, extra || {})); };
+  push(0, 'AddRoundKey', x => addRoundKey(x, rk(w, 0)), { key: rk(w, 0) });
+  for (let r = 1; r <= 10; r++) {
+    push(r, 'SubBytes', subBytes);
+    push(r, 'ShiftRows', shiftRows);
+    if (r < 10) push(r, 'MixColumns', mixColumns);
+    push(r, 'AddRoundKey', x => addRoundKey(x, rk(w, r)), { key: rk(w, r) });
+  }
+  return { steps, out: s, w, rcon };
+}
+function aesEncryptBlock(b, w) {
+  let s = addRoundKey(b, rk(w, 0));
+  for (let r = 1; r <= 10; r++) { s = shiftRows(subBytes(s)); if (r < 10) s = mixColumns(s); s = addRoundKey(s, rk(w, r)); }
+  return s;
+}
+function aesDecryptBlock(b, w) {
+  let s = addRoundKey(b, rk(w, 10));
+  for (let r = 9; r >= 0; r--) { s = invSubBytes(invShiftRows(s)); s = addRoundKey(s, rk(w, r)); if (r > 0) s = invMixColumns(s); }
+  return s;
+}
+window.__aes = { aesEncryptBlock, aesDecryptBlock, expandKey, SBOX };
+
+/* ---------- UI de AES ---------- */
+const A = { pt: null, key: null, tr: null, i: 0, flip: 127 };
+const enc = new TextEncoder(), dec = new TextDecoder('utf-8', { fatal: false });
+function parseInput(v, fmtSel, what) {
+  if (fmtSel === 'hex') {
+    const h = v.replace(/\s+/g, '').toLowerCase();
+    if (!/^[0-9a-f]*$/.test(h)) return { err: `${what}: usa solo dígitos 0-9 y letras a-f.` };
+    if (h.length !== 32) return { err: `${what}: necesitas exactamente 32 dígitos hex (tienes ${h.length}).` };
+    return { bytes: Uint8Array.from(h.match(/../g), x => parseInt(x, 16)) };
+  }
+  const b = enc.encode(v);
+  if (b.length > 16) return { bytes: b.slice(0, 16), note: `${what} ocupa ${b.length} bytes; usamos solo los primeros 16 (un bloque).` };
+  if (b.length < 16) {
+    const pad = 16 - b.length, o = new Uint8Array(16); o.set(b); o.fill(pad, b.length);
+    return { bytes: o, note: `${what} ocupa ${b.length} bytes; se rellenó con ${pad} bytes de valor 0x${hx(pad)} (relleno PKCS#7).` };
+  }
+  return { bytes: b };
+}
+function matHTML(bytes, opts) {
+  opts = opts || {};
+  let h = '';
+  for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) {
+    const i = r + 4 * c;
+    const cls = ['b'];
+    if (opts.changed && opts.changed[i]) cls.push('ch');
+    if (opts.tint) cls.push('t' + opts.tint(i));
+    if (opts.ex && opts.ex.includes(i)) cls.push('ex');
+    h += `<div class="${cls.join(' ')}" title="byte ${i}">${hx(bytes[i])}</div>`;
+  }
+  return h;
+}
+const matBox = (cap, bytes, opts, extra) => `<div class="matbox"><div class="cap">${cap}</div><div class="mat${extra || ''}">${matHTML(bytes, opts)}</div></div>`;
+
+function runAES() {
+  const f = $('aFmt').value;
+  const P = parseInput($('aPt').value, f, 'El mensaje'), K = parseInput($('aKey').value, f, 'La llave');
+  const notes = [P.err, K.err, P.note, K.note].filter(Boolean);
+  $('aNote').innerHTML = notes.map(esc).join('<br>');
+  $('aNote').className = 'small ' + (P.err || K.err ? 'badc' : 'muted');
+  if (P.err || K.err) return;
+  A.pt = P.bytes; A.key = K.bytes;
+  A.tr = aesTrace(A.pt, A.key);
+  $('aMatPt').innerHTML = matHTML(A.pt);
+  $('aMatKey').innerHTML = matHTML(A.key);
+  $('aKeys').innerHTML = Array.from({ length: 11 }, (_, r) => `<tr><td class="m">${r}</td><td class="m">${r ? '0x' + hx(A.tr.rcon[r]) : '–'}</td><td class="m">${toHex(rk(A.tr.w, r)).replace(/(.{8})/g, '$1 ').trim()}</td></tr>`).join('');
+  if (A.i >= A.tr.steps.length) A.i = 0;
+  renderRounds(); renderStep(); renderResult(); renderAvalanche();
+}
+function renderRounds() {
+  const cur = A.tr.steps[A.i].round;
+  $('aRounds').innerHTML = Array.from({ length: 11 }, (_, r) => `<button type="button" data-r="${r}" class="${r === cur ? 'on' : ''}">${r === 0 ? 'Inicio' : 'R' + r}</button>`).join('');
+}
+$('aRounds').onclick = e => { const b = e.target.closest('button'); if (!b) return; A.i = A.tr.steps.findIndex(s => s.round === +b.dataset.r); renderRounds(); renderStep(); };
+const OPS = ['SubBytes', 'ShiftRows', 'MixColumns', 'AddRoundKey'];
+const TXT = {
+  AddRoundKey: 'Se combina cada byte del estado con el byte de la llave de ronda en la misma posición usando XOR (⊕). Es el único paso que usa la llave: sin ella no se puede deshacer.',
+  SubBytes: 'Cada byte se reemplaza por otro usando la S-box, una tabla fija de 256 valores. Es la parte no lineal de AES y aporta <b>confusión</b>: la relación entre la llave y el cifrado deja de ser simple.',
+  ShiftRows: 'La fila 0 se queda igual, la fila 1 rota 1 posición a la izquierda, la fila 2 rota 2 y la fila 3 rota 3. Los colores muestran de qué columna venía cada byte: así los bytes de una columna se reparten entre todas.',
+  MixColumns: 'Cada columna se multiplica por una matriz fija usando aritmética del campo GF(2⁸). Si cambia un byte, cambian los cuatro de su columna. Junto con ShiftRows aporta <b>difusión</b>: tras dos rondas, cada byte depende de todos los demás.'
+};
+function renderStep() {
+  const st = A.tr.steps[A.i];
+  const ops = st.round === 0 ? ['AddRoundKey'] : st.round === 10 ? ['SubBytes', 'ShiftRows', 'MixColumns', 'AddRoundKey'] : OPS;
+  $('aOps').innerHTML = ops.map(o => `<span class="${o === st.op ? 'on' : ''}${st.round === 10 && o === 'MixColumns' ? ' skip' : ''}">${o}</span>`).join('');
+  $('aStepTitle').textContent = (st.round === 0 ? 'Ronda inicial' : 'Ronda ' + st.round) + ' · ' + st.op;
+  let txt = TXT[st.op];
+  if (st.round === 10 && st.op === 'SubBytes') txt += ' <span class="muted">La última ronda se salta MixColumns.</span>';
+  if (st.round === 0) txt += ' <span class="muted">Antes de la primera ronda se mezcla el mensaje con la llave original.</span>';
+  $('aStepText').innerHTML = txt;
+  const changed = st.after.map((b, i) => b !== st.before[i]);
+  const b = st.before, a = st.after;
+  let mats = '', ex = '';
+  if (st.op === 'AddRoundKey') {
+    mats = matBox('Estado', b, { ex: [0] }) + '<span class="op">⊕</span>' + matBox('Llave de ronda ' + st.round, st.key, { ex: [0] }, ' key') + '<span class="op">=</span>' + matBox('Nuevo estado', a, { changed, ex: [0] });
+    ex = `Byte 0: ${hx(b[0])} ⊕ <span class="k">${hx(st.key[0])}</span> = <b>${hx(a[0])}</b> &nbsp;·&nbsp; en bits: ${b[0].toString(2).padStart(8, '0')} ⊕ <span class="k">${st.key[0].toString(2).padStart(8, '0')}</span> = <b>${a[0].toString(2).padStart(8, '0')}</b>`;
+  } else if (st.op === 'SubBytes') {
+    mats = matBox('Antes', b, { ex: [0] }) + '<span class="op">→</span>' + matBox('Después', a, { changed, ex: [0] });
+    ex = `Byte 0 = ${hx(b[0])} &nbsp;→&nbsp; fila <b>${hx(b[0])[0]}</b>, columna <b>${hx(b[0])[1]}</b> de la S-box &nbsp;→&nbsp; <b class="acc">${hx(a[0])}</b>`;
+  } else if (st.op === 'ShiftRows') {
+    mats = matBox('Antes', b, { tint: i => i >> 2 }) + '<span class="op">→</span>' + matBox('Después', a, { tint: i => { const r = i & 3, c = i >> 2; return (c + r) % 4; } });
+    ex = 'Fila 0: ←0 &nbsp;·&nbsp; Fila 1: ←1 &nbsp;·&nbsp; Fila 2: ←2 &nbsp;·&nbsp; Fila 3: ←3';
+  } else {
+    mats = matBox('Antes', b, { ex: [0, 1, 2, 3] }) + '<span class="op">→</span>' + matBox('Después', a, { changed, ex: [0] });
+    ex = `Columna 0, primer byte: 2·${hx(b[0])} ⊕ 3·${hx(b[1])} ⊕ 1·${hx(b[2])} ⊕ 1·${hx(b[3])} = ${hx(gmul(b[0], 2))} ⊕ ${hx(gmul(b[1], 3))} ⊕ ${hx(b[2])} ⊕ ${hx(b[3])} = <b class="acc">${hx(a[0])}</b>`;
+  }
+  $('aStepMats').innerHTML = mats;
+  $('aStepEx').innerHTML = ex;
+  $('aPos').textContent = `Paso ${A.i + 1} de ${A.tr.steps.length}`;
+  $('aPrev').disabled = A.i === 0; $('aNext').disabled = A.i === A.tr.steps.length - 1;
+  renderSbox(st.op === 'SubBytes' ? b[0] : null);
+  anim($('aStepMats'), 'pop');
+}
+function renderSbox(look) {
+  let h = '<div class="h"></div>';
+  for (let c = 0; c < 16; c++) h += `<div class="h">${c.toString(16)}</div>`;
+  for (let r = 0; r < 16; r++) {
+    h += `<div class="h">${r.toString(16)}</div>`;
+    for (let c = 0; c < 16; c++) {
+      const v = r * 16 + c;
+      const cls = look === v ? 'on' : look !== null && (look >> 4 === r || (look & 15) === c) ? 'rc' : '';
+      h += `<div class="${cls}">${hx(SBOX[v])}</div>`;
+    }
+  }
+  $('aSbox').innerHTML = h;
+}
+$('aPrev').onclick = () => { if (A.i > 0) { A.i--; renderRounds(); renderStep(); } };
+$('aNext').onclick = () => { if (A.i < A.tr.steps.length - 1) { A.i++; renderRounds(); renderStep(); } };
+
+const b64 = u8 => btoa(String.fromCharCode.apply(null, u8));
+async function renderResult() {
+  const out = A.tr.out;
+  $('aCt').textContent = toHex(out);
+  $('aCt64').textContent = b64(out);
+  const back = aesDecryptBlock(out, A.tr.w);
+  const same = back.every((v, i) => v === A.pt[i]);
+  const shown = $('aFmt').value === 'hex' ? toHex(back) : dec.decode(stripPad(back));
+  $('aDec').innerHTML = `Descifrando con la misma llave (las operaciones inversas, en orden inverso) vuelves a: <code>${esc(shown)}</code> ${same ? '<span class="okc">✓</span>' : '<span class="badc">✗</span>'}`;
+  const v = $('aVerify');
+  try {
+    if (!(window.crypto && crypto.subtle)) throw new Error('sin WebCrypto');
+    const k = await crypto.subtle.importKey('raw', A.key, { name: 'AES-CBC' }, false, ['encrypt']);
+    const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-CBC', iv: new Uint8Array(16) }, k, A.pt)).slice(0, 16);
+    const ok = toHex(ct) === toHex(out);
+    v.className = 'feedback ' + (ok ? 'ok' : 'bad');
+    v.textContent = ok ? '✓ El AES nativo de tu navegador (Web Crypto) da exactamente el mismo resultado.' : '✗ El AES de tu navegador dio otro resultado: ' + toHex(ct);
+  } catch (e) {
+    v.className = 'feedback info';
+    v.textContent = 'Tu navegador no expone Web Crypto en esta página, así que no se pudo comparar. El cálculo de arriba es AES-128 estándar.';
+  }
+}
+function stripPad(b) { const p = b[15]; if (p >= 1 && p <= 16 && b.slice(16 - p).every(x => x === p)) return b.slice(0, 16 - p); return b; }
+
+function bitsOf(u8) { const o = []; for (const b of u8) for (let i = 7; i >= 0; i--) o.push((b >> i) & 1); return o; }
+function renderAvalanche() {
+  const p2 = Uint8Array.from(A.pt);
+  p2[A.flip >> 3] ^= 128 >> (A.flip & 7);
+  const c1 = A.tr.out, c2 = aesEncryptBlock(p2, A.tr.w);
+  const pb = bitsOf(p2), b1 = bitsOf(c1), b2 = bitsOf(c2);
+  $('avPt').innerHTML = pb.map((v, i) => `<i class="${v ? 'on' : ''}${i === A.flip ? ' flip' : ''}" data-i="${i}" title="bit ${i}"></i>`).join('');
+  $('avC1').innerHTML = b1.map(v => `<i class="${v ? 'on' : ''}"></i>`).join('');
+  let d = 0;
+  $('avC2').innerHTML = b2.map((v, i) => { const x = v !== b1[i]; if (x) d++; return `<i class="${x ? 'd' : v ? 'on' : ''}"></i>`; }).join('');
+  $('avStat').innerHTML = `Cambiaste <b>1 bit</b> del mensaje (el bit ${A.flip}) y cambiaron <b class="acc">${d} de 128 bits</b> del cifrado (${Math.round(d / 1.28)}%). Lo ideal es cerca de 64.`;
+}
+$('avPt').onclick = e => { const t = e.target.closest('i'); if (!t) return; A.flip = +t.dataset.i; renderAvalanche(); };
+
+['aPt', 'aKey'].forEach(id => $(id).oninput = runAES);
+$('aFmt').onchange = () => {
+  if (A.pt) {
+    if ($('aFmt').value === 'hex') { $('aPt').value = toHex(A.pt); $('aKey').value = toHex(A.key); }
+    else { $('aPt').value = dec.decode(stripPad(A.pt)); $('aKey').value = dec.decode(A.key); }
+  }
+  runAES();
+};
+$('aFips').onclick = () => { $('aFmt').value = 'hex'; $('aPt').value = '00112233445566778899aabbccddeeff'; $('aKey').value = '000102030405060708090a0b0c0d0e0f'; A.i = 0; runAES(); toast('Ejemplo del estándar: debería dar 69c4e0d8…'); };
+$('aRandKey').onclick = () => { const k = crypto.getRandomValues(new Uint8Array(16)); $('aFmt').value = 'hex'; if (A.pt) $('aPt').value = toHex(A.pt); $('aKey').value = toHex(k); runAES(); };
+
+/* ---------- ECB vs CBC con una imagen ---------- */
+let imgDone = false;
+function drawImages(force) {
+  if (imgDone && !force) return;
+  imgDone = true;
+  const W = 96, H = 96;
+  const cv = $('imgOrig'), cx = cv.getContext('2d');
+  cx.fillStyle = '#e6f0ff'; cx.fillRect(0, 0, W, H);
+  cx.fillStyle = '#0a7cff';
+  cx.beginPath(); cx.arc(48, 40, 22, Math.PI, 0); cx.lineTo(62, 40); cx.arc(48, 40, 14, 0, Math.PI, true); cx.closePath(); cx.fill();
+  cx.fillStyle = '#141a2a'; cx.fillRect(18, 40, 60, 46);
+  cx.fillStyle = '#ffc83d'; cx.beginPath(); cx.arc(48, 58, 7, 0, Math.PI * 2); cx.fill(); cx.fillRect(45, 58, 6, 16);
+  // cuantizar a la paleta para que zonas iguales tengan bytes idénticos
+  const pal = [[230, 240, 255], [10, 124, 255], [20, 26, 42], [255, 200, 61]];
+  const id = cx.getImageData(0, 0, W, H), d = id.data;
+  const raw = new Uint8Array(W * H * 3);
+  for (let p = 0; p < W * H; p++) {
+    let best = 0, bd = 1e9;
+    pal.forEach((c, j) => { const dd = (d[4 * p] - c[0]) ** 2 + (d[4 * p + 1] - c[1]) ** 2 + (d[4 * p + 2] - c[2]) ** 2; if (dd < bd) { bd = dd; best = j; } });
+    raw.set(pal[best], 3 * p); d.set(pal[best], 4 * p); d[4 * p + 3] = 255;
+  }
+  cx.putImageData(id, 0, 0);
+  const { w } = expandKey(crypto.getRandomValues(new Uint8Array(16)));
+  const ecb = new Uint8Array(raw.length), cbc = new Uint8Array(raw.length);
+  let prev = crypto.getRandomValues(new Uint8Array(16));
+  for (let o = 0; o < raw.length; o += 16) {
+    const blk = raw.subarray(o, o + 16);
+    ecb.set(aesEncryptBlock(blk, w), o);
+    prev = aesEncryptBlock(blk.map((v, i) => v ^ prev[i]), w);
+    cbc.set(prev, o);
+  }
+  [['imgEcb', ecb], ['imgCbc', cbc]].forEach(([cid, bytes]) => {
+    const c = $(cid).getContext('2d'), im = c.createImageData(W, H);
+    for (let p = 0; p < W * H; p++) { im.data[4 * p] = bytes[3 * p]; im.data[4 * p + 1] = bytes[3 * p + 1]; im.data[4 * p + 2] = bytes[3 * p + 2]; im.data[4 * p + 3] = 255; }
+    c.putImageData(im, 0, 0);
+  });
+}
+$('imgRe').onclick = () => drawImages(true);
+
+/* =====================================================================
+   RSA (con BigInt)
+   ===================================================================== */
+function isPrime(n) { if (!Number.isSafeInteger(n) || n < 2) return false; if (n % 2 === 0) return n === 2; for (let i = 3; i * i <= n; i += 2) if (n % i === 0) return false; return true; }
+function randPrime(dig) { const lo = 10 ** (dig - 1), hi = 10 ** dig - 1; for (;;) { const n = rnd(lo, hi); if (isPrime(n)) return n; } }
+function modpow(b, e, m) { let r = 1n; b %= m; while (e > 0n) { if (e & 1n) r = r * b % m; b = b * b % m; e >>= 1n; } return r; }
+function gcd(a, b) { while (b) [a, b] = [b, a % b]; return a; }
+function euclid(phi, e) {
+  const rows = [{ r: phi, q: null, t: 0n }, { r: e, q: null, t: 1n }];
+  while (rows[rows.length - 1].r !== 0n) {
+    const a = rows[rows.length - 2], b = rows[rows.length - 1];
+    const q = a.r / b.r;
+    b.q = q;
+    rows.push({ r: a.r - q * b.r, q: null, t: a.t - q * b.t, from: [a, b, q] });
+  }
+  return rows;
+}
+const R = { p: 0n, q: 0n, n: 0n, phi: 0n, e: 0n, d: 0n, sel: 0, sig: null };
+function renderRSA(keepE) {
+  const p = +$('rP').value, q = +$('rQ').value;
+  const errs = [];
+  if (!isPrime(p)) errs.push(`p = ${esc($('rP').value)} no es primo.`);
+  if (!isPrime(q)) errs.push(`q = ${esc($('rQ').value)} no es primo.`);
+  if (!errs.length && p === q) errs.push('p y q tienen que ser distintos: si son iguales, n = p² y basta una raíz cuadrada para romperlo.');
+  if (!errs.length && (p > 9999999 || q > 9999999)) errs.push('Usa primos de hasta 7 dígitos para que el laboratorio sea rápido.');
+  if (!errs.length && (p - 1) * (q - 1) < 4) errs.push('Con primos tan chicos no hay ningún e que sirva: elige primos más grandes.');
+  $('rPqMsg').innerHTML = errs.length ? `<div class="feedback bad">${errs.join('<br>')}</div>` : `<div class="feedback ok">✓ ${fmt(p)} y ${fmt(q)} son primos.</div>`;
+  $('rBody').classList.toggle('hidden', errs.length > 0);
+  if (errs.length) return;
+  R.p = BigInt(p); R.q = BigInt(q); R.n = R.p * R.q; R.phi = (R.p - 1n) * (R.q - 1n);
+  $('rN').innerHTML = `<div>n = p × q = ${fmt(p)} × ${fmt(q)} = <b class="acc">${fmt(R.n)}</b></div><div>φ(n) = (p − 1) × (q − 1) = ${fmt(p - 1)} × ${fmt(q - 1)} = <b class="k">${fmt(R.phi)}</b></div><div class="muted small">n tiene ${R.n.toString(2).length} bits (una llave real tiene 2048).</div>`;
+  const cands = [3n, 5n, 7n, 11n, 13n, 17n, 257n, 65537n].filter(e => e < R.phi && gcd(e, R.phi) === 1n);
+  if (!keepE || !cands.includes(R.e)) R.e = cands.includes(65537n) ? 65537n : cands.includes(17n) ? 17n : cands[0];
+  $('rEbtns').innerHTML = [3n, 5n, 7n, 11n, 13n, 17n, 257n, 65537n].filter(e => e < R.phi).map(e => { const ok = gcd(e, R.phi) === 1n; return `<button type="button" class="btn sm${e === R.e ? ' on' : ''}" data-e="${e}">e = ${e}${ok ? '' : ' ✗'}</button>`; }).join('');
+  renderE();
+}
+function renderE() {
+  $('rEbtns').querySelectorAll('button').forEach(b => b.classList.toggle('on', BigInt(b.dataset.e) === R.e));
+  $('rEcheck').innerHTML = `mcd(${R.e}, ${fmt(R.phi)}) = <b>${gcd(R.e, R.phi)}</b> <span class="okc">✓ sirve</span>`;
+  const rows = euclid(R.phi, R.e);
+  let last = rows.findIndex(r => r.r === 1n);
+  $('rEuclid').innerHTML = rows.slice(0, last + 1).map((r, i) => `<tr${i === last ? ' class="best"' : ''}><td class="m">${fmt(r.r)}</td><td class="m">${r.q === null || i === last ? '' : fmt(r.q)}</td><td class="m">${r.t}</td><td class="m small">${i === 0 ? 'empieza con φ(n)' : i === 1 ? 'empieza con e' : `${fmt(r.from[0].r)} − ${fmt(r.from[2])}×${fmt(r.from[1].r)} &nbsp;|&nbsp; t: ${r.from[0].t} − ${fmt(r.from[2])}×${r.from[1].t}`}</td></tr>`).join('');
+  const t = rows[last].t;
+  R.d = ((t % R.phi) + R.phi) % R.phi;
+  $('rD').innerHTML = `<div>Llegamos a resto 1 con t = ${t}${t < 0n ? `, que es negativo, así que le sumamos φ(n): ${t} + ${fmt(R.phi)}` : ''} → <b class="k">d = ${fmt(R.d)}</b></div><div>Comprobación: ${R.e} × ${fmt(R.d)} mod ${fmt(R.phi)} = <b>${(R.e * R.d) % R.phi}</b> <span class="okc">✓</span></div>`;
+  $('rPub').innerHTML = `e = ${R.e}<br>n = ${fmt(R.n)}`;
+  $('rPriv').innerHTML = `d = ${fmt(R.d)}<br>n = ${fmt(R.n)}`;
+  R.sig = null;
+  renderMsg(); renderSign(); resetFactor();
+}
+$('rEbtns').onclick = e => { const b = e.target.closest('button'); if (!b) return; const v = BigInt(b.dataset.e); if (gcd(v, R.phi) !== 1n) { toast(`mcd(${v}, φ) ≠ 1: no sirve`); anim(b, 'shake'); return; } R.e = v; renderE(); };
+['rP', 'rQ'].forEach(id => $(id).oninput = () => renderRSA(true));
+document.querySelectorAll('[data-dig]').forEach(b => b.onclick = () => {
+  const dg = +b.dataset.dig; const p = randPrime(dg); let q; do q = randPrime(dg); while (q === p);
+  $('rP').value = p; $('rQ').value = q; renderRSA(false);
+});
+
+function renderMsg() {
+  const chars = Array.from($('rMsg').value).slice(0, 40);
+  const bad = chars.filter(ch => BigInt(ch.codePointAt(0)) >= R.n);
+  $('rMsgWarn').innerHTML = bad.length ? `<div class="feedback bad">n = ${fmt(R.n)} es muy chico para ${esc(bad.join(' '))}: cada m debe ser menor que n. Elige primos más grandes.</div>` : '';
+  const rows = chars.map(ch => { const m = BigInt(ch.codePointAt(0)); const c = modpow(m, R.e, R.n); const back = modpow(c, R.d, R.n); return { ch, m, c, back }; });
+  if (R.sel >= rows.length) R.sel = 0;
+  $('rTable').innerHTML = rows.map((r, i) => `<tr class="click${i === R.sel ? ' sel' : ''}" data-i="${i}"><td class="m">${r.ch === ' ' ? '␣' : esc(r.ch)}</td><td class="m">${r.m}</td><td class="m acc">${fmt(r.c)}</td><td class="m">${r.back}</td><td class="m">${r.back < 0x110000n ? esc(String.fromCodePoint(Number(r.back))) : '?'}</td></tr>`).join('');
+  $('rCt').textContent = rows.map(r => r.c.toString()).join(' ');
+  $('rPt').textContent = rows.map(r => r.back < 0x110000n ? String.fromCodePoint(Number(r.back)) : '?').join('');
+  const seen = {}; let rep = null;
+  for (const r of rows) { if (r.ch.trim() && seen[r.ch]) { rep = r; break; } seen[r.ch] = 1; }
+  $('rRepeat').innerHTML = rep ? `<b>Ojo:</b> la letra «${esc(rep.ch)}» aparece más de una vez y siempre se cifra como ${fmt(rep.c)}. Cifrar letra por letra con RSA puro es como un César gigante: se puede atacar con análisis de frecuencia. Por eso el RSA real agrega relleno aleatorio (OAEP) y en la práctica se usa para cifrar una llave de AES, no el mensaje completo.` : '<b>Prueba:</b> escribe una palabra con letras repetidas y mira qué pasa con sus cifrados.';
+  renderSqm(rows[R.sel]);
+}
+function renderSqm(row) {
+  if (!row) { $('rSqm').innerHTML = ''; return; }
+  const bits = R.e.toString(2);
+  let r = 1n, h = '';
+  for (let i = 0; i < bits.length; i++) {
+    const sq = r * r % R.n; let res = sq, mul = '';
+    if (bits[i] === '1') { res = sq * row.m % R.n; mul = `${fmt(sq)} × ${row.m} mod n = ${fmt(res)}`; }
+    h += `<tr><td class="m">${bits.slice(0, i)}<b class="acc">${bits[i]}</b>${bits.slice(i + 1)}</td><td class="m">${fmt(r)}² mod n = ${fmt(sq)}</td><td class="m">${mul || '–'}</td><td class="m"><b>${fmt(res)}</b></td></tr>`;
+    r = res;
+  }
+  $('rSqm').innerHTML = `<tr><td colspan="4" class="small muted">Calculando ${row.m}<sup>${R.e}</sup> mod ${fmt(R.n)} · e en binario = ${bits}</td></tr>` + h + `<tr class="best"><td colspan="4" class="m">c = <b>${fmt(r)}</b> con solo ${bits.length} vueltas, en vez de ${R.e} multiplicaciones</td></tr>`;
+}
+$('rMsg').oninput = renderMsg;
+$('rTable').onclick = e => { const tr = e.target.closest('tr'); if (!tr) return; R.sel = +tr.dataset.i; renderMsg(); };
+
+/* firma */
+function toyHash(s) { let h = 0x811c9dc5; for (const b of enc.encode(s)) { h ^= b; h = Math.imul(h, 0x01000193) >>> 0; } return BigInt(h) % R.n; }
+function renderSign() {
+  const h = toyHash($('sMsg').value);
+  $('sHash').textContent = `${fmt(h)}  (hash FNV-1a mod n)`;
+  if (R.sig === null) { $('sSigCalc').innerHTML = ''; $('sVerify').innerHTML = ''; return; }
+  const v = modpow(R.sig.s, R.e, R.n), ok = v === h;
+  $('sSigCalc').innerHTML = `<div>Firma: s = h<sup class="k">d</sup> mod n = ${fmt(R.sig.h)}<sup class="k">${fmt(R.d)}</sup> mod ${fmt(R.n)} = <b class="k">${fmt(R.sig.s)}</b></div><div>Verificación con la pública: s<sup class="acc">e</sup> mod n = ${fmt(R.sig.s)}<sup class="acc">${R.e}</sup> mod ${fmt(R.n)} = <b>${fmt(v)}</b> &nbsp;vs&nbsp; huella actual ${fmt(h)}</div>`;
+  $('sVerify').innerHTML = ok ? '<div class="feedback ok">✓ Firma válida: el mensaje no cambió y lo firmó quien tiene la llave privada.</div>' : '<div class="feedback bad">✗ Firma inválida: el mensaje fue modificado después de firmarlo (o la firma es de otra persona).</div>';
+}
+$('sSign').onclick = () => { const h = toyHash($('sMsg').value); R.sig = { h, s: modpow(h, R.d, R.n) }; renderSign(); };
+$('sMsg').oninput = renderSign;
+
+/* factorizar */
+let fJob = 0;
+function resetFactor() { fJob++; $('fBar').style.width = '0'; $('fOut').innerHTML = ''; $('fInfo').textContent = `n = ${fmt(R.n)}, √n ≈ ${fmt(Math.floor(Math.sqrt(Number(R.n))))}`; $('fGo').disabled = false; }
+$('fGo').onclick = () => {
+  const job = ++fJob, n = Number(R.n), lim = Math.floor(Math.sqrt(n));
+  let i = 2, tries = 0; const t0 = performance.now();
+  $('fGo').disabled = true;
+  const step = () => {
+    if (job !== fJob) return;
+    const end = Math.min(lim, i + 200000);
+    for (; i <= end; i++) { tries++; if (n % i === 0) {
+      const ms = performance.now() - t0, p = i, q = n / i;
+      const phi = BigInt(p - 1) * BigInt(q - 1); const dd = ((euclid(phi, R.e).find(r => r.r === 1n).t % phi) + phi) % phi;
+      $('fBar').style.width = '100%';
+      $('fOut').innerHTML = `<div class="feedback bad">🔓 Roto en ${fmt(tries)} intentos (${ms < 1 ? 'menos de 1' : fmt(Math.round(ms))} ms): n = ${fmt(p)} × ${fmt(q)}. Con eso, φ(n) = ${fmt(phi)} y la llave privada es d = ${fmt(dd)}${dd === R.d ? ' — la misma que la tuya' : ''}.</div>`;
+      $('fGo').disabled = false; return;
+    } }
+    $('fBar').style.width = (i / lim * 100) + '%';
+    if (i > lim) { $('fOut').innerHTML = '<div class="feedback info">No se encontró factor (n sería primo).</div>'; $('fGo').disabled = false; return; }
+    setTimeout(step, 0);
+  };
+  step();
+};
+
+/* =====================================================================
+   RETOS
+   ===================================================================== */
+const PHRASES = ['LA RED ESTA CAIDA', 'EL FIREWALL BLOQUEA EL PUERTO', 'EL PAQUETE LLEGO A DESTINO', 'CAMBIA LA CLAVE DEL ROUTER', 'EL ATACANTE USO FUERZA BRUTA', 'CIFRA TUS RESPALDOS', 'TCP USA TRES PASOS PARA CONECTAR', 'REVISA LOS LOGS DEL SERVIDOR', 'NUNCA COMPARTAS TU LLAVE PRIVADA', 'EL DNS TRADUCE NOMBRES A IP'];
+const SMALLP = [5, 7, 11, 13, 17, 19, 23, 29, 31, 37];
+const BANK = [
+  { tag: 'AES', q: '¿Cuántas rondas hace AES con una llave de 128 bits?', o: ['10', '12', '14', '16'], a: 0, x: 'AES-128 hace 10 rondas, AES-192 hace 12 y AES-256 hace 14.' },
+  { tag: 'AES', q: '¿Qué operación se salta la última ronda de AES?', o: ['MixColumns', 'SubBytes', 'ShiftRows', 'AddRoundKey'], a: 0, x: 'La ronda final no hace MixColumns; no aportaría seguridad y así el descifrado queda simétrico.' },
+  { tag: 'AES', q: '¿Cuál es el único paso de AES que usa la llave?', o: ['AddRoundKey', 'SubBytes', 'ShiftRows', 'MixColumns'], a: 0, x: 'AddRoundKey hace XOR con la llave de ronda. Los demás pasos son públicos y fijos.' },
+  { tag: 'AES', q: '¿De qué tamaño es un bloque de AES?', o: ['128 bits', '64 bits', '256 bits', 'Depende de la llave'], a: 0, x: 'El bloque siempre es de 128 bits (16 bytes). Lo que cambia es el largo de la llave: 128, 192 o 256.' },
+  { tag: 'AES', q: '¿Qué modo de operación deja ver patrones si el mensaje tiene bloques repetidos?', o: ['ECB', 'CBC', 'GCM', 'CTR'], a: 0, x: 'En ECB, bloques iguales dan cifrados iguales. Es el famoso ejemplo de la imagen que se sigue viendo cifrada.' },
+  { tag: 'AES', q: 'Cambias 1 bit del mensaje y cifras con AES. ¿Cuántos bits del cifrado cambian, más o menos?', o: ['Cerca de la mitad', 'Solo 1', 'Todos', 'Ninguno'], a: 0, x: 'Es el efecto avalancha: en promedio cambian unos 64 de 128 bits.' },
+  { tag: 'Conceptos', q: '¿Cuál de estos es un cifrado asimétrico?', o: ['RSA', 'AES', 'César', 'ChaCha20'], a: 0, x: 'RSA usa un par de llaves (pública y privada). AES, César y ChaCha20 usan la misma llave para cifrar y descifrar.' },
+  { tag: 'RSA', q: '¿En qué problema matemático se basa la seguridad de RSA?', o: ['Factorizar números grandes', 'Ordenar listas', 'Calcular raíces cuadradas', 'Resolver ecuaciones lineales'], a: 0, x: 'Multiplicar p × q es fácil; encontrar p y q a partir de n es lo difícil.' },
+  { tag: 'RSA', q: 'Ana quiere mandarte un mensaje que solo tú puedas leer. ¿Con qué llave lo cifra?', o: ['Tu llave pública', 'Tu llave privada', 'Su llave privada', 'Su llave pública'], a: 0, x: 'Cifra con tu pública, y solo tu privada lo abre.' },
+  { tag: 'RSA', q: 'Para verificar una firma digital de Ana, ¿qué llave usas?', o: ['La pública de Ana', 'La privada de Ana', 'Tu llave privada', 'Tu llave pública'], a: 0, x: 'Ana firma con su privada y cualquiera verifica con su pública.' },
+  { tag: 'César', q: '¿Cuántas llaves distintas que realmente cambien el mensaje tiene el César con 26 letras?', o: ['25', '26', '13', '2²⁶'], a: 0, x: 'Desplazar 0 o 26 deja el mensaje igual, así que quedan 25.' },
+  { tag: 'Conceptos', q: '¿Por qué HTTPS combina RSA (o ECDHE) con AES?', o: ['El asimétrico acuerda la llave y AES cifra los datos rápido', 'Para cifrar dos veces y ser más seguro', 'Porque AES no funciona en navegadores', 'RSA comprime los datos'], a: 0, x: 'Lo asimétrico es lento pero resuelve cómo compartir la llave; lo simétrico es rápido para todo lo demás.' }
+];
+function genCaesarDecode() {
+  const p = pick(PHRASES), k = rnd(1, 25);
+  return { tag: 'César', q: 'Descifra este mensaje:', pre: `<div class="formula">${caesar(p, k)}</div><p class="small muted">No te digo la llave. Puedes usar el rompedor de la pestaña César.</p>`, input: 'text', check: v => norm(v).replace(/[^A-Z]/g, '') === p.replace(/[^A-Z]/g, ''), ans: p, x: `La llave era ${k}.` };
+}
+function genCaesarKey() {
+  const p = pick(PHRASES), k = rnd(1, 25);
+  return { tag: 'César', q: '¿Con qué llave se cifró?', pre: `<div class="formula">${p}<br>${caesar(p, k)}</div>`, input: 'number', check: v => +v === k, ans: String(k), x: `${p[0]} (${ABC.indexOf(p[0])}) pasó a ${caesar(p[0], k)} (${ABC.indexOf(caesar(p[0], k))}): la diferencia es ${k}.` };
+}
+function genRsaPhi() {
+  const p = pick(SMALLP); let q; do q = pick(SMALLP); while (q === p);
+  const phi = (p - 1) * (q - 1);
+  return { tag: 'RSA', q: `Si p = ${p} y q = ${q}, ¿cuánto vale φ(n)?`, input: 'number', check: v => +v === phi, ans: String(phi), x: `φ(n) = (${p} − 1) × (${q} − 1) = ${p - 1} × ${q - 1} = ${phi}.` };
+}
+function genRsaD() {
+  for (;;) {
+    const p = pick(SMALLP); let q; do q = pick(SMALLP); while (q === p);
+    const phi = BigInt((p - 1) * (q - 1));
+    const e = pick([3n, 5n, 7n, 11n, 13n].filter(x => gcd(x, phi) === 1n && x < phi));
+    if (!e) continue;
+    const t = euclid(phi, e).find(r => r.r === 1n).t, d = ((t % phi) + phi) % phi;
+    return { tag: 'RSA', q: `Con φ(n) = ${phi} y e = ${e}, ¿cuánto vale la llave privada d?`, pre: '<p class="small muted">Busca el d que cumple e · d mod φ(n) = 1. Puedes probar con la tabla de Euclides de la pestaña RSA.</p>', input: 'number', check: v => BigInt(String(v).trim() || '0') === d, ans: String(d), x: `${e} × ${d} = ${e * d}, y ${e * d} mod ${phi} = 1.` };
+  }
+}
+function genRsaEnc() {
+  const p = pick(SMALLP); let q; do q = pick(SMALLP); while (q === p);
+  const n = BigInt(p * q), m = BigInt(rnd(2, Math.min(20, p * q - 1))), e = 3n;
+  const c = modpow(m, e, n);
+  return { tag: 'RSA', q: `Cifra m = ${m} con la llave pública (e = 3, n = ${n}).`, pre: '<p class="small muted">c = m³ mod n</p>', input: 'number', check: v => BigInt(String(v).trim() || '-1') === c, ans: String(c), x: `${m}³ = ${m ** 3n}, y ${m ** 3n} mod ${n} = ${c}.` };
+}
+const Q = { list: [], i: 0, score: 0, streak: 0, done: false };
+function startQuiz() {
+  const gens = shuffle([genCaesarDecode, genCaesarKey, genRsaPhi, genRsaD, genRsaEnc]).slice(0, 4).map(g => g());
+  const mcs = shuffle(BANK).slice(0, 6).map(b => { const order = shuffle(b.o.map((t, i) => i)); return Object.assign({}, b, { o: order.map(i => b.o[i]), a: order.indexOf(b.a) }); });
+  Q.list = shuffle(gens.concat(mcs)); Q.i = 0; Q.score = 0; Q.streak = 0;
+  $('qStart').classList.add('hidden'); $('qEnd').classList.add('hidden'); $('qPlay').classList.remove('hidden');
+  renderQ();
+}
+function renderQ() {
+  const it = Q.list[Q.i]; Q.done = false;
+  $('qN').textContent = Q.i + 1; $('qScore').textContent = Q.score; $('qStreak').textContent = Q.streak;
+  $('qTag').textContent = it.tag; $('qQ').textContent = it.q; $('qFb').innerHTML = ''; $('qNext').classList.add('hidden');
+  let h = it.pre || '';
+  if (it.input) h += `<div id="qForm" class="actions" style="margin-top:10px"><input id="qIn" type="${it.input === 'number' ? 'text' : 'text'}" ${it.input === 'number' ? 'inputmode="numeric"' : ''} autocomplete="off" spellcheck="false" style="flex:1;min-width:180px" placeholder="Tu respuesta"><button class="btn primary" type="button" id="qSend">Responder</button></div>`;
+  else h += `<div class="opts">${it.o.map((t, i) => `<button type="button" class="opt" data-i="${i}">${esc(t)}</button>`).join('')}</div>`;
+  $('qBody').innerHTML = h;
+  if (it.input) { const go = () => { const v = $('qIn').value; if (!v.trim()) return; answer(it.check(v)); $('qIn').disabled = true; }; $('qSend').onclick = go; $('qIn').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); go(); } }; $('qIn').focus({ preventScroll: true }); }
+  else $('qBody').querySelectorAll('.opt').forEach(b => b.onclick = () => {
+    const ok = +b.dataset.i === it.a;
+    $('qBody').querySelectorAll('.opt').forEach((x, i) => { x.disabled = true; if (i === it.a) x.classList.add('ok'); });
+    if (!ok) b.classList.add('bad');
+    answer(ok);
+  });
+  anim($('qCard'), 'pop');
+}
+function answer(ok) {
+  if (Q.done) return; Q.done = true;
+  const it = Q.list[Q.i];
+  if (ok) { Q.streak++; Q.score += 10 + (Q.streak >= 3 ? 5 : 0); } else Q.streak = 0;
+  $('qScore').textContent = Q.score; $('qStreak').textContent = Q.streak;
+  $('qFb').innerHTML = `<div class="feedback ${ok ? 'ok' : 'bad'}">${ok ? '✓ ¡Correcto!' + (Q.streak >= 3 ? ' +5 por racha' : '') : '✗ No era esa.' + (it.input ? ` La respuesta: <code>${esc(it.ans)}</code>` : '')}</div><div class="hint">${esc(it.x)}</div>`;
+  if (!ok) anim($('qCard'), 'shake');
+  $('qForm') && $('qForm').querySelector('button').setAttribute('disabled', '');
+  $('qNext').textContent = Q.i === Q.list.length - 1 ? 'Ver resultado' : 'Siguiente';
+  $('qNext').classList.remove('hidden'); $('qNext').focus({ preventScroll: true });
+}
+$('qNext').onclick = () => { if (Q.i < Q.list.length - 1) { Q.i++; renderQ(); } else endQuiz(); };
+function endQuiz() {
+  $('qPlay').classList.add('hidden'); $('qEnd').classList.remove('hidden');
+  const newBest = Q.score > save.best; if (newBest) { save.best = Q.score; persist(); }
+  $('qFinal').textContent = Q.score + ' pts';
+  const pct = Q.score / 100;
+  $('qMsg').innerHTML = (pct >= .9 ? '¡Excelente! Dominas lo básico de criptografía.' : pct >= .6 ? 'Bien. Repasa las pestañas donde fallaste y vuelve a intentarlo.' : 'Vas partiendo. Recorre las pestañas César, AES y RSA paso a paso y prueba de nuevo.') + (newBest ? '<br><b class="acc">Nuevo récord personal</b>' : `<br><span class="muted">Tu récord: ${save.best} pts</span>`);
+  renderBest();
+}
+function renderBest() { $('qBest').textContent = save.best ? `Tu récord: ${save.best} pts` : ''; }
+$('qGo').onclick = startQuiz; $('qAgain').onclick = startQuiz;
+
+/* ---------- inicio ---------- */
+renderCaesar(); renderBreak(); runAES(); renderRSA(false); renderBest();
+showTab(['cesar', 'aes', 'rsa', 'retos'].includes(save.tab) ? save.tab : 'cesar');
+})();
+</script>
+</body>
+</html>

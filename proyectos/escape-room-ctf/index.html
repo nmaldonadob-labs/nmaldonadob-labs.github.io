@@ -1,0 +1,894 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Escape Room CTF</title>
+<meta name="description" content="Escape room de CTF para principiantes: retos encadenados de código fuente, Base64, César, hex, binario, esteganografía y Vigenère, con pistas.">
+<style>
+:root{
+  --bg:#f4f6fb; --panel:#ffffff; --panel2:#eef1f8; --text:#141a2a; --muted:#5b6478;
+  --line:#d7dce8; --accent:#0a7cff; --accent-ink:#ffffff; --ok:#11885a; --ok-bg:#e3f6ed;
+  --bad:#c8323c; --bad-bg:#fbe6e7; --warn:#b26a00; --net:#0a7cff; --host:#d9480f;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --shadow:0 1px 2px rgba(20,26,42,.06),0 6px 20px rgba(20,26,42,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0b0f17; --panel:#131a26; --panel2:#1a2333; --text:#e6ebf5; --muted:#93a0b8;
+    --line:#26324a; --accent:#3ddc97; --accent-ink:#06120c; --ok:#3ddc97; --ok-bg:#0f2a20;
+    --bad:#ff6b74; --bad-bg:#2c1418; --warn:#ffb547; --net:#5fb0ff; --host:#ff8a5c;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0b0f17; --panel:#131a26; --panel2:#1a2333; --text:#e6ebf5; --muted:#93a0b8;
+  --line:#26324a; --accent:#3ddc97; --accent-ink:#06120c; --ok:#3ddc97; --ok-bg:#0f2a20;
+  --bad:#ff6b74; --bad-bg:#2c1418; --warn:#ffb547; --net:#5fb0ff; --host:#ff8a5c;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+.wrap{max-width:920px;margin:0 auto;padding:20px 16px 48px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:20px;letter-spacing:-.01em}
+.brand .logo{font-family:var(--mono);background:var(--accent);color:var(--accent-ink);border-radius:8px;padding:2px 8px;font-size:15px}
+.iconbtn{background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:6px 10px;cursor:pointer;font:inherit;font-size:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:var(--shadow);margin-bottom:16px}
+h1{font-size:26px;margin:0 0 6px;letter-spacing:-.02em}
+h2{font-size:18px;margin:0 0 12px}
+h3{font-size:15px;margin:0 0 8px}
+p{margin:0 0 10px}
+.muted{color:var(--muted)}
+.small{font-size:14px}
+.levels{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-top:16px}
+.level{text-align:left;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px;cursor:pointer;color:var(--text);font:inherit;transition:transform .1s,border-color .1s}
+.level:hover:not(:disabled){border-color:var(--accent);transform:translateY(-1px)}
+.level .num{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.level .name{font-weight:700;margin:2px 0 4px}
+.level .desc{font-size:14px;color:var(--muted)}
+.level .best{font-size:13px;margin-top:8px;font-family:var(--mono)}
+.hud{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.pill{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:14px;font-family:var(--mono)}
+.pill b{font-weight:700}
+.tag{display:inline-block;font-size:12px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--accent);margin-bottom:4px}
+.actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.btn{font:inherit;font-weight:600;border-radius:10px;padding:10px 18px;cursor:pointer;border:1px solid var(--line);background:var(--panel2);color:var(--text)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.sm{padding:6px 12px;font-size:14px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.feedback{margin-top:14px;padding:12px 14px;border-radius:10px;font-weight:600}
+.feedback.ok{background:var(--ok-bg);color:var(--ok)}
+.feedback.bad{background:var(--bad-bg);color:var(--bad)}
+.feedback.info{background:var(--panel2);color:var(--text)}
+.hint{margin-top:10px;padding:10px 14px;border-left:3px solid var(--warn);background:var(--panel2);border-radius:6px;font-size:15px}
+.hint b{color:var(--warn)}
+code,pre{font-family:var(--mono)}
+code{background:var(--panel2);padding:1px 5px;border-radius:5px;font-size:.92em;word-break:break-word}
+.big{font-size:44px;font-weight:800;font-family:var(--mono);letter-spacing:-.02em;margin:8px 0}
+details{margin-top:10px}
+summary{cursor:pointer;font-weight:600}
+.hidden{display:none!important}
+.pop{animation:pop .35s ease}
+@keyframes pop{0%{transform:scale(.97);opacity:.6}100%{transform:scale(1);opacity:1}}
+.shake{animation:shake .35s ease}
+@keyframes shake{25%{transform:translateX(-5px)}50%{transform:translateX(5px)}75%{transform:translateX(-3px)}}
+footer{text-align:center;font-size:13px;color:var(--muted);margin-top:24px}
+input[type=text],textarea,select{font:inherit;color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 12px;width:100%}
+textarea{font-family:var(--mono);font-size:14px;min-height:84px;resize:vertical}
+input[type=text]:focus,textarea:focus,select:focus{outline:2px solid var(--accent);outline-offset:1px}
+.flagform{display:flex;gap:10px;margin-top:16px}
+.flagform input{font-family:var(--mono)}
+.flagform .btn{white-space:nowrap}
+label.lab{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:4px}
+
+/* mapa de puertas */
+.doors{display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-bottom:14px}
+.door{font:inherit;font-family:var(--mono);font-size:13px;font-weight:700;border:1px solid var(--line);background:var(--panel);color:var(--muted);border-radius:8px;padding:8px 0;cursor:pointer;text-align:center}
+.door.done{background:var(--ok-bg);color:var(--ok);border-color:transparent}
+.door.cur{border-color:var(--accent);color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset}
+.door:disabled{cursor:not-allowed;opacity:.55}
+
+/* escenarios */
+.scene{margin-top:14px}
+.browser{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff;color:#1c2333}
+.browser .bar{display:flex;align-items:center;gap:10px;background:#e8ebf2;padding:8px 12px;font-size:13px}
+.browser .dots{color:#c3c9d6;letter-spacing:2px}
+.browser .url{flex:1;background:#fff;border-radius:6px;padding:3px 10px;font-family:var(--mono);color:#5b6478;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.browser .page{padding:22px;display:grid;place-items:center;text-align:center}
+.browser .login{width:min(300px,100%);display:grid;gap:8px}
+.browser .login .t{font-weight:800;font-size:18px;color:#0d3b66}
+.browser .login input{background:#f4f6fb;border:1px solid #d7dce8;color:#1c2333;border-radius:8px;padding:8px 10px;font:inherit}
+.browser .login button{background:#0d3b66;color:#fff;border:0;border-radius:8px;padding:9px;font:inherit;font-weight:600}
+.browser .login a{font-size:13px;color:#0a7cff;cursor:pointer}
+.src{margin:0;padding:14px;background:#0f1522;color:#c9d4e8;font-size:13px;line-height:1.55;overflow-x:auto;white-space:pre}
+.src .c{color:#7d8aa3;font-style:italic}
+.src .k{color:#ff8a5c}
+.src .a{color:#5fb0ff}
+.postit-wrap{display:grid;place-items:center;padding:14px 0}
+.monitor{background:#1b2130;border-radius:14px;padding:16px 16px 36px;width:min(460px,100%);position:relative}
+.monitor .screen{background:#0b2a4a;border-radius:6px;height:150px;display:grid;place-items:center;color:#5fb0ff;font-family:var(--mono);font-size:13px}
+.postit{position:absolute;right:-6px;bottom:-14px;width:min(250px,70%);background:#ffe66d;color:#2b2a1f;padding:12px 12px 14px;transform:rotate(3deg);box-shadow:0 6px 14px rgba(0,0,0,.25);font-size:14px}
+.postit .code{font-family:var(--mono);font-size:13px;word-break:break-all;margin-top:4px;font-weight:700}
+.note{background:#fffdf5;color:#2b2a1f;border:1px solid #e9e1c6;border-radius:4px;padding:18px 20px;box-shadow:0 4px 12px rgba(0,0,0,.08);background-image:repeating-linear-gradient(transparent 0 27px,#e9eef7 27px 28px);line-height:28px}
+.note .h{font-weight:700}
+.note .ct{font-family:var(--mono);font-size:15px;word-break:break-word}
+.note .ps{font-style:italic;color:#6b6450}
+.term{background:#0f1522;color:#c9d4e8;border-radius:12px;padding:14px;font-family:var(--mono);font-size:13px;overflow-x:auto;white-space:pre;line-height:1.6}
+.term .p{color:#3ddc97}
+.term .r{color:#ff6b74}
+.term .m{color:#7d8aa3}
+.rack{background:#1b2130;border-radius:12px;padding:12px;color:#93a0b8;font-family:var(--mono);font-size:12px;overflow-x:auto}
+.leds{display:grid;grid-template-columns:34px repeat(8,minmax(22px,1fr));gap:5px;align-items:center;min-width:300px}
+.leds .w{text-align:center;color:#93a0b8}
+.leds .n{color:#5b6478;text-align:right;padding-right:4px}
+.led{width:16px;height:16px;border-radius:50%;margin:auto;background:#2a3346;border:1px solid #39445c}
+.led.on{background:#3ddc97;border-color:#3ddc97;box-shadow:0 0 8px #3ddc97}
+.imgbox{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#000}
+.imgbox canvas{display:block;width:100%;height:auto;image-rendering:pixelated}
+.tools{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-top:12px;font-size:14px}
+.tools label{display:flex;align-items:center;gap:6px}
+.tools select{width:auto;padding:6px 10px}
+.tools input[type=range]{width:180px;accent-color:var(--accent)}
+.poemgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.poem{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px 16px;font-style:italic;line-height:1.7}
+.poem .t{font-style:normal;font-weight:700;margin-bottom:4px}
+.safe{background:#1b2130;color:#c9d4e8;border-radius:12px;padding:14px 16px;font-family:var(--mono);font-size:14px;line-height:1.7}
+.safe .t{color:#ffb547;font-weight:700}
+.outbox{margin-top:10px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-family:var(--mono);font-size:13px;white-space:pre-wrap;word-break:break-all;min-height:42px;max-height:320px;overflow:auto}
+
+/* aprendiste */
+.learn{margin-top:16px;border:1px solid var(--ok);border-radius:12px;padding:14px 16px;background:var(--ok-bg)}
+.learn h3{color:var(--ok)}
+.learn p{margin-bottom:8px}
+.learn .real{font-size:14px;color:var(--text)}
+
+/* navaja suiza */
+.tk-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tk-row{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin:10px 0}
+.tk-row > div{flex:1 1 200px}
+.detect{font-size:14px;margin-top:6px;color:var(--muted)}
+.rtable{width:100%;border-collapse:collapse;font-size:14px;margin-top:10px}
+.rtable td,.rtable th{padding:7px 8px;border-top:1px solid var(--line);text-align:left}
+.rtable th{font-size:12px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);border-top:0}
+.rtable td.n{font-family:var(--mono);text-align:right}
+
+@media (max-width:640px){
+  .doors{grid-template-columns:repeat(9,minmax(0,1fr));gap:4px}
+  .door{font-size:12px;padding:7px 0}
+  .poemgrid,.tk-grid{grid-template-columns:1fr}
+  .flagform{flex-direction:column}
+  .big{font-size:34px}
+  h1{font-size:22px}
+}
+@media (prefers-reduced-motion: reduce){
+  .pop,.shake{animation:none}
+  .level{transition:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a href="../../index.html" style="display:inline-block;margin:0 0 10px;font-size:14px;color:var(--muted);text-decoration:none">&larr; Volver al portafolio</a>
+  <header>
+    <div class="brand"><span class="logo">CTF</span> Escape Room</div>
+    <div style="display:flex;gap:8px">
+      <button class="iconbtn hidden" id="btnMenu" type="button">Menú</button>
+      <button class="iconbtn" id="btnTheme" type="button" aria-label="Cambiar tema">Tema</button>
+    </div>
+  </header>
+
+  <!-- MENÚ -->
+  <section id="scrMenu">
+    <div class="card">
+      <span class="tag">Escape room · 9 salas</span>
+      <h1>Encerrado en el laboratorio de redes</h1>
+      <p class="muted">Son las 19:00 y te quedaste adentro del laboratorio del Instituto Cóndor (un lugar inventado). El sistema de seguridad bloqueó las 9 puertas que te separan de la salida. Por suerte, el administrador es bastante descuidado y dejó pistas por todas partes: código fuente, post-its, notas cifradas, imágenes con secretos.</p>
+      <p class="muted">Cada puerta se abre con una <b>flag</b> de la forma <code>CTF{...}</code>. Para encontrarlas tienes una <b>navaja suiza</b> con herramientas de decodificación, y si te trabas puedes pedir pistas (cuestan puntos).</p>
+      <div class="levels">
+        <button class="level" type="button" id="goPlay">
+          <div class="num" id="playNum">MODO HISTORIA</div>
+          <div class="name" id="playName">Empezar a escapar</div>
+          <div class="desc">Nueve retos encadenados: código fuente, Base64, César, hex, binario, esteganografía y Vigenère.</div>
+          <div class="best" id="bestLine"></div>
+        </button>
+        <button class="level" type="button" id="goTools">
+          <div class="num">SIN PUNTAJE</div>
+          <div class="name">Navaja suiza libre</div>
+          <div class="desc">Decodifica Base64, hex, binario, César y Vigenère con tus propios textos. Útil para otros CTF.</div>
+        </button>
+      </div>
+      <details>
+        <summary>¿Qué es un CTF?</summary>
+        <p class="small" style="margin-top:8px">CTF significa <i>Capture The Flag</i>. Son competencias de ciberseguridad donde resuelves retos para encontrar un texto secreto, la flag, y lo entregas para ganar puntos. Hay categorías como criptografía, web, forense, esteganografía y reversing. Son la forma más entretenida de practicar: plataformas como picoCTF, TryHackMe u OverTheWire parten justo con retos como los de esta sala.</p>
+        <p class="small">Aquí las flags no distinguen mayúsculas, y puedes escribirlas con o sin el <code>CTF{ }</code>.</p>
+      </details>
+      <div class="actions" style="margin-top:14px">
+        <button class="btn sm hidden" id="btnReset" type="button">Borrar progreso</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- SALA -->
+  <section id="scrRoom" class="hidden">
+    <div class="hud">
+      <span class="pill">Sala <b id="hudRoom">1</b>/9</span>
+      <span class="pill">Puntos <b id="hudScore">0</b></span>
+      <span class="pill">Tiempo <b id="hudTime">00:00</b></span>
+      <span class="pill">Pistas <b id="hudHints">0</b></span>
+    </div>
+    <div class="doors" id="doors" aria-label="Mapa de salas"></div>
+
+    <div class="card" id="roomCard">
+      <span class="tag" id="roomTag"></span>
+      <h1 id="roomTitle"></h1>
+      <p class="muted" id="roomStory"></p>
+      <div class="hint hidden" id="howto" style="border-left-color:var(--accent)"><b style="color:var(--accent)">Cómo se juega:</b> busca la flag en el escenario de abajo (tiene la forma <code>CTF{...}</code>), escríbela en la caja y toca «Abrir puerta». Si algo está codificado, más abajo tienes la navaja suiza para decodificarlo. ¿Te trabaste? Pide pistas, y si aun así no sale, después de la tercera pista puedes ver la solución.</div>
+      <div class="scene" id="scene"></div>
+
+      <div class="flagform" id="flagForm">
+        <input type="text" id="flagInput" placeholder="CTF{...}" aria-label="Flag" spellcheck="false">
+        <button class="btn primary" type="button" id="btnOpen">Abrir puerta</button>
+      </div>
+      <div id="feedback" class="feedback hidden" role="status"></div>
+
+      <div id="hintBox" style="margin-top:14px">
+        <div class="actions">
+          <button class="btn sm" id="btnHint" type="button">Pedir pista</button>
+          <span class="small muted" id="hintCost"></span>
+        </div>
+        <div id="hints"></div>
+        <div class="actions hidden" id="solBox" style="margin-top:10px"><button class="btn sm" id="btnSol" type="button">Ver solución (la sala da 0 puntos)</button></div>
+        <div class="hint hidden" id="solText" style="border-left-color:var(--bad)"></div>
+      </div>
+
+      <div id="learn" class="learn hidden"></div>
+      <div class="actions hidden" id="nextBox" style="margin-top:14px">
+        <button class="btn primary" id="btnNext" type="button">Siguiente sala</button>
+      </div>
+    </div>
+
+    <div class="card" id="toolkitHost"></div>
+  </section>
+
+  <!-- NAVAJA LIBRE -->
+  <section id="scrTools" class="hidden">
+    <div class="card" id="toolkitFree"></div>
+  </section>
+
+  <!-- FINAL -->
+  <section id="scrEnd" class="hidden">
+    <div class="card pop">
+      <span class="tag">Saliste del laboratorio</span>
+      <h1>¡Escapaste!</h1>
+      <p class="muted">Abriste las 9 puertas. El guardia de noche ni se enteró.</p>
+      <div class="big"><span id="endScore">0</span><span class="muted" style="font-size:22px"> / 900</span></div>
+      <p><b id="endRank"></b> · <span class="muted" id="endMeta"></span></p>
+      <table class="rtable">
+        <thead><tr><th>Sala</th><th>Técnica</th><th style="text-align:right">Pistas</th><th style="text-align:right">Puntos</th></tr></thead>
+        <tbody id="endTable"></tbody>
+      </table>
+      <div class="actions" style="margin-top:16px">
+        <button class="btn primary" id="btnAgain" type="button">Jugar de nuevo</button>
+        <button class="btn" id="btnEndTools" type="button">Navaja suiza libre</button>
+      </div>
+      <details>
+        <summary>¿Y ahora qué?</summary>
+        <p class="small" style="margin-top:8px">Si te gustó, sigue con picoCTF (gratuito y pensado para estudiantes), la sección <i>Bandit</i> de OverTheWire para practicar Linux, o las salas introductorias de TryHackMe. Las herramientas que viste aquí tienen versión real: CyberChef, xxd, zsteg, Stegsolve y dcode.fr.</p>
+      </details>
+    </div>
+  </section>
+
+  <footer>Hecho para estudiar redes y ciberseguridad · el Instituto Cóndor es inventado · todo corre en tu navegador</footer>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const b64dec = s => new TextDecoder().decode(Uint8Array.from(atob(s), c => c.charCodeAt(0)));
+
+/* ---------- progreso guardado ---------- */
+const KEY = 'escape-room-ctf-v1';
+const fresh = () => ({ solved: {}, hints: {}, shown: {}, start: null, end: null, best: null });
+let save = fresh();
+try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.solved) save = Object.assign(fresh(), s, { shown: s.shown || {} }); } catch (e) {}
+const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) {} };
+
+/* ---------- tema ---------- */
+const root = document.documentElement;
+try { const t = localStorage.getItem(KEY + '-theme'); if (t) root.dataset.theme = t; } catch (e) {}
+$('btnTheme').onclick = () => {
+  const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  root.dataset.theme = dark ? 'light' : 'dark';
+  try { localStorage.setItem(KEY + '-theme', root.dataset.theme); } catch (e) {}
+};
+
+/* ---------- utilidades de codificación ---------- */
+const enc = new TextEncoder();
+function fromB64(s) {
+  const clean = s.replace(/\s+/g, '');
+  const bytes = Uint8Array.from(atob(clean), c => c.charCodeAt(0));
+  return new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+}
+const toB64 = s => btoa(String.fromCharCode(...enc.encode(s)));
+function fromHex(s) {
+  const h = s.replace(/0x/gi, '').replace(/[^0-9a-f]/gi, '');
+  if (h.length % 2) throw new Error('La cantidad de dígitos hex es impar: cada byte son 2 dígitos.');
+  const bytes = new Uint8Array(h.length / 2);
+  for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(h.substr(i * 2, 2), 16);
+  return new TextDecoder().decode(bytes);
+}
+const toHex = s => [...enc.encode(s)].map(b => b.toString(16).padStart(2, '0')).join(' ');
+function fromBin(s) {
+  const b = s.replace(/[^01]/g, '');
+  if (!b.length || b.length % 8) throw new Error('Necesito grupos completos de 8 bits (tengo ' + b.length + ').');
+  const bytes = new Uint8Array(b.length / 8);
+  for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(b.substr(i * 8, 8), 2);
+  return new TextDecoder().decode(bytes);
+}
+const toBin = s => [...enc.encode(s)].map(b => b.toString(2).padStart(8, '0')).join(' ');
+const shift = (t, k) => t.replace(/[a-z]/gi, c => { const b = c <= 'Z' ? 65 : 97; return String.fromCharCode(((c.charCodeAt(0) - b + k) % 26 + 26) % 26 + b); });
+function vigenere(t, key, dir) {
+  const k = key.toUpperCase().replace(/[^A-Z]/g, '');
+  if (!k) throw new Error('Escribe una llave con letras.');
+  let i = 0;
+  return t.replace(/[a-z]/gi, c => {
+    const b = c <= 'Z' ? 65 : 97, s = k.charCodeAt(i++ % k.length) - 65;
+    return String.fromCharCode(((c.charCodeAt(0) - b + dir * s) % 26 + 26) % 26 + b);
+  });
+}
+const firstLetters = t => t.split(/\n/).map(l => l.trim()).filter(Boolean).map(l => l[0]).join('');
+
+function detect(s) {
+  const t = s.trim();
+  if (!t) return '';
+  const nows = t.replace(/\s+/g, '');
+  if (/^[01\s]+$/.test(t) && nows.length % 8 === 0) return 'Solo hay 0 y 1 en grupos de 8: parece <b>binario</b>.';
+  if (/^(0x)?[0-9a-f\s]+$/i.test(t) && nows.length % 2 === 0 && /[0-9]/.test(t)) return 'Solo usa 0-9 y a-f, en pares: parece <b>hexadecimal</b>.';
+  if (/^[A-Za-z0-9+/]+={0,2}$/.test(nows) && nows.length % 4 === 0 && nows.length >= 8) return 'Letras, números, + y /, largo múltiplo de 4' + (/=$/.test(nows) ? ' y relleno = al final' : '') + ': parece <b>Base64</b>.';
+  if (/[A-Za-z]{3}\{[^}]*\}/.test(t)) return 'Tiene la forma XXX{...} pero las letras no son CTF: parece texto con letras <b>desplazadas</b> (César, ROT13 o Vigenère).';
+  return 'Parece texto común. Si no tiene sentido, prueba César o Vigenère.';
+}
+
+/* ---------- verificación de flags ---------- */
+// Las respuestas se guardan como hash FNV-1a, así no aparecen en texto plano en el código.
+const fnv = s => { let h = 0x811c9dc5; for (const c of s) { h ^= c.codePointAt(0); h = Math.imul(h, 0x01000193) >>> 0; } return h.toString(16); };
+function normalize(s) {
+  let t = s.trim().toLowerCase().replace(/\s+/g, '');
+  const m = /^ctf\{(.*)\}$/.exec(t);
+  return m ? m[1] : t;
+}
+
+/* ---------- salas ---------- */
+const HINT_COST = [10, 20, 30];
+
+const ROOMS = [
+  {
+    short: 'Código fuente', title: 'La intranet',
+    story: 'El computador del mesón tiene abierta la intranet del instituto en la pantalla de login. No tienes usuario, pero las páginas web suelen mostrar más de lo que parece. Debajo de la ventana tienes un botón para ver el código fuente, igual que en un navegador real.',
+    hash: 'e50b2728',
+    render(el) {
+      el.innerHTML = `
+        <div class="browser">
+          <div class="bar"><span class="dots">●●●</span><span class="url">http://intranet.condor.local/login</span></div>
+          <div class="page" id="r1page">
+            <div class="login">
+              <div class="t">Intranet Cóndor</div>
+              <input type="text" placeholder="Usuario" disabled>
+              <input type="text" placeholder="Contraseña" disabled>
+              <button type="button" disabled>Ingresar</button>
+              <a id="r1forgot">¿Olvidaste tu contraseña?</a>
+              <div id="r1msg" class="small" style="color:#c8323c"></div>
+            </div>
+          </div>
+          <pre class="src hidden" id="r1src"></pre>
+        </div>
+        <div class="actions" style="margin-top:10px"><button class="btn sm" type="button" id="r1view">Ver código fuente (Ctrl+U)</button></div>`;
+      // Este comentario existe de verdad en la página: también lo puedes encontrar con F12.
+      $('r1page').prepend(document.createComment(' TODO: borrar antes de pasar a producción. Clave temporal del admin: CTF{mira_el_codigo} '));
+      $('r1forgot').onclick = () => { $('r1msg').textContent = 'Contacta al administrador (está de vacaciones).'; };
+      const src = [
+        ['<span class="k">&lt;!doctype html&gt;</span>'],
+        ['<span class="k">&lt;html</span> <span class="a">lang</span>="es"<span class="k">&gt;</span>'],
+        ['<span class="k">&lt;head&gt;</span>'],
+        ['  <span class="k">&lt;title&gt;</span>Intranet Cóndor<span class="k">&lt;/title&gt;</span>'],
+        ['  <span class="k">&lt;link</span> <span class="a">rel</span>="stylesheet" <span class="a">href</span>="/css/login.css"<span class="k">&gt;</span>'],
+        ['<span class="k">&lt;/head&gt;</span>'],
+        ['<span class="k">&lt;body&gt;</span>'],
+        ['  <span class="c">&lt;!-- TODO: borrar antes de pasar a producción. Clave temporal del admin: CTF{mira_el_codigo} --&gt;</span>'],
+        ['  <span class="k">&lt;form</span> <span class="a">action</span>="/auth" <span class="a">method</span>="post"<span class="k">&gt;</span>'],
+        ['    <span class="k">&lt;input</span> <span class="a">name</span>="user" <span class="a">placeholder</span>="Usuario"<span class="k">&gt;</span>'],
+        ['    <span class="k">&lt;input</span> <span class="a">name</span>="pass" <span class="a">type</span>="password"<span class="k">&gt;</span>'],
+        ['    <span class="k">&lt;button&gt;</span>Ingresar<span class="k">&lt;/button&gt;</span>'],
+        ['  <span class="k">&lt;/form&gt;</span>'],
+        ['<span class="k">&lt;/body&gt;</span>'],
+        ['<span class="k">&lt;/html&gt;</span>']
+      ].map(r => r[0]).join('\n');
+      $('r1view').onclick = () => {
+        const s = $('r1src'), show = s.classList.contains('hidden');
+        s.innerHTML = src; s.classList.toggle('hidden', !show);
+        $('r1page').classList.toggle('hidden', show);
+        $('r1view').textContent = show ? 'Ver la página' : 'Ver código fuente (Ctrl+U)';
+      };
+    },
+    sol: ['Toca el botón «Ver código fuente (Ctrl+U)» que está debajo de la ventana del navegador. En la línea gris que empieza con <code>&lt;!--</code> está la flag: ', 'Q1RGe21pcmFfZWxfY29kaWdvfQ=='],
+    hints: [
+      'Lo que ves en pantalla es solo una parte. Toca el botón «Ver código fuente» que está justo debajo de la ventana del navegador.',
+      'Los desarrolladores a veces dejan comentarios en el HTML. Se escriben así: <code>&lt;!-- ... --&gt;</code> y el navegador no los muestra.',
+      'Toca «Ver código fuente» y busca el comentario. La flag tiene la forma <code>CTF{...}</code>.'
+    ],
+    learn: `<p>El código fuente de una página lo puede leer cualquiera. Los comentarios HTML no se dibujan, pero viajan completos hasta tu navegador. Nunca dejes credenciales, rutas internas ni notas sensibles en el HTML, JavaScript o CSS que envías al cliente.</p>
+      <p class="real"><b>En la vida real:</b> <code>Ctrl+U</code>, las DevTools con <code>F12</code>, o <code>curl -s URL | grep "&lt;!--"</code>. Ese comentario existe de verdad en esta página: ábrela con F12 y búscalo.</p>`
+  },
+  {
+    short: 'Base64', title: 'El post-it',
+    story: 'La primera puerta da a la sala de servidores. Hay un monitor con un post-it pegado. Alguien pensó que escribir la clave «en código» era suficiente.',
+    hash: '3d6ea2a0',
+    render(el) {
+      el.innerHTML = `
+        <div class="postit-wrap"><div class="monitor">
+          <div class="screen">srv-lab-01 · bloqueado</div>
+          <div class="postit">clave del lab (¡no la cambien!)<div class="code">Q1RGe2Jhc2U2NF9ub19lc19jaWZyYWRvfQ==</div></div>
+        </div></div>`;
+    },
+    sol: ['Copia el texto del post-it en la navaja suiza, elige «Base64 → texto» y toca Aplicar. Sale: ', 'Q1RGe2Jhc2U2NF9ub19lc19jaWZyYWRvfQ=='],
+    hints: [
+      'Ese texto no es aleatorio: usa solo letras, números, + y / y termina en <code>==</code>.',
+      'El <code>==</code> al final es el relleno típico de Base64.',
+      'Copia el texto a la navaja suiza (abajo) y usa «Base64 → texto».'
+    ],
+    learn: `<p>Base64 representa bytes con 64 caracteres imprimibles. Sirve para mandar datos binarios por canales de texto, como correos, JSON o cabeceras HTTP. <b>No es cifrado</b>: no tiene llave y cualquiera lo revierte. Ver credenciales en Base64, como en HTTP Basic Auth, es lo mismo que verlas en texto plano.</p>
+      <p class="real"><b>En la vida real:</b> <code>echo "Q1RG..." | base64 -d</code>, o la receta «From Base64» de CyberChef.</p>`
+  },
+  {
+    short: 'César', title: 'La nota del profe',
+    story: 'Detrás de la sala de servidores está la oficina del profe Ramírez. En su escritorio hay una nota escrita a mano. Al pie dice: «al estilo de la antigua Roma».',
+    hash: 'aeafe557',
+    render(el) {
+      el.innerHTML = `
+        <div class="note">
+          <div class="h">Para el ayudante:</div>
+          <div class="ct">Zp sllz lzav, fh zhilz jvtv zl yvtwl. Sh sshcl kl lzah zhsh lz JAM{mblygh_iybah_nhuh}</div>
+          <div class="ps">— R. (al estilo de la antigua Roma)</div>
+        </div>`;
+    },
+    sol: ['Copia la nota en la navaja, elige «César: descifrar con N» y escribe 7. La última frase dice: ', 'Q1RGe2Z1ZXJ6YV9icnV0YV9nYW5hfQ=='],
+    hints: [
+      'La antigua Roma apunta al cifrado de César: cada letra se corre un número fijo de posiciones en el alfabeto.',
+      'Solo hay 25 desplazamientos posibles. Pega la nota en la navaja suiza y usa «César: probar los 25».',
+      'Sabes que las flags empiezan con CTF, y en la nota aparece JAM{. De C a J hay 7 posiciones: descifra con desplazamiento 7.'
+    ],
+    learn: `<p>El cifrado de César solo tiene 25 llaves posibles, así que se rompe por <b>fuerza bruta</b> en un instante. También cae por <b>texto conocido</b>: saber que el mensaje contiene «CTF» te regala la llave. Los cifrados modernos como AES tienen 2<sup>128</sup> llaves o más, y por eso probarlas todas no es una opción.</p>
+      <p class="real"><b>En la vida real:</b> <code>echo "..." | tr 'H-ZA-Gh-za-g' 'A-Za-z'</code> deshace un desplazamiento de 7, y dcode.fr prueba todos por ti.</p>`
+  },
+  {
+    short: 'Hexadecimal', title: 'El router',
+    story: 'La oficina tiene un router viejo conectado por cable de consola. Alguien dejó abierto un volcado de memoria, pero la columna de texto quedó corrupta. Solo se salvaron los bytes.',
+    hash: '2500f4a3',
+    render(el) {
+      el.innerHTML = `
+        <div class="term"><span class="p">router-lab#</span> show memory dump 0x0
+<span class="m">00000000:</span> 4354 467b 6865 785f 6573 5f61 7363 6969  <span class="r">▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒</span>
+<span class="m">00000010:</span> 7d                                       <span class="r">▒</span>
+<span class="r">%ERROR: columna ASCII corrupta</span></div>
+        <div class="actions" style="margin-top:10px"><button class="btn sm" type="button" id="r4copy">Copiar solo los bytes a la navaja</button></div>`;
+      $('r4copy').onclick = () => toolkitLoad('4354467b6865785f65735f61736369697d', 'hexd');
+    },
+    sol: ['Toca «Copiar solo los bytes a la navaja», elige «Hex → texto» y Aplicar: ', 'Q1RGe2hleF9lc19hc2NpaX0='],
+    hints: [
+      'Es un volcado hexadecimal: cada par de caracteres, como <code>43</code>, es un byte. Lo de la izquierda (<code>00000000:</code>) es solo la posición.',
+      'En ASCII, <code>43</code> es la C, <code>54</code> la T y <code>46</code> la F. ¿Te suena?',
+      'Toca «Copiar solo los bytes a la navaja» y usa «Hex → texto».'
+    ],
+    learn: `<p>Hexadecimal es base 16: dos dígitos representan un byte, de 00 a ff (0 a 255). Herramientas como <code>xxd</code> o <code>hexdump</code> muestran a la izquierda la posición, al centro los bytes y a la derecha su versión en texto. Leer hex es clave para analizar capturas de red, archivos dañados y malware.</p>
+      <p class="real"><b>En la vida real:</b> <code>xxd archivo</code> para ver bytes, <code>echo 4354467b... | xxd -r -p</code> para volver a texto, y el panel de bytes de Wireshark.</p>`
+  },
+  {
+    short: 'Binario', title: 'El rack de switches',
+    story: 'La siguiente puerta tiene un rack con un switch averiado. Sus LED de puerto quedaron congelados en un patrón raro. Cada fila parece significar algo.',
+    hash: 'f27df408',
+    render(el) {
+      const msg = b64dec('Q1RGe2JpbjRyaW99');
+      const weights = [128, 64, 32, 16, 8, 4, 2, 1];
+      let h = '<div class="rack"><div class="leds"><span></span>' + weights.map(w => `<span class="w">${w}</span>`).join('');
+      [...msg].forEach((ch, i) => {
+        const bits = ch.charCodeAt(0).toString(2).padStart(8, '0');
+        h += `<span class="n">Gi${i + 1}</span>` + [...bits].map(b => `<span class="led${b === '1' ? ' on' : ''}"></span>`).join('');
+      });
+      h += '</div></div><div class="actions" style="margin-top:10px"><button class="btn sm" type="button" id="r5copy">Copiar como bits a la navaja</button></div>';
+      el.innerHTML = h;
+      $('r5copy').onclick = () => toolkitLoad([...msg].map(c => c.charCodeAt(0).toString(2).padStart(8, '0')).join(' '), 'bind');
+    },
+    sol: ['Toca «Copiar como bits a la navaja» y Aplicar con «Binario → texto»: ', 'Q1RGe2JpbjRyaW99'],
+    hints: [
+      'Cada fila tiene 8 LED: 8 bits forman 1 byte, es decir, un carácter.',
+      'Encendido es 1 y apagado es 0. Arriba tienes el valor de cada posición: suma los encendidos. En la primera fila, 64 + 2 + 1 = 67, que en ASCII es la C.',
+      'Usa «Copiar como bits a la navaja» y luego «Binario → texto».'
+    ],
+    learn: `<p>Todo en un computador son bits. Un byte son 8 bits y vale de 0 a 255; la tabla ASCII asigna un carácter a cada valor (65 es la A, 97 es la a). Es la misma conversión que haces en subnetting cuando pasas 255.255.255.0 a 11111111.11111111.11111111.00000000.</p>
+      <p class="real"><b>En la vida real:</b> <code>python3 -c "print(chr(0b01000011))"</code>, o la receta «From Binary» de CyberChef.</p>`
+  },
+  {
+    short: 'Esteganografía: contraste', title: 'El pizarrón',
+    story: 'Llegas a la sala de clases. Alguien sacó una foto del pizarrón y la dejó como evidencia. A simple vista solo está la materia de la clase, pero el profe dice que «lo importante nunca se ve a la primera».',
+    hash: '64bf9916',
+    render(el) {
+      el.innerHTML = `
+        <div class="imgbox"><canvas id="r6c" width="640" height="360"></canvas></div>
+        <div class="tools">
+          <label>Contraste <input type="range" id="r6k" min="1" max="40" value="1"></label>
+          <span class="small muted" id="r6kv">×1</span>
+          <label><input type="checkbox" id="r6inv"> Invertir colores</label>
+          <button class="btn sm" type="button" id="r6dl">Descargar PNG</button>
+        </div>`;
+      const c = $('r6c'), ctx = c.getContext('2d');
+      const BG = [32, 48, 40];
+      ctx.fillStyle = `rgb(${BG})`; ctx.fillRect(0, 0, 640, 360);
+      ctx.strokeStyle = ctx.fillStyle = 'rgba(235,240,232,.85)'; ctx.lineWidth = 2.5;
+      ctx.font = 'bold 26px system-ui,sans-serif'; ctx.fillText('Redes II · Clase 7: VLAN', 28, 46);
+      ctx.font = '18px system-ui,sans-serif';
+      ctx.fillText('Prueba: jueves', 470, 46);
+      const box = (x, y, w, h, t) => { ctx.strokeRect(x, y, w, h); ctx.fillText(t, x + 10, y + h / 2 + 6); };
+      box(260, 80, 120, 44, 'Router'); box(260, 170, 120, 44, 'Switch');
+      box(90, 250, 100, 40, 'PC 10'); box(270, 250, 100, 40, 'PC 20'); box(450, 250, 100, 40, 'PC 30');
+      ctx.beginPath(); ctx.moveTo(320, 124); ctx.lineTo(320, 170);
+      ctx.moveTo(300, 214); ctx.lineTo(140, 250); ctx.moveTo(320, 214); ctx.lineTo(320, 250); ctx.moveTo(340, 214); ctx.lineTo(500, 250); ctx.stroke();
+      ctx.font = '15px system-ui,sans-serif'; ctx.fillText('trunk 802.1Q', 330, 152);
+      // texto oculto: solo 4 niveles más claro que el fondo
+      ctx.fillStyle = `rgb(${BG.map(v => v + 4)})`;
+      ctx.font = 'bold 30px ui-monospace,Menlo,Consolas,monospace';
+      ctx.fillText(b64dec('Q1RGe3N1YmVfZWxfY29udHJhc3RlfQ=='), 120, 336);
+      const img = ctx.getImageData(0, 0, 640, 360), d = img.data;
+      let seed = 7; const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+      for (let i = 0; i < d.length; i += 4) { const n = Math.round(rnd() * 4 - 2); d[i] += n; d[i + 1] += n; d[i + 2] += n; }
+      ctx.putImageData(img, 0, 0);
+      const orig = new Uint8ClampedArray(d);
+      const apply = () => {
+        const k = +$('r6k').value, inv = $('r6inv').checked, out = ctx.createImageData(640, 360), o = out.data;
+        for (let i = 0; i < orig.length; i += 4) {
+          for (let ch = 0; ch < 3; ch++) { let v = (orig[i + ch] - BG[ch]) * k + 128; if (k === 1) v = orig[i + ch]; o[i + ch] = inv ? 255 - v : v; }
+          o[i + 3] = 255;
+        }
+        ctx.putImageData(out, 0, 0); $('r6kv').textContent = '×' + k;
+      };
+      $('r6k').oninput = apply; $('r6inv').onchange = apply;
+      $('r6dl').onclick = () => { const t = document.createElement('canvas'); t.width = 640; t.height = 360; t.getContext('2d').putImageData(new ImageData(orig, 640, 360), 0, 0); download(t, 'pizarron.png'); };
+    },
+    sol: ['Sube el contraste a ×20 o más. Abajo del pizarrón aparece: ', 'Q1RGe3N1YmVfZWxfY29udHJhc3RlfQ=='],
+    hints: [
+      'La foto tiene algo escrito con un color casi igual al del fondo.',
+      'Tu ojo no distingue diferencias de 3 o 4 niveles de brillo (de 255), pero un filtro sí. Sube el contraste.',
+      'Lleva el control de contraste a ×20 o más y mira la parte de abajo del pizarrón.'
+    ],
+    learn: `<p>Esta es la esteganografía más simple: esconder información a la vista con colores casi idénticos. La <b>esteganografía</b> oculta que existe un mensaje, pero no lo protege si alguien lo encuentra; por eso no reemplaza al cifrado. En un CTF, lo primero que haces con una imagen es jugar con brillo, contraste, niveles y canales de color.</p>
+      <p class="real"><b>En la vida real:</b> Stegsolve, GIMP (Colores → Niveles) o aperisolve.com. Descarga el PNG y pruébalo.</p>`
+  },
+  {
+    short: 'Esteganografía: LSB', title: 'El fondo de pantalla',
+    story: 'El computador del profe tiene un fondo de pantalla precioso, y el archivo pesa más de lo normal. Los píxeles esconden algo que no se ve ni con contraste.',
+    hash: '9a525813',
+    render(el) {
+      el.innerHTML = `
+        <div class="imgbox"><canvas id="r7c" width="320" height="180"></canvas></div>
+        <div class="tools">
+          <label>Vista <select id="r7view"><option value="orig">Original</option><option value="plane">Plano de bits</option></select></label>
+          <label>Canal <select id="r7ch"><option value="0">Rojo</option><option value="1">Verde</option><option value="2">Azul</option></select></label>
+          <label>Bit <select id="r7bit">${[0,1,2,3,4,5,6,7].map(b => `<option value="${b}">${b}${b === 0 ? ' (LSB)' : b === 7 ? ' (MSB)' : ''}</option>`).join('')}</select></label>
+        </div>
+        <div class="tools">
+          <button class="btn sm" type="button" id="r7ex">Extraer LSB del canal como texto</button>
+          <button class="btn sm" type="button" id="r7dl">Descargar PNG</button>
+        </div>
+        <div class="outbox hidden" id="r7out"></div>`;
+      const W = 320, H = 180, px = new Uint8ClampedArray(W * H * 4);
+      // paisaje: cielo, sol y cerros
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        const i = (y * W + x) * 4, t = y / H;
+        let r = 40 + 180 * t, g = 60 + 90 * t, b = 140 + 60 * (1 - t);
+        const ds = Math.hypot(x - 230, y - 70);
+        if (ds < 26) { r = 255; g = 214; b = 120; } else if (ds < 40) { const f = (40 - ds) / 14; r += (255 - r) * f * .5; g += (200 - g) * f * .4; }
+        const m1 = 115 + 18 * Math.sin(x / 26) + 8 * Math.sin(x / 9), m2 = 140 + 12 * Math.sin(x / 37 + 1) + 5 * Math.sin(x / 7);
+        if (y > m1) { r = 52 + (y - m1) * .4; g = 70 + (y - m1) * .3; b = 96; }
+        if (y > m2) { r = 28; g = 44 + (y - m2) * .5; b = 52; }
+        px[i] = r; px[i + 1] = g; px[i + 2] = b; px[i + 3] = 255;
+      }
+      // plano 0 del rojo: un mensaje dibujado
+      const tc = document.createElement('canvas'); tc.width = W; tc.height = H;
+      const tx = tc.getContext('2d'); tx.fillStyle = '#fff'; tx.font = 'bold 26px system-ui,sans-serif'; tx.textAlign = 'center';
+      const lines = b64dec('TEVFIEVMIExTQiBERUwgQ0FOQUwgQVpVTA==').split(' DEL ');
+      tx.fillText(lines[0], W / 2, 78); tx.fillText('DEL ' + lines[1], W / 2, 116);
+      const td = tx.getImageData(0, 0, W, H).data;
+      let seed = 42; const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+      const bits = [];
+      for (const byte of enc.encode(b64dec('Q1RGe2JpdF9tZW5vc19zaWduaWZpY2F0aXZvfQ=='))) for (let k = 7; k >= 0; k--) bits.push((byte >> k) & 1);
+      for (let k = 0; k < 8; k++) bits.push(0);
+      for (let p = 0; p < W * H; p++) {
+        const i = p * 4;
+        px[i] = (px[i] & 254) | (td[i + 3] > 128 ? 1 : 0);
+        px[i + 1] = (px[i + 1] & 254) | (rnd() < .5 ? 1 : 0);
+        px[i + 2] = (px[i + 2] & 254) | (p < bits.length ? bits[p] : (rnd() < .5 ? 1 : 0));
+      }
+      const c = $('r7c'), ctx = c.getContext('2d');
+      const draw = () => {
+        if ($('r7view').value === 'orig') { ctx.putImageData(new ImageData(new Uint8ClampedArray(px), W, H), 0, 0); return; }
+        const ch = +$('r7ch').value, bit = +$('r7bit').value, out = ctx.createImageData(W, H), o = out.data;
+        for (let i = 0; i < px.length; i += 4) { const v = (px[i + ch] >> bit) & 1 ? 255 : 0; o[i] = o[i + 1] = o[i + 2] = v; o[i + 3] = 255; }
+        ctx.putImageData(out, 0, 0);
+      };
+      ['r7view', 'r7ch', 'r7bit'].forEach(id => $(id).onchange = () => { if (id !== 'r7view') $('r7view').value = 'plane'; draw(); });
+      draw();
+      $('r7ex').onclick = () => {
+        const ch = +$('r7ch').value; let s = '';
+        for (let p = 0; p + 8 <= W * H && s.length < 160; p += 8) {
+          let v = 0; for (let k = 0; k < 8; k++) v = (v << 1) | (px[(p + k) * 4 + ch] & 1);
+          if (v === 0) break;
+          s += v >= 32 && v < 127 ? String.fromCharCode(v) : '·';
+        }
+        const name = ['rojo', 'verde', 'azul'][ch];
+        $('r7out').classList.remove('hidden');
+        $('r7out').textContent = `LSB del canal ${name}, 8 bits por carácter, desde el primer píxel:\n\n${s || '(nada)'}`;
+      };
+      $('r7dl').onclick = () => { const t = document.createElement('canvas'); t.width = W; t.height = H; t.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(px), W, H), 0, 0); download(t, 'fondo.png'); };
+    },
+    sol: ['En Plano de bits, canal rojo, bit 0, lees «LEE EL LSB DEL CANAL AZUL». Elige canal azul y toca «Extraer LSB del canal como texto»: ', 'Q1RGe2JpdF9tZW5vc19zaWduaWZpY2F0aXZvfQ=='],
+    hints: [
+      'Cada píxel guarda 3 números (rojo, verde y azul) de 8 bits. Si cambias el bit menos significativo (el bit 0), el color varía en 1 de 255 y nadie lo nota.',
+      'Cambia la vista a «Plano de bits», canal rojo, bit 0. Ahí hay instrucciones.',
+      'Elige el canal azul y toca «Extraer LSB del canal como texto».'
+    ],
+    learn: `<p><b>LSB</b> (<i>Least Significant Bit</i>) es la técnica clásica de esteganografía en imágenes: el último bit de cada canal se reemplaza por bits del mensaje. Como el cambio es de ±1 en el color, la imagen se ve idéntica. Por eso se usan formatos sin pérdida como PNG o BMP: un JPG destruiría esos bits al comprimir. Mira los planos 6 y 7: ahí se ve la imagen, y en el 0 solo ruido y secretos.</p>
+      <p class="real"><b>En la vida real:</b> <code>zsteg fondo.png</code> o Stegsolve (Data Extract). Descarga el PNG y compruébalo tú mismo.</p>`
+  },
+  {
+    short: 'Vigenère', title: 'La caja fuerte',
+    story: 'En la oficina del director hay una caja fuerte con un mensaje cifrado en la pantalla. Junto a ella, enmarcado en la pared, hay un poema bastante raro.',
+    hash: 'e54d4631',
+    render(el) {
+      const poem = ['Cables que cruzan el techo sin fin,', 'Oyen los switches latir sin parar,', 'Nadie recuerda quién puso el router,', 'Duermen los logs en un viejo servidor,', 'Ocultan secretos los bits al pasar:', 'Revisa el principio, no el final.'];
+      el.innerHTML = `
+        <div class="poemgrid">
+          <div class="poem"><div class="t">Oda al laboratorio</div>${poem.map(esc).join('<br>')}</div>
+          <div class="safe"><div class="t">CAJA FUERTE · VIGENÈRE</div>Mensaje bloqueado:<br><br>No pdxr hiruhv us nefv eca FHW{xwthbvts_hvo_cnoih}<br><br><span style="color:#7d8aa3">Ingresa la llave en un descifrador.</span></div>
+        </div>
+        <div class="actions" style="margin-top:10px">
+          <button class="btn sm" type="button" id="r8poem">Copiar poema a la navaja</button>
+          <button class="btn sm" type="button" id="r8safe">Copiar mensaje a la navaja</button>
+        </div>`;
+      $('r8poem').onclick = () => toolkitLoad(poem.join('\n'), 'first');
+      $('r8safe').onclick = () => toolkitLoad('No pdxr hiruhv us nefv eca FHW{xwthbvts_hvo_cnoih}', 'vigd');
+    },
+    sol: ['Copia el poema a la navaja y aplica «Primera letra de cada línea»: la llave es CONDOR. Copia el mensaje, elige «Vigenère: descifrar» con llave CONDOR: ', 'Q1RGe3ZpZ2VuZXJlX3VzYV9sbGF2ZX0='],
+    hints: [
+      'Esto ya no es César: la misma letra no siempre se cifra igual. Es Vigenère, que usa una palabra como llave.',
+      'La llave está en el poema. Lee la última línea con atención.',
+      'Junta la primera letra de cada línea del poema (un acróstico): esa es la llave. Usa «Vigenère: descifrar» con ella.'
+    ],
+    learn: `<p>Vigenère aplica un César distinto a cada letra según la llave. Lo llamaron «el cifrado indescifrable» por 300 años, hasta que Kasiski mostró cómo deducir el largo de la llave. La lección de fondo: la seguridad depende de la llave, no del algoritmo. Si la dejas escrita en la pared, en un post-it o en el código, el mejor cifrado no te salva.</p>
+      <p class="real"><b>En la vida real:</b> la receta «Vigenère Decode» de CyberChef, o dcode.fr, que incluso intenta romperlo sin llave.</p>`
+  },
+  {
+    short: 'Capas de codificación', title: 'La salida',
+    story: 'Última puerta. La consola de la salida muestra un mensaje que parece ruido. El admin lo envolvió en varias capas, una dentro de otra, usando cosas que ya conoces.',
+    hash: 'e8c4e55e',
+    render(el) {
+      const hex = '5545645465334275593235665a6d4a765a584a666347356a626e303d';
+      el.innerHTML = `
+        <div class="term"><span class="p">salida#</span> cat /etc/puerta.key
+${hex.match(/.{1,28}/g).join('\n')}
+<span class="m"># 3 capas. Pélalas de afuera hacia adentro.</span></div>
+        <div class="actions" style="margin-top:10px"><button class="btn sm" type="button" id="r9copy">Copiar a la navaja</button></div>`;
+      $('r9copy').onclick = () => toolkitLoad(hex, 'detect');
+    },
+    sol: ['Copia a la navaja y aplica Hex → texto, luego «Usar salida como entrada» y Base64 → texto, y otra vez «Usar salida como entrada» con ROT13: ', 'Q1RGe2NhcGFfc29icmVfY2FwYX0='],
+    hints: [
+      'Son varias codificaciones, una dentro de otra. Usa «Detectar» en la navaja para saber qué capa tienes al frente.',
+      'La capa de afuera solo usa 0-9 y a-f. Al quitarla queda un texto que termina en <code>=</code>.',
+      'El orden es Hex → texto, luego Base64 → texto y al final ROT13. Usa «Usar salida como entrada» para encadenar.'
+    ],
+    learn: `<p>Encadenar codificaciones no agrega seguridad: cada capa se quita sin llave. Aun así, es un truco muy usado en malware y en CTF para esquivar filtros simples que buscan palabras clave. CyberChef tiene una receta llamada «Magic» que intenta pelar capas automáticamente.</p>
+      <p class="real"><b>En la vida real:</b> <code>echo 5545... | xxd -r -p | base64 -d | tr 'A-Za-z' 'N-ZA-Mn-za-m'</code></p>`
+  }
+];
+
+/* ---------- navaja suiza ---------- */
+const OPS = {
+  detect: { n: 'Detectar formato', f: s => null },
+  b64d: { n: 'Base64 → texto', f: fromB64 },
+  b64e: { n: 'Texto → Base64', f: toB64 },
+  hexd: { n: 'Hex → texto', f: fromHex },
+  hexe: { n: 'Texto → hex', f: toHex },
+  bind: { n: 'Binario → texto', f: fromBin },
+  bine: { n: 'Texto → binario', f: toBin },
+  rot13: { n: 'ROT13', f: s => shift(s, 13) },
+  cesd: { n: 'César: descifrar con N', f: (s, p) => { const n = parseInt(p, 10); if (isNaN(n)) throw new Error('Escribe el desplazamiento (1 a 25).'); return shift(s, -n); }, p: 'Desplazamiento N' },
+  cesb: { n: 'César: probar los 25', f: s => Array.from({ length: 25 }, (_, i) => `N=${String(i + 1).padStart(2, ' ')}  ${shift(s, -(i + 1))}`).join('\n') },
+  vigd: { n: 'Vigenère: descifrar', f: (s, p) => vigenere(s, p, -1), p: 'Llave' },
+  vige: { n: 'Vigenère: cifrar', f: (s, p) => vigenere(s, p, 1), p: 'Llave' },
+  first: { n: 'Primera letra de cada línea', f: firstLetters },
+  rev: { n: 'Invertir texto', f: s => [...s].reverse().join('') }
+};
+
+let tk = null;
+function buildToolkit(host, free) {
+  host.innerHTML = `
+    <span class="tag">Herramientas</span>
+    <h2>Navaja suiza</h2>
+    ${free ? '<p class="muted small">Pega cualquier texto, elige una operación y encadena el resultado. Todo se calcula en tu navegador.</p>' : ''}
+    <label class="lab" for="tkIn">Entrada</label>
+    <textarea id="tkIn" spellcheck="false" placeholder="Pega aquí el texto sospechoso"></textarea>
+    <div class="detect" id="tkDetect"></div>
+    <div class="tk-row">
+      <div><label class="lab" for="tkOp">Operación</label><select id="tkOp">${Object.entries(OPS).map(([k, o]) => `<option value="${k}">${o.n}</option>`).join('')}</select></div>
+      <div id="tkParamBox" class="hidden"><label class="lab" for="tkParam" id="tkParamLab">Parámetro</label><input type="text" id="tkParam" spellcheck="false"></div>
+    </div>
+    <div class="actions">
+      <button class="btn primary sm" type="button" id="tkRun">Aplicar</button>
+      <button class="btn sm" type="button" id="tkChain">Usar salida como entrada</button>
+      <button class="btn sm" type="button" id="tkClear">Limpiar</button>
+    </div>
+    <label class="lab" style="margin-top:12px">Salida</label>
+    <div class="outbox" id="tkOut"></div>`;
+  tk = host;
+  const q = s => host.querySelector(s);
+  const syncParam = () => { const o = OPS[q('#tkOp').value]; q('#tkParamBox').classList.toggle('hidden', !o.p); if (o.p) q('#tkParamLab').textContent = o.p; };
+  const showDetect = () => { q('#tkDetect').innerHTML = detect(q('#tkIn').value); };
+  q('#tkOp').onchange = syncParam;
+  q('#tkIn').oninput = showDetect;
+  q('#tkRun').onclick = () => {
+    const op = q('#tkOp').value, s = q('#tkIn').value, out = q('#tkOut');
+    out.style.color = '';
+    if (op === 'detect') { out.innerHTML = detect(s) || 'Escribe algo en la entrada.'; return; }
+    try { out.textContent = OPS[op].f(s, q('#tkParam').value); }
+    catch (e) { out.style.color = 'var(--bad)'; out.textContent = e.message && !/atob|character|decode/i.test(e.message) ? e.message : 'No se pudo: la entrada no tiene ese formato.'; }
+  };
+  q('#tkChain').onclick = () => { const o = q('#tkOut').textContent; if (o && q('#tkOut').style.color === '') { q('#tkIn').value = o; q('#tkOut').textContent = ''; showDetect(); } };
+  q('#tkClear').onclick = () => { q('#tkIn').value = ''; q('#tkOut').textContent = ''; q('#tkDetect').textContent = ''; };
+  syncParam();
+}
+function toolkitLoad(text, op) {
+  if (!tk) return;
+  const q = s => tk.querySelector(s);
+  q('#tkIn').value = text; q('#tkOut').textContent = ''; q('#tkDetect').innerHTML = detect(text);
+  if (op) { q('#tkOp').value = op; q('#tkOp').onchange(); }
+  tk.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+}
+function download(canvas, name) {
+  canvas.toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); });
+}
+
+/* ---------- flujo del juego ---------- */
+let cur = 0, timer = null;
+const firstOpen = () => { const i = ROOMS.findIndex((_, k) => !(k in save.solved)); return i < 0 ? ROOMS.length : i; };
+const score = () => Object.values(save.solved).reduce((a, b) => a + b, 0);
+const hintsUsed = () => Object.values(save.hints).reduce((a, b) => a + b, 0);
+const fmt = ms => { const s = Math.floor(ms / 1000); const h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, ss = s % 60; return (h ? h + ':' : '') + String(m).padStart(2, '0') + ':' + String(ss).padStart(2, '0'); };
+
+function show(id) {
+  ['scrMenu', 'scrRoom', 'scrTools', 'scrEnd'].forEach(s => $(s).classList.toggle('hidden', s !== id));
+  $('btnMenu').classList.toggle('hidden', id === 'scrMenu');
+  if (id !== 'scrRoom') { clearInterval(timer); timer = null; }
+  scrollTo(0, 0);
+}
+function menu() {
+  const open = firstOpen(), started = Object.keys(save.solved).length > 0;
+  $('playNum').textContent = open >= ROOMS.length ? 'COMPLETADO' : started ? `SALA ${open + 1} DE 9` : 'MODO HISTORIA';
+  $('playName').textContent = open >= ROOMS.length ? 'Ver resultados' : started ? 'Continuar escapando' : 'Empezar a escapar';
+  $('bestLine').textContent = save.best ? `Mejor: ${save.best.score} pts en ${fmt(save.best.time)}` : '';
+  $('btnReset').classList.toggle('hidden', !started);
+  show('scrMenu');
+}
+function tick() {
+  const t = (save.end || Date.now()) - (save.start || Date.now());
+  $('hudTime').textContent = fmt(t);
+}
+function hud() {
+  $('hudRoom').textContent = cur + 1;
+  $('hudScore').textContent = score();
+  $('hudHints').textContent = hintsUsed();
+  const open = firstOpen();
+  $('doors').innerHTML = ROOMS.map((r, i) => `<button type="button" class="door${i in save.solved ? ' done' : ''}${i === cur ? ' cur' : ''}" data-i="${i}" ${i > open ? 'disabled' : ''} title="${esc(r.title)}" aria-label="Sala ${i + 1}: ${esc(r.title)}">${i in save.solved ? '✓' : i > open ? '🔒' : i + 1}</button>`).join('');
+  $('doors').querySelectorAll('.door').forEach(b => b.onclick = () => openRoom(+b.dataset.i));
+  tick();
+}
+function renderHints() {
+  const n = save.hints[cur] || 0, r = ROOMS[cur], solved = cur in save.solved;
+  $('hints').innerHTML = r.hints.slice(0, n).map((h, i) => `<div class="hint"><b>Pista ${i + 1}:</b> ${h}</div>`).join('');
+  const more = n < r.hints.length && !solved;
+  $('btnHint').classList.toggle('hidden', !more);
+  $('hintCost').textContent = more ? `Pista ${n + 1} de 3 · cuesta ${HINT_COST[n]} puntos` : solved ? (n ? `Usaste ${n} pista${n > 1 ? 's' : ''} en esta sala.` : 'Sin pistas. ¡Bien!') : 'Ya viste todas las pistas.';
+  if (solved && !n) $('hintCost').textContent = 'Resuelta sin pistas.';
+  const shown = !!save.shown[cur];
+  $('solBox').classList.toggle('hidden', !(n >= r.hints.length && !solved && !shown));
+  $('solText').classList.toggle('hidden', !shown);
+  if (shown) $('solText').innerHTML = `<b style="color:var(--bad)">Solución:</b> ${r.sol[0]}<code>${esc(b64dec(r.sol[1]))}</code>`;
+}
+function openRoom(i) {
+  if (i >= ROOMS.length) return end();
+  if (!save.start) { save.start = Date.now(); persist(); }
+  cur = i;
+  const r = ROOMS[i], solved = i in save.solved;
+  $('roomTag').textContent = `Sala ${i + 1} · ${r.short}`;
+  $('roomTitle').textContent = r.title;
+  $('roomStory').textContent = r.story;
+  r.render($('scene'));
+  $('flagInput').value = '';
+  $('flagInput').disabled = solved;
+  $('flagForm').querySelector('button').disabled = solved;
+  $('feedback').className = 'feedback hidden';
+  if (solved) { $('feedback').className = 'feedback ok'; $('feedback').textContent = `Puerta abierta · ${save.solved[i]} puntos.`; }
+  $('learn').innerHTML = `<h3>Lo que aprendiste</h3>${r.learn}`;
+  $('learn').classList.toggle('hidden', !solved);
+  $('nextBox').classList.toggle('hidden', !solved);
+  $('btnNext').textContent = i === ROOMS.length - 1 ? 'Salir del laboratorio' : 'Siguiente sala';
+  $('howto').classList.toggle('hidden', i !== 0 || solved);
+  renderHints();
+  if ($('toolkitHost').childElementCount === 0) buildToolkit($('toolkitHost'), false); else tk = $('toolkitHost');
+  show('scrRoom');
+  hud();
+  if (!timer && !save.end) timer = setInterval(tick, 1000);
+  $('roomCard').classList.remove('pop'); void $('roomCard').offsetWidth; $('roomCard').classList.add('pop');
+}
+function tryFlag() {
+  const raw = $('flagInput').value, fb = $('feedback'), r = ROOMS[cur];
+  if (!raw.trim()) return;
+  if (fnv(normalize(raw)) === r.hash) {
+    const pts = save.shown[cur] ? 0 : 100 - HINT_COST.slice(0, save.hints[cur] || 0).reduce((a, b) => a + b, 0);
+    save.solved[cur] = pts;
+    if (firstOpen() >= ROOMS.length && !save.end) save.end = Date.now();
+    persist();
+    fb.className = 'feedback ok pop';
+    fb.textContent = `¡Clic! La puerta se abre. +${pts} puntos.`;
+    $('flagInput').disabled = true; $('flagForm').querySelector('button').disabled = true;
+    $('learn').classList.remove('hidden'); $('nextBox').classList.remove('hidden');
+    renderHints(); hud();
+  } else {
+    const t = raw.trim().toLowerCase();
+    let msg = 'La cerradura no reacciona. Esa no es la flag.';
+    if (/^[a-z]{3}\{/.test(t) && !t.startsWith('ctf{')) msg = 'Casi: eso todavía está cifrado. Una flag descifrada empieza con CTF{.';
+    else if (/^[a-z0-9+/=]{12,}$/i.test(t.replace(/\s/g, '')) && !t.includes('_')) msg = 'Eso parece todavía codificado. Decodifícalo primero en la navaja suiza.';
+    fb.className = 'feedback bad'; void fb.offsetWidth; fb.classList.add('shake');
+    fb.textContent = msg;
+  }
+}
+$('btnOpen').onclick = tryFlag;
+$('flagInput').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); tryFlag(); } };
+$('btnSol').onclick = () => {
+  if (cur in save.solved) return;
+  save.shown[cur] = true; persist(); renderHints();
+};
+$('btnHint').onclick = () => {
+  const n = save.hints[cur] || 0;
+  if (n >= 3 || cur in save.solved) return;
+  save.hints[cur] = n + 1; persist(); renderHints(); hud();
+};
+$('btnNext').onclick = () => openRoom(cur + 1);
+
+function end() {
+  if (!save.end) { save.end = Date.now(); }
+  const total = score(), time = save.end - save.start;
+  if (!save.best || total > save.best.score || (total === save.best.score && time < save.best.time)) save.best = { score: total, time };
+  persist();
+  $('endScore').textContent = total;
+  $('endRank').textContent = total >= 850 ? 'Leyenda del CTF' : total >= 700 ? 'Hacker ético en formación' : total >= 500 ? 'Analista junior' : 'Aprendiz curioso';
+  const h = hintsUsed();
+  $('endMeta').textContent = `${fmt(time)} · ${h} pista${h === 1 ? '' : 's'}`;
+  $('endTable').innerHTML = ROOMS.map((r, i) => `<tr><td>${i + 1}. ${esc(r.title)}</td><td>${esc(r.short)}</td><td class="n">${save.hints[i] || 0}</td><td class="n">${save.solved[i] ?? 0}</td></tr>`).join('');
+  show('scrEnd');
+}
+
+$('goPlay').onclick = () => openRoom(firstOpen());
+$('goTools').onclick = () => { buildToolkit($('toolkitFree'), true); show('scrTools'); };
+$('btnEndTools').onclick = $('goTools').onclick;
+$('btnMenu').onclick = menu;
+$('btnAgain').onclick = () => { const best = save.best; save = fresh(); save.best = best; persist(); openRoom(0); };
+$('btnReset').onclick = () => {
+  const b = $('btnReset');
+  if (!b.dataset.armed) { b.dataset.armed = '1'; b.textContent = 'Toca otra vez para confirmar'; setTimeout(() => { delete b.dataset.armed; b.textContent = 'Borrar progreso'; }, 4000); return; }
+  delete b.dataset.armed; b.textContent = 'Borrar progreso';
+  const best = save.best; save = fresh(); save.best = best; persist(); menu();
+};
+menu();
+</script>
+</body>
+</html>
